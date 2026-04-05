@@ -1,0 +1,63 @@
+name: Auto Release
+
+on:
+  workflow_run:
+    workflows: ["Build All OS"]
+    types:
+      - completed
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write # Needed to create release
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: download
+          merge-multiple: true
+
+      - name: Prepare Release Artifacts
+        run: |
+          mkdir release-artifacts
+          
+          # Find and copy Windows installer (exe)
+          if [ -d "download/.build" ]; then
+            find download/.build -type f -name "*.exe" -exec cp {} release-artifacts/ \;
+            
+            # Find and copy Linux deb package
+            find download/.build -type f -name "*.deb" -exec cp {} release-artifacts/ \;
+          fi
+          
+          # Mac app: zip the Loophole-darwin-x64 directory if it exists
+          if [ -d "download/Loophole-darwin-x64" ]; then
+            cd download
+            zip -r ../release-artifacts/Loophole-macos-x64.zip Loophole-darwin-x64
+            cd ..
+          fi
+
+      - name: Generate Tag Name
+        id: tag
+        run: |
+          VERSION=$(jq -r '.version' package.json || echo "1.0.0")
+          TAG_NAME="v${VERSION}-$(date +'%Y%m%d%H%M')"
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
+          files: release-artifacts/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
