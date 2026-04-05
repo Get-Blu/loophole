@@ -22,7 +22,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -337,6 +337,34 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 	featureName,
 	loadingIcon,
 }) => {
+	const accessor = useAccessor();
+	const fileDialogService = accessor.get('IFileDialogService');
+	const languageService = accessor.get('ILanguageService');
+
+	const handleAddFile = async () => {
+		const uris = await fileDialogService.showOpenDialog({
+			canSelectFiles: true,
+			canSelectFolders: false,
+			canSelectMany: true,
+			openLabel: 'Add to Context',
+			title: 'Select Files to Add to Context'
+		});
+
+		if (uris && uris.length > 0 && setSelections && selections) {
+			const newSelections: StagingSelectionItem[] = uris.map(uri => {
+				return {
+					type: 'File',
+					uri,
+					language: languageService.guessLanguageIdByFilepathOrFirstLine(uri) || 'plaintext',
+					state: { wasAddedAsCurrentFile: false }
+				}
+			});
+			
+			const filtered = newSelections.filter(ns => !selections.some(s => s.type === 'File' && s.uri.fsPath === ns.uri.fsPath));
+			setSelections([...selections, ...filtered]);
+		}
+	};
+
 	return (
 		<div
 			ref={divRef}
@@ -394,6 +422,17 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 				)}
 
 				<div className="flex items-center gap-2">
+
+					{showSelections && selections && setSelections && (
+						<button
+							type="button"
+							className="text-loophole-fg-3 hover:text-loophole-fg-1 p-1 rounded flex items-center justify-center cursor-pointer transition-colors"
+							onClick={handleAddFile}
+							title="Add file to context"
+						>
+							<Paperclip size={16} />
+						</button>
+					)}
 
 					{isStreaming && loadingIcon}
 
