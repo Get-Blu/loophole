@@ -24,7 +24,6 @@ import { IChatThreadService } from './chatThreadService.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { Codicon } from '../../../../base/common/codicons.js';
-import { ThemeIcon } from '../../../../base/common/themables.js';
 
 // Register Loophole sidebar icon - using custom CSS class for image-based icon
 const loopholeSidebarIcon = registerIcon('loophole-sidebar-toggle', Codicon.symbolMethod, localize('loopholeSidebarToggle', "Toggle Loophole AI Sidebar"));
