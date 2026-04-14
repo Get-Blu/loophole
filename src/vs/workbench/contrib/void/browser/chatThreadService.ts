@@ -635,6 +635,19 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				this._addMessageToThread(threadId, { role: 'tool', type: 'invalid_params', rawParams: opts.unvalidatedToolParams, result: null, name: toolName, content: errorMessage, id: toolId, mcpServerName })
 				return {}
 			}
+			// check plan mode restrictions - only allow creating .md files
+			if (toolName === 'create_file_or_folder') {
+				const chatMode = this._settingsService.state.globalSettings.chatMode
+				const params = toolParams as BuiltinToolCallParams['create_file_or_folder']
+				if (chatMode === 'plan' && !params.isFolder) {
+					const uriStr = params.uri.toString()
+					if (!uriStr.endsWith('.md')) {
+						const errorMessage = `In Plan mode, you can only create .md files. The file "${uriStr}" is not a .md file.`
+						this._addMessageToThread(threadId, { role: 'tool', type: 'invalid_params', rawParams: opts.unvalidatedToolParams, result: null, name: toolName, content: errorMessage, id: toolId, mcpServerName })
+						return {}
+					}
+				}
+			}
 			// once validated, add checkpoint for edit
 			if (toolName === 'edit_file') { this._addToolEditCheckpoint({ threadId, uri: (toolParams as BuiltinToolCallParams['edit_file']).uri }) }
 			if (toolName === 'rewrite_file') { this._addToolEditCheckpoint({ threadId, uri: (toolParams as BuiltinToolCallParams['rewrite_file']).uri }) }

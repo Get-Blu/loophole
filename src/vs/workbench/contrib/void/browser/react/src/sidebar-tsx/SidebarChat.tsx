@@ -22,7 +22,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2 } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -252,14 +252,23 @@ const nameOfChatMode = {
 	'normal': 'Chat',
 	'gather': 'Gather',
 	'agent': 'Agent',
+	'plan': 'Plan',
 }
 
 const detailOfChatMode = {
 	'normal': 'Normal chat',
 	'gather': 'Reads files, but can\'t edit',
 	'agent': 'Edits files and uses tools',
+	'plan': 'Reads files and creates .md plans',
 }
 
+
+const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
+	'normal': <MessageSquare size={14} />,
+	'gather': <Search size={14} />,
+	'agent': <Bot size={14} />,
+	'plan': <FileText size={14} />,
+}
 
 const ChatModeDropdown = ({ className }: { className: string }) => {
 	const accessor = useAccessor()
@@ -267,7 +276,7 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
 	const settingsState = useSettingsState()
 
-	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent'], [])
+	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent', 'plan'], [])
 
 	const onChangeOption = useCallback((newVal: ChatMode) => {
 		loopholeSettingsService.setGlobalSetting('chatMode', newVal)
@@ -278,10 +287,11 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 		options={options}
 		selectedOption={settingsState.globalSettings.chatMode}
 		onChangeOption={onChangeOption}
-		getOptionDisplayName={(val) => nameOfChatMode[val]}
+		getOptionDisplayName={(val) => iconOfChatMode[val]}
 		getOptionDropdownName={(val) => nameOfChatMode[val]}
 		getOptionDropdownDetail={(val) => detailOfChatMode[val]}
 		getOptionsEqual={(a, b) => a === b}
+		arrowTouchesText={false}
 	/>
 
 }
@@ -3178,7 +3188,7 @@ export const SidebarChat = () => {
 
 	// Get current chat mode from settings
 	const chatMode = settingsState.globalSettings.chatMode
-	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Plan' : 'Chat'
+	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Gather' : chatMode === 'plan' ? 'Plan' : 'Chat'
 
 	// Welcome screen component
 	const WelcomeScreen = () => (

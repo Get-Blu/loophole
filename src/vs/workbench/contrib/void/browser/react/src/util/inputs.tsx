@@ -1272,7 +1272,7 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 	onChangeOption: (newValue: T) => void;
 	getOptionDropdownName: (option: T) => string;
 	getOptionDropdownDetail?: (option: T) => string;
-	getOptionDisplayName: (option: T) => string;
+	getOptionDisplayName: (option: T) => React.ReactNode;
 	getOptionsEqual: (a: T, b: T) => boolean;
 	className?: string;
 	arrowTouchesText?: boolean;

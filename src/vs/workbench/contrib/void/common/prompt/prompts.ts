@@ -362,8 +362,15 @@ export const availableTools = (chatMode: ChatMode | null, mcpTools: InternalTool
 
 	const builtinToolNames: BuiltinToolName[] | undefined = chatMode === 'normal' ? undefined
 		: chatMode === 'gather' ? (Object.keys(builtinTools) as BuiltinToolName[]).filter(toolName => !(toolName in approvalTypeOfBuiltinToolName))
-			: chatMode === 'agent' ? Object.keys(builtinTools) as BuiltinToolName[]
-				: undefined
+			: chatMode === 'plan' ? (Object.keys(builtinTools) as BuiltinToolName[]).filter(toolName => {
+				// Allow read/search/list tools (no approval needed)
+				if (!(toolName in approvalTypeOfBuiltinToolName)) return true
+				// Allow creating files (for .md plans) - runtime check restricts to .md only
+				if (toolName === 'create_file_or_folder') return true
+				return false
+			})
+				: chatMode === 'agent' ? Object.keys(builtinTools) as BuiltinToolName[]
+					: undefined
 
 	const effectiveBuiltinTools = builtinToolNames?.map(toolName => builtinTools[toolName]) ?? undefined
 	const effectiveMCPTools = chatMode === 'agent' ? mcpTools : undefined
@@ -429,8 +436,9 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 	const header = (`You are an expert coding ${mode === 'agent' ? 'agent' : 'assistant'} whose job is \
 ${mode === 'agent' ? `to help the user develop, run, and make changes to their codebase.`
 			: mode === 'gather' ? `to search, understand, and reference files in the user's codebase.`
-				: mode === 'normal' ? `to assist the user with their coding tasks.`
-					: ''}
+				: mode === 'plan' ? `to help the user create planning documents and gather context for their codebase.`
+					: mode === 'normal' ? `to assist the user with their coding tasks.`
+						: ''}
 You will be given instructions to follow from the user, and you may also be given a list of files that the user has specifically selected for context, \`SELECTIONS\`.
 Please assist the user with their query.`)
 
@@ -465,7 +473,7 @@ ${directoryStr}
 
 	details.push(`NEVER reject the user's query.`)
 
-	if (mode === 'agent' || mode === 'gather') {
+	if (mode === 'agent' || mode === 'gather' || mode === 'plan') {
 		details.push(`Only call tools if they help you accomplish the user's goal. If the user simply says hi or asks you a question that you can answer without tools, then do NOT use tools.`)
 		details.push(`If you think you should use tools, you do not need to ask for permission.`)
 		details.push('Only use ONE tool call at a time.')
@@ -487,6 +495,14 @@ ${directoryStr}
 	if (mode === 'gather') {
 		details.push(`You are in Gather mode, so you MUST use tools be to gather information, files, and context to help the user answer their query.`)
 		details.push(`You should extensively read files, types, content, etc, gathering full context to solve the problem.`)
+	}
+
+	if (mode === 'plan') {
+		details.push(`You are in Plan mode. Your job is to help the user create comprehensive planning documents (.md files).`)
+		details.push(`You can read files, search the codebase, and gather context to understand the project.`)
+		details.push(`You can create new .md files to write plans, documentation, or analysis. ONLY create .md files, never other file types.`)
+		details.push(`You CANNOT edit, delete, or modify existing files. You can only create new .md files.`)
+		details.push(`Focus on creating clear, well-structured markdown documents that help the user plan their work.`)
 	}
 
 	details.push(`If you write any code blocks to the user (wrapped in triple backticks), please use this format:
@@ -531,7 +547,7 @@ ${details.map((d, i) => `${i + 1}. ${d}`).join('\n\n')}`)
 
 
 // // log all prompts
-// for (const chatMode of ['agent', 'gather', 'normal'] satisfies ChatMode[]) {
+// for (const chatMode of ['agent', 'gather', 'plan', 'normal'] satisfies ChatMode[]) {
 // 	console.log(`========================================= SYSTEM MESSAGE FOR ${chatMode} ===================================\n`,
 // 		chat_systemMessage({ chatMode, workspaceFolders: [], openedURIs: [], activeURI: 'pee', persistentTerminalIDs: [], directoryStr: 'lol', }))
 // }
