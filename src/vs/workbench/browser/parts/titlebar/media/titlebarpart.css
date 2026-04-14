@@ -453,3 +453,17 @@
 	border-radius: 16px;
 	text-align: center;
 }
+
+/* Loophole AI Sidebar Toggle Button - Custom Icon */
+.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item .action-label.codicon-loophole-sidebar-toggle {
+	background-image: url('../../../../../void_icons/loophole_titlebar.png');
+	background-repeat: no-repeat;
+	background-position: center center;
+	background-size: 20px;
+	-webkit-mask: none;
+	mask: none;
+}
+
+.monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item .action-label.codicon-loophole-sidebar-toggle::before {
+	content: '';
+}

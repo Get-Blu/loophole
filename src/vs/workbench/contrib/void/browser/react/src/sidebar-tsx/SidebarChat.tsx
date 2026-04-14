@@ -22,7 +22,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -32,6 +32,7 @@ import { builtinToolNames, isABuiltinToolName, MAX_FILE_CHARS_PAGE, MAX_TERMINAL
 import { RawToolCallObj } from '../../../../common/sendLLMMessageTypes.js';
 import ErrorBoundary from './ErrorBoundary.js';
 import { ToolApprovalTypeSwitch } from '../void-settings-tsx/Settings.js';
+import { useVoiceRecording } from '../util/voiceRecording.js';
 
 import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
@@ -315,6 +316,8 @@ interface VoidChatAreaProps {
 	onClickAnywhere?: () => void;
 	// Optional close button
 	onClose?: () => void;
+	// Voice recording callback
+	onVoiceTranscript?: (transcript: string) => void;
 
 	featureName: FeatureName;
 }
@@ -325,6 +328,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 	onAbort,
 	onClose,
 	onClickAnywhere,
+	onVoiceTranscript,
 	divRef,
 	isStreaming = false,
 	isDisabled = false,
@@ -340,6 +344,16 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 	const accessor = useAccessor();
 	const fileDialogService = accessor.get('IFileDialogService');
 	const languageService = accessor.get('ILanguageService');
+
+	// Voice recording
+	const { state: recordingState, transcript: voiceTranscript, toggleRecording, isSupported } = useVoiceRecording();
+
+	// Handle voice transcript
+	React.useEffect(() => {
+		if (voiceTranscript && onVoiceTranscript) {
+			onVoiceTranscript(voiceTranscript);
+		}
+	}, [voiceTranscript, onVoiceTranscript]);
 
 	const handleAddFile = async () => {
 		const uris = await fileDialogService.showOpenDialog({
@@ -359,7 +373,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 					state: { wasAddedAsCurrentFile: false }
 				}
 			});
-			
+
 			const filtered = newSelections.filter(ns => !selections.some(s => s.type === 'File' && s.uri.fsPath === ns.uri.fsPath));
 			setSelections([...selections, ...filtered]);
 		}
@@ -369,14 +383,14 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 		<div
 			ref={divRef}
 			className={`
-				gap-x-1
-                flex flex-col p-2 relative input text-left shrink-0
-                rounded-md
-                bg-loophole-bg-1
+				flex flex-col relative text-left shrink-0
+				rounded-2xl
+				bg-loophole-bg-1
 				transition-all duration-200
-				border border-loophole-border-3 focus-within:border-loophole-border-1 hover:border-loophole-border-1
+				border border-loophole-border-2 focus-within:border-loophole-border-1 focus-within:ring-1 focus-within:ring-loophole-border-1/50
+				shadow-sm
 				max-h-[80vh] overflow-y-auto
-                ${className}
+				${className}
             `}
 			onClick={(e) => {
 				onClickAnywhere?.()
@@ -393,7 +407,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			)}
 
 			{/* Input section */}
-			<div className="relative w-full">
+			<div className="relative w-full p-3">
 				{children}
 
 				{/* Close button (X) if onClose is provided */}
@@ -408,29 +422,41 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 				)}
 			</div>
 
-			{/* Bottom row */}
-			<div className='flex flex-row justify-between items-end gap-1'>
+			{/* Bottom row - Cleaner design */}
+			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-3 pt-1'>
 				{showModelDropdown && (
-					<div className='flex flex-col gap-y-1'>
-						<ReasoningOptionSlider featureName={featureName} />
-
-						<div className='flex items-center flex-wrap gap-x-2 gap-y-1 text-nowrap '>
-							{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 bg-loophole-bg-1 border border-loophole-border-2 rounded py-0.5 px-1' />}
-							<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 bg-loophole-bg-1 rounded' />
-						</div>
+					<div className='flex items-center gap-2 text-nowrap'>
+						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:bg-loophole-bg-2 rounded-lg py-1 px-2 transition-colors' />}
+						<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 hover:bg-loophole-bg-2 rounded-lg py-1 px-2 transition-colors' />
 					</div>
 				)}
 
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1">
 
 					{showSelections && selections && setSelections && (
 						<button
 							type="button"
-							className="text-loophole-fg-3 hover:text-loophole-fg-1 p-1 rounded flex items-center justify-center cursor-pointer transition-colors"
+							className="text-loophole-fg-3 hover:text-loophole-fg-1 hover:bg-loophole-bg-2 p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
 							onClick={handleAddFile}
 							title="Add file to context"
 						>
 							<Paperclip size={16} />
+						</button>
+					)}
+
+					{/* Mic Button - Voice to Text */}
+					{isSupported && (
+						<button
+							type="button"
+							className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-loophole-bg-2 ${
+								recordingState === 'recording'
+									? 'text-red-500 animate-pulse'
+									: 'text-loophole-fg-3 hover:text-loophole-fg-1'
+							}`}
+							onClick={toggleRecording}
+							title={recordingState === 'recording' ? 'Stop recording' : 'Start voice recording'}
+						>
+							<Mic size={16} />
 						</button>
 					)}
 
@@ -3113,6 +3139,25 @@ export const SidebarChat = () => {
 		selections={selections}
 		setSelections={setSelections}
 		onClickAnywhere={() => { textAreaRef.current?.focus() }}
+		onVoiceTranscript={(transcript) => {
+			// Insert voice transcript into textarea
+			const textarea = textAreaRef.current;
+			if (textarea) {
+				const start = textarea.selectionStart || 0;
+				const end = textarea.selectionEnd || 0;
+				const currentValue = textarea.value || '';
+				const newValue = currentValue.substring(0, start) + transcript + currentValue.substring(end);
+				textarea.value = newValue;
+				// Move cursor to after inserted text
+				const newCursorPos = start + transcript.length;
+				textarea.setSelectionRange(newCursorPos, newCursorPos);
+				// Trigger input event to update state
+				textarea.dispatchEvent(new Event('input', { bubbles: true }));
+				textarea.focus();
+				// Update instructions empty state
+				setInstructionsAreEmpty(!newValue.trim());
+			}
+		}}
 	>
 		<LoopholeInputBox2
 			enableAtToMention
@@ -3131,6 +3176,58 @@ export const SidebarChat = () => {
 
 	const isLandingPage = previousMessages.length === 0
 
+	// Get current chat mode from settings
+	const chatMode = settingsState.globalSettings.chatMode
+	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Plan' : 'Chat'
+
+	// Welcome screen component
+	const WelcomeScreen = () => (
+		<div className='flex flex-col items-center justify-center flex-1 min-h-[300px] select-none'>
+			{/* Logo */}
+			<div className='mb-6'>
+				<svg
+					width="80"
+					height="80"
+					viewBox="0 0 100 100"
+					fill="none"
+					className='text-loophole-fg-1'
+				>
+					<path
+						d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z"
+						stroke="currentColor"
+						strokeWidth="3"
+						fill="none"
+						strokeLinejoin="round"
+					/>
+					<text
+						x="50"
+						y="58"
+						textAnchor="middle"
+						fontSize="36"
+						fontWeight="bold"
+						fill="currentColor"
+					>
+						W
+					</text>
+				</svg>
+			</div>
+
+			{/* Title with shortcut */}
+			<div className='flex items-center gap-3 mb-3'>
+				<h1 className='text-2xl font-semibold text-loophole-fg-1'>
+					Loophole {modeTitle}
+				</h1>
+				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
+					Ctrl+L
+				</span>
+			</div>
+
+			{/* Tagline */}
+			<p className='text-loophole-fg-3 text-center max-w-md text-sm leading-relaxed'>
+				Ask anything, edit any file, or automate your entire workflow.
+			</p>
+		</div>
+	)
 
 	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-2 w-full text-nowrap text-loophole-fg-3 select-none'>
 		{[
@@ -3161,31 +3258,38 @@ export const SidebarChat = () => {
 		</div>
 	</div>
 
-	const landingPageInput = <div>
-		<div className='pt-8'>
-			{inputChatArea}
-		</div>
+	const landingPageInput = <div className='w-full max-w-2xl mx-auto px-4 pb-6'>
+		{inputChatArea}
 	</div>
 
 	const landingPageContent = <div
 		ref={sidebarRef}
-		className='w-full h-full max-h-full flex flex-col overflow-auto px-4'
+		className='w-full h-full max-h-full flex flex-col overflow-hidden'
 	>
+		{/* Welcome Screen - Centered at top */}
+		<ErrorBoundary>
+			<WelcomeScreen />
+		</ErrorBoundary>
+
+		{/* Middle section - Suggestions or Previous Threads */}
+		<div className='flex-1 overflow-y-auto px-4 pb-4'>
+			{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
+				<ErrorBoundary>
+					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Previous Threads</div>
+					<PastThreadsList />
+				</ErrorBoundary>
+				:
+				<ErrorBoundary>
+					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Suggestions</div>
+					{initiallySuggestedPromptsHTML}
+				</ErrorBoundary>
+			}
+		</div>
+
+		{/* Input at bottom */}
 		<ErrorBoundary>
 			{landingPageInput}
 		</ErrorBoundary>
-
-		{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
-			<ErrorBoundary>
-				<div className='pt-8 mb-2 text-loophole-fg-3 text-root select-none pointer-events-none'>Previous Threads</div>
-				<PastThreadsList />
-			</ErrorBoundary>
-			:
-			<ErrorBoundary>
-				<div className='pt-8 mb-2 text-loophole-fg-3 text-root select-none pointer-events-none'>Suggestions</div>
-				{initiallySuggestedPromptsHTML}
-			</ErrorBoundary>
-		}
 	</div>
 
 
