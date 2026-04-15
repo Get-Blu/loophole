@@ -467,3 +467,8 @@
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item .action-label.codicon-loophole-sidebar-toggle::before {
 	content: '';
 }
+
+/* Invert icon for dark themes (when .light class is NOT present) */
+.monaco-workbench .part.titlebar:not(.light) > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item .action-label.codicon-loophole-sidebar-toggle {
+	filter: invert(1);
+}

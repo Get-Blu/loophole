@@ -292,6 +292,7 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 		getOptionDropdownDetail={(val) => detailOfChatMode[val]}
 		getOptionsEqual={(a, b) => a === b}
 		arrowTouchesText={false}
+		showArrow={false}
 	/>
 
 }
@@ -3192,83 +3193,45 @@ export const SidebarChat = () => {
 
 	// Welcome screen component
 	const WelcomeScreen = () => (
-		<div className='flex flex-col items-center justify-center flex-1 min-h-[300px] select-none'>
+		<div className='flex flex-col items-center justify-center h-full select-none -mt-20'>
 			{/* Logo */}
-			<div className='mb-6'>
-				<svg
-					width="80"
-					height="80"
-					viewBox="0 0 100 100"
-					fill="none"
-					className='text-loophole-fg-1'
-				>
-					<path
-						d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z"
-						stroke="currentColor"
-						strokeWidth="3"
-						fill="none"
-						strokeLinejoin="round"
-					/>
-					<text
-						x="50"
-						y="58"
-						textAnchor="middle"
-						fontSize="36"
-						fontWeight="bold"
-						fill="currentColor"
-					>
-						W
-					</text>
-				</svg>
+			<div className='mb-3'>
+				<img
+					src='../../../../../../void_icons/loophole_logo.png'
+					alt='Loophole Logo'
+					width="60"
+					height="60"
+					className='dark:invert'
+				/>
 			</div>
 
 			{/* Title with shortcut */}
-			<div className='flex items-center gap-3 mb-3'>
-				<h1 className='text-2xl font-semibold text-loophole-fg-1'>
+			<div className='flex items-center gap-2 mb-1'>
+				<h1 className='text-xl font-bold text-loophole-fg-1 tracking-tight'>
 					Loophole {modeTitle}
 				</h1>
-				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
+				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
 					Ctrl+L
 				</span>
 			</div>
 
 			{/* Tagline */}
-			<p className='text-loophole-fg-3 text-center max-w-md text-sm leading-relaxed'>
-				Ask anything, edit any file, or automate your entire workflow.
+			<p className='text-loophole-fg-3 text-center max-w-sm text-sm font-medium leading-snug mt-1'>
+				Your AI coding companion. Build, refactor, and debug<br />with confidence. Ship faster than ever before.
 			</p>
 		</div>
 	)
-
-	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-2 w-full text-nowrap text-loophole-fg-3 select-none'>
-		{[
-			'Summarize project',
-			'Explain this code',
-			'Find bugs',
-			'Refactor file',
-			'Create .loopholerules'
-		].map((text, index) => (
-			<div
-				key={index}
-				className='py-1 px-2 rounded text-sm bg-zinc-700/5 hover:bg-zinc-700/10 dark:bg-zinc-300/5 dark:hover:bg-zinc-300/10 cursor-pointer opacity-80 hover:opacity-100'
-				onClick={() => onSubmit(text)}
-			>
-				{text}
-			</div>
-		))}
-	</div>
-
-
 
 	const threadPageInput = <div key={'input' + chatThreadsState.currentThreadId}>
 		<div className='px-4'>
 			<CommandBarInChat />
 		</div>
-		<div className='px-2 pb-2'>
+		<div className='px-4 pb-1 max-w-3xl mx-auto'>
 			{inputChatArea}
 		</div>
 	</div>
 
-	const landingPageInput = <div className='w-full max-w-2xl mx-auto px-4 pb-6'>
+	const landingPageInput = <div className='w-full max-w-xl mx-auto px-4 pb-1'>
 		{inputChatArea}
 	</div>
 
@@ -3281,19 +3244,15 @@ export const SidebarChat = () => {
 			<WelcomeScreen />
 		</ErrorBoundary>
 
-		{/* Middle section - Suggestions or Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-4'>
-			{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
+		{/* Middle section - Previous Threads */}
+		<div className='flex-1 overflow-y-auto px-4 pb-[7px]'>
+			{Object.keys(chatThreadsState.allThreads).length > 1 && (
 				<ErrorBoundary>
-					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Previous Threads</div>
-					<PastThreadsList />
+					<div className='max-w-lg mx-auto'>
+						<PastThreadsList />
+					</div>
 				</ErrorBoundary>
-				:
-				<ErrorBoundary>
-					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Suggestions</div>
-					{initiallySuggestedPromptsHTML}
-				</ErrorBoundary>
-			}
+			)}
 		</div>
 
 		{/* Input at bottom */}

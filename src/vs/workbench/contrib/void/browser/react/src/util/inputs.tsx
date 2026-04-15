@@ -1261,6 +1261,7 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 	getOptionsEqual,
 	className,
 	arrowTouchesText = true,
+	showArrow = true,
 	matchInputWidth = false,
 	gapPx = 0,
 	offsetPx = -6,
@@ -1276,6 +1277,7 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 	getOptionsEqual: (a: T, b: T) => boolean;
 	className?: string;
 	arrowTouchesText?: boolean;
+	showArrow?: boolean;
 	matchInputWidth?: boolean;
 	gapPx?: number;
 	offsetPx?: number;
@@ -1426,19 +1428,21 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 				<span className={`truncate ${arrowTouchesText ? 'mr-1' : ''}`}>
 					{getOptionDisplayName(selectedOption)}
 				</span>
-				<svg
-					className={`size-3 flex-shrink-0 ${arrowTouchesText ? '' : 'ml-auto'}`}
-					viewBox="0 0 12 12"
-					fill="none"
-				>
-					<path
-						d="M2.5 4.5L6 8L9.5 4.5"
-						stroke="currentColor"
-						strokeWidth="1.5"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					/>
-				</svg>
+				{showArrow && (
+					<svg
+						className={`size-3 flex-shrink-0 ${arrowTouchesText ? '' : 'ml-auto'}`}
+						viewBox="0 0 12 12"
+						fill="none"
+					>
+						<path
+							d="M2.5 4.5L6 8L9.5 4.5"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
+					</svg>
+				)}
 			</button>
 
 			{/* Dropdown Menu */}

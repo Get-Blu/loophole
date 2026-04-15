@@ -22,6 +22,31 @@ const optionsEqual = (m1: ModelOption[], m2: ModelOption[]) => {
 	return true
 }
 
+// Convert raw model ID to clean display name (UI only - doesn't affect backend model IDs)
+const getCleanModelName = (modelName: string): string => {
+	// Remove common prefixes/suffixes and clean up the name
+	let clean = modelName
+		// Remove provider prefixes like meta-llama/, anthropic/, etc.
+		.replace(/^[^/]+\//, '')
+		// Remove common suffixes
+		.replace(/-instruct-turbo$/i, '')
+		.replace(/-instruct$/i, '')
+		.replace(/-preview$/i, '')
+		.replace(/-latest$/i, '')
+		.replace(/-\d{4}-\d{2}-\d{2}$/i, '') // date suffixes like -2024-06-01
+		// Replace separators with spaces
+		.replace(/-/g, ' ')
+		.replace(/_/g, ' ')
+
+	// Title case each word
+	clean = clean
+		.split(' ')
+		.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+		.join(' ')
+
+	return clean
+}
+
 const ModelSelectBox = ({ options, featureName, className }: { options: ModelOption[], featureName: FeatureName, className: string }) => {
 	const accessor = useAccessor()
 	const voidSettingsService = accessor.get('ILoopholeSettingsService')
@@ -37,12 +62,13 @@ const ModelSelectBox = ({ options, featureName, className }: { options: ModelOpt
 		options={options}
 		selectedOption={selectedOption}
 		onChangeOption={onChangeOption}
-		getOptionDisplayName={(option) => option.selection.modelName}
-		getOptionDropdownName={(option) => option.selection.modelName}
+		getOptionDisplayName={(option) => getCleanModelName(option.selection.modelName)}
+		getOptionDropdownName={(option) => getCleanModelName(option.selection.modelName)}
 		getOptionDropdownDetail={(option) => option.selection.providerName}
 		getOptionsEqual={(a, b) => optionsEqual([a], [b])}
 		className={className}
 		matchInputWidth={false}
+		showArrow={false}
 		withSearch={true}
 		getSearchString={(option) => `${option.selection.modelName} ${option.selection.providerName}`}
 	/>
