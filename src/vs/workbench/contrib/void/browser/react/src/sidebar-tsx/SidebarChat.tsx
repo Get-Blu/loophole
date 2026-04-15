@@ -3093,9 +3093,11 @@ export const SidebarChat = () => {
 		className={`
 			flex flex-col
 			px-4 py-4 space-y-4
-			w-full h-full
+			w-full flex-1
+			mx-4
 			overflow-x-hidden
 			overflow-y-auto
+			mb-2
 			${previousMessagesHTML.length === 0 && !displayContentSoFar ? 'hidden' : ''}
 		`}
 	>
@@ -3172,7 +3174,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[81px] px-0.5 py-0.5`}
+			className={`min-h-[60px] px-0.5 py-0.5`}
 			placeholder={`@ to mention, ${keybindingString ? `${keybindingString} to add a selection. ` : ''}Enter instructions...`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
@@ -3197,7 +3199,7 @@ export const SidebarChat = () => {
 			{/* Logo */}
 			<div className='mb-3'>
 				<img
-					src='../../../../../../void_icons/loophole_logo.png'
+					src='../../../../../../../../void_icons/loophole_logo.png'
 					alt='Loophole Logo'
 					width="60"
 					height="60"
