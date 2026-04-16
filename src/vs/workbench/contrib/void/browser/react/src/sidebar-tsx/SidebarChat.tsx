@@ -1495,9 +1495,7 @@ const AssistantMessageComponent = ({ chatMessage, isCheckpointGhost, isCommitted
 				</ProseWrapper>
 				{/* token usage display */}
 				{chatMessage.tokenUsage && (
-					<div className="px-4">
-						<TokenDisplay tokenUsage={chatMessage.tokenUsage} />
-					</div>
+					<TokenDisplay tokenUsage={chatMessage.tokenUsage} />
 				)}
 			</div>
 		}
@@ -2591,8 +2589,9 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 	}, [isRunning, streamState])
 
 	return <div
-		className={`flex items-center justify-center px-2 `}
+		className={`flex items-center gap-2 px-3 py-1`}
 	>
+		<div className="flex-1 h-px bg-loophole-border-2 opacity-30" />
 		<div
 			className={`
                     text-xs
@@ -2619,6 +2618,7 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 		>
 			Checkpoint
 		</div>
+		<div className="flex-1 h-px bg-loophole-border-2 opacity-30" />
 	</div>
 }
 
@@ -3149,7 +3149,6 @@ export const SidebarChat = () => {
 			flex flex-col
 			px-4 py-4 space-y-4
 			w-full flex-1
-			mx-4
 			overflow-x-hidden
 			overflow-y-auto
 			mb-2
@@ -3254,7 +3253,7 @@ export const SidebarChat = () => {
 			{/* Logo */}
 			<div className='mb-3'>
 				<img
-					src='../../../../../../../../void_icons/loophole_logo.png'
+					src='/void_icons/loophole_logo.png'
 					alt='Loophole Logo'
 					width="60"
 					height="60"
@@ -3263,17 +3262,17 @@ export const SidebarChat = () => {
 			</div>
 
 			{/* Title with shortcut */}
-			<div className='flex items-center gap-2 mb-1'>
-				<h1 className='text-xl font-bold text-loophole-fg-1 tracking-tight'>
+			<div className='flex items-center gap-2 mb-2'>
+				<h1 className='text-[15px] font-semibold text-loophole-fg-1 tracking-tight'>
 					Loophole {modeTitle}
 				</h1>
-				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
+				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-2 border border-loophole-border-2 rounded text-loophole-fg-3 font-mono'>
 					Ctrl+L
 				</span>
 			</div>
 
 			{/* Tagline */}
-			<p className='text-loophole-fg-3 text-center max-w-sm text-sm font-medium leading-snug mt-1'>
+			<p className='text-loophole-fg-3 text-center text-[12px] leading-relaxed mt-0.5 opacity-80'>
 				Your AI coding companion. Build, refactor, and debug<br />with confidence. Ship faster than ever before.
 			</p>
 		</div>
@@ -3283,7 +3282,7 @@ export const SidebarChat = () => {
 		<div className='px-4'>
 			<CommandBarInChat />
 		</div>
-		<div className='px-4 pb-1 max-w-3xl mx-auto'>
+		<div className='px-4 pb-1'>
 			{inputChatArea}
 		</div>
 	</div>
