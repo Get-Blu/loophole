@@ -308,7 +308,7 @@ const detailOfChatMode = {
 	'normal': 'Normal chat',
 	'gather': 'Reads files, but can\'t edit',
 	'agent': 'Edits files and uses tools',
-	'plan': 'Reads files and creates .md plans',
+	'plan': 'Creates .md plans',
 }
 
 
@@ -345,10 +345,6 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 	/>
 
 }
-
-
-
-
 
 interface VoidChatAreaProps {
 	// Required
@@ -3228,7 +3224,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[60px] px-0.5 py-0.5`}
+			className={`min-h-[36px] px-0.5 py-0.5`}
 			placeholder={`@ to mention, ${keybindingString ? `${keybindingString} to add a selection. ` : ''}Enter instructions...`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
@@ -3253,7 +3249,7 @@ export const SidebarChat = () => {
 			{/* Logo */}
 			<div className='mb-3'>
 				<img
-					src='/void_icons/loophole_logo.png'
+					src='loophole_logo.png'
 					alt='Loophole Logo'
 					width="60"
 					height="60"
@@ -3267,7 +3263,10 @@ export const SidebarChat = () => {
 					Loophole {modeTitle}
 				</h1>
 				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-2 border border-loophole-border-2 rounded text-loophole-fg-3 font-mono'>
-					Ctrl+L
+					Ctrl
+				</span>
+				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-2 border border-loophole-border-2 rounded text-loophole-fg-3 font-mono'>
+					L
 				</span>
 			</div>
 
@@ -3301,7 +3300,7 @@ export const SidebarChat = () => {
 		</ErrorBoundary>
 
 		{/* Middle section - Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-[7px]'>
+		<div className='flex-1 overflow-y-auto px-4 pb-4'>
 			{Object.keys(chatThreadsState.allThreads).length > 1 && (
 				<ErrorBoundary>
 					<div className='max-w-lg mx-auto'>
