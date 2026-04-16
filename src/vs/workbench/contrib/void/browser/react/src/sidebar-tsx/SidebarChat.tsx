@@ -6,7 +6,8 @@
 import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
-import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState } from '../util/services.js';
+import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState, useTokenUsage } from '../util/services.js';
+import { formatTokenCount } from '../../../../common/tokenUsageService.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 
 import { ChatMarkdownRender, ChatMessageLocation, getApplyBoxId } from '../markdown/ChatMarkdownRender.js';
@@ -148,6 +149,54 @@ export const IconLoading = ({ className = '' }: { className?: string }) => {
 
 }
 
+
+// Token usage display component - shows after each AI message
+const TokenDisplay = ({ tokenUsage }: { tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number } }) => {
+	if (!tokenUsage) return null;
+
+	return (
+		<div className="flex items-center gap-2 text-xs text-gray-500 mt-2 opacity-70">
+			<span>Input: {formatTokenCount(tokenUsage.inputTokens)}</span>
+			<span className="text-gray-400">|</span>
+			<span>Output: {formatTokenCount(tokenUsage.outputTokens)}</span>
+			<span className="text-gray-400">|</span>
+			<span>Total: {formatTokenCount(tokenUsage.totalTokens)}</span>
+		</div>
+	);
+};
+
+
+// Token counter component for sidebar header - shows total tokens used
+export const TokenCounter = () => {
+	const totalTokens = useTokenUsage();
+	const accessor = useAccessor();
+	const tokenUsageService = accessor.get('ITokenUsageService');
+	const [showReset, setShowReset] = useState(false);
+
+	const handleReset = () => {
+		tokenUsageService.resetTotalTokens();
+	};
+
+	return (
+		<div
+			className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors"
+			onMouseEnter={() => setShowReset(true)}
+			onMouseLeave={() => setShowReset(false)}
+			title="Total tokens used"
+		>
+			<span className="font-medium">{formatTokenCount(totalTokens)}</span>
+			{showReset && (
+				<button
+					onClick={handleReset}
+					className="text-gray-400 hover:text-red-400 ml-1"
+					title="Reset token counter"
+				>
+					×
+				</button>
+			)}
+		</div>
+	);
+};
 
 
 // SLIDER ONLY:
@@ -1444,6 +1493,12 @@ const AssistantMessageComponent = ({ chatMessage, isCheckpointGhost, isCommitted
 						isLinkDetectionEnabled={true}
 					/>
 				</ProseWrapper>
+				{/* token usage display */}
+				{chatMessage.tokenUsage && (
+					<div className="px-4">
+						<TokenDisplay tokenUsage={chatMessage.tokenUsage} />
+					</div>
+				)}
 			</div>
 		}
 	</>
@@ -3281,6 +3336,10 @@ export const SidebarChat = () => {
 		ref={sidebarRef}
 		className='w-full h-full flex flex-col overflow-hidden'
 	>
+		{/* Header with Token Counter */}
+		<div className="flex items-center justify-end px-4 py-2 border-b border-loophole-border-3">
+			<TokenCounter />
+		</div>
 
 		<ErrorBoundary>
 			{messagesHTML}
