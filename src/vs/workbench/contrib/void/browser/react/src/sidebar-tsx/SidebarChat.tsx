@@ -3300,7 +3300,7 @@ export const SidebarChat = () => {
 		</ErrorBoundary>
 
 		{/* Middle section - Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-8'>
+		<div className='flex-1 overflow-y-auto px-4 pb-20'>
 			{Object.keys(chatThreadsState.allThreads).length > 1 && (
 				<ErrorBoundary>
 					<div className='max-w-lg mx-auto'>
