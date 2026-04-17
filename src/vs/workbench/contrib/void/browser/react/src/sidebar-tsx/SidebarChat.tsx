@@ -3249,7 +3249,7 @@ export const SidebarChat = () => {
 			{/* Logo */}
 			<div className='mb-3'>
 				<img
-					src={loopholeLogo}
+					src="https://raw.githubusercontent.com/loophole-ai/loophole/dev/void_icons/loophole_logo.png"
 					alt='Loophole Logo'
 					width="60"
 					height="60"
