@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------*/
 
 import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import loopholeLogo from './loophole_logo.png';
 
 
 import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState, useTokenUsage } from '../util/services.js';
@@ -3224,8 +3225,8 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[36px] px-0.5 py-0.5`}
-			placeholder={`@ to mention, ${keybindingString ? `${keybindingString} to add a selection. ` : ''}Enter instructions...`}
+			className={`min-h-[25px] px-0.5 py-0.5`}
+			placeholder='Ask anything (Ctrl+L)'
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
 			onFocus={() => { chatThreadsService.setCurrentlyFocusedMessageIdx(undefined) }}
@@ -3249,7 +3250,7 @@ export const SidebarChat = () => {
 			{/* Logo */}
 			<div className='mb-3'>
 				<img
-					src='loophole_logo.png'
+					src={loopholeLogo}
 					alt='Loophole Logo'
 					width="60"
 					height="60"
@@ -3278,15 +3279,15 @@ export const SidebarChat = () => {
 	)
 
 	const threadPageInput = <div key={'input' + chatThreadsState.currentThreadId}>
-		<div className='px-4'>
+		<div className='px-3'>
 			<CommandBarInChat />
 		</div>
-		<div className='px-4 pb-1'>
+		<div className='px-3 pb-1'>
 			{inputChatArea}
 		</div>
 	</div>
 
-	const landingPageInput = <div className='w-full max-w-xl mx-auto px-4 pb-1'>
+	const landingPageInput = <div className='w-full max-w-xl mx-auto px-3 pb-1'>
 		{inputChatArea}
 	</div>
 
@@ -3300,7 +3301,7 @@ export const SidebarChat = () => {
 		</ErrorBoundary>
 
 		{/* Middle section - Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-4'>
+		<div className='flex-1 overflow-y-auto px-4 pb-8'>
 			{Object.keys(chatThreadsState.allThreads).length > 1 && (
 				<ErrorBoundary>
 					<div className='max-w-lg mx-auto'>

@@ -38,8 +38,8 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 				command: 'loophole.resetTokenUsage',
 			},
 			TOKEN_USAGE_STATUS_BAR_ID,
-			StatusbarAlignment.RIGHT,
-			Number.NEGATIVE_INFINITY + 1 // places it LEFT of notification bell
+			StatusbarAlignment.LEFT,
+			100 // places it on the left side after branch indicator
 		);
 
 		// Update when token usage changes
