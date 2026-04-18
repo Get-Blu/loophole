@@ -3225,7 +3225,7 @@ export const SidebarChat = () => {
 		<LoopholeInputBox2
 			enableAtToMention
 			className={`min-h-[25px] px-0.5 py-0.5`}
-			placeholder='Ask anything (Ctrl+L)'
+			placeholder='@ Add Context'
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
 			onFocus={() => { chatThreadsService.setCurrentlyFocusedMessageIdx(undefined) }}
@@ -3247,12 +3247,12 @@ export const SidebarChat = () => {
 	const WelcomeScreen = () => (
 		<div className='flex flex-col items-center justify-center h-full select-none -mt-20'>
 			{/* Logo */}
-			<div className='mb-3'>
+			<div className='mb-1'>
 				<img
 					src="https://raw.githubusercontent.com/loophole-ai/loophole/dev/void_icons/loophole_logo.png"
 					alt='Loophole Logo'
-					width="60"
-					height="60"
+					width="80"
+					height="80"
 					className='dark:invert'
 				/>
 			</div>
@@ -3300,10 +3300,10 @@ export const SidebarChat = () => {
 		</ErrorBoundary>
 
 		{/* Middle section - Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-20'>
+		<div className='flex-1 overflow-y-auto px-3 pb-24'>
 			{Object.keys(chatThreadsState.allThreads).length > 1 && (
 				<ErrorBoundary>
-					<div className='max-w-lg mx-auto'>
+					<div className='max-w-xl mx-auto px-3'>
 						<PastThreadsList />
 					</div>
 				</ErrorBoundary>

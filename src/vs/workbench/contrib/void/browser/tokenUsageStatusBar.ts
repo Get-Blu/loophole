@@ -9,6 +9,7 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { IStatusbarService, StatusbarAlignment } from '../../../services/statusbar/browser/statusbar.js';
 import { ITokenUsageService, formatTokenCount } from '../common/tokenUsageService.js';
 import { localize } from '../../../../nls.js';
+import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
 export interface ITokenUsageStatusBarService {
 	readonly _serviceBrand: undefined;
@@ -18,7 +19,8 @@ export const ITokenUsageStatusBarService = createDecorator<ITokenUsageStatusBarS
 
 const TOKEN_USAGE_STATUS_BAR_ID = 'loophole.tokenUsage';
 
-export class TokenUsageStatusBarService extends Disposable implements ITokenUsageStatusBarService {
+export class TokenUsageStatusBarService extends Disposable implements ITokenUsageStatusBarService, IWorkbenchContribution {
+	static readonly ID = 'loophole.tokenUsageStatusBar';
 	readonly _serviceBrand: undefined;
 
 	constructor(
@@ -71,3 +73,4 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 }
 
 registerSingleton(ITokenUsageStatusBarService, TokenUsageStatusBarService, InstantiationType.Eager);
+registerWorkbenchContribution2(TokenUsageStatusBarService.ID, TokenUsageStatusBarService, WorkbenchPhase.AfterRestored);
