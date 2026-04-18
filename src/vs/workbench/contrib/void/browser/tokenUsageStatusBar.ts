@@ -63,7 +63,7 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 
 	private getTokenText(): string {
 		const total = this.tokenUsageService.getTotalTokensUsed();
-		return `$(symbol-key) ${formatTokenCount(total)}`;
+		return `$(graph) ${formatTokenCount(total)}`;
 	}
 
 	private registerResetCommand(): void {

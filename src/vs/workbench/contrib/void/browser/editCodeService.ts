@@ -38,6 +38,7 @@ import { Emitter } from '../../../../base/common/event.js';
 import { ILLMMessageService } from '../common/sendLLMMessageService.js';
 import { LLMChatMessage } from '../common/sendLLMMessageTypes.js';
 import { IMetricsService } from '../common/metricsService.js';
+import { ITokenUsageService } from '../common/tokenUsageService.js';
 import { IEditCodeService, AddCtrlKOpts, StartApplyingOpts, CallBeforeStartApplyingOpts, } from './editCodeServiceInterface.js';
 import { ILoopholeSettingsService } from '../common/voidSettingsService.js';
 import { FeatureName } from '../common/voidSettingsTypes.js';
@@ -196,6 +197,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		// @IFileService private readonly _fileService: IFileService,
 		@ILoopholeModelService private readonly _loopholeModelService: ILoopholeModelService,
 		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService,
+		@ITokenUsageService private readonly _tokenUsageService: ITokenUsageService,
 	) {
 		super();
 
@@ -1529,8 +1531,12 @@ class EditCodeService extends Disposable implements IEditCodeService {
 						prevIgnoredSuffix = croppedSuffix
 					},
 					onFinalMessage: (params) => {
-						const { fullText } = params
+						const { fullText, tokenUsage } = params
 						// console.log('DONE! FULL TEXT\n', extractText(fullText), diffZone.startLine, diffZone.endLine)
+						// Track token usage for inline edit
+						if (tokenUsage) {
+							this._tokenUsageService.addTokens(tokenUsage)
+						}
 						// at the end, re-write whole thing to make sure no sync errors
 						const [croppedText, _1, _2] = extractText(fullText, 0)
 						this._writeURIText(uri, croppedText,
@@ -1963,7 +1969,11 @@ class EditCodeService extends Disposable implements IEditCodeService {
 						onText(params)
 					},
 					onFinalMessage: async (params) => {
-						const { fullText } = params
+						const { fullText, tokenUsage } = params
+						// Track token usage for inline edit
+						if (tokenUsage) {
+							this._tokenUsageService.addTokens(tokenUsage)
+						}
 						onText(params)
 
 						const blocks = extractSearchReplaceBlocks(fullText)
