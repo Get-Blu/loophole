@@ -173,10 +173,10 @@ export const displayInfoOfSettingName = (providerName: ProviderName, settingName
 													providerName === 'microsoftAzure' ? 'key-...' :
 														providerName === 'awsBedrock' ? 'key-...' :
 															providerName === 'cohere' ? 'key-...' :
-																	providerName === 'perplexity' ? 'pplx-...' :
-																		providerName === 'togetherAI' ? 'key-...' :
-																			providerName === 'fireworksAI' ? 'fw_key...' :
-																							'',
+																providerName === 'perplexity' ? 'pplx-...' :
+																	providerName === 'togetherAI' ? 'key-...' :
+																		providerName === 'fireworksAI' ? 'fw_key...' :
+																			'',
 
 			isPasswordField: true,
 		}
@@ -474,12 +474,7 @@ export const isFeatureNameDisabled = (featureName: FeatureName, settingsState: L
 }
 
 
-
-
-
-
-
-export type ChatMode = 'agent' | 'gather' | 'normal'
+export type ChatMode = 'agent' | 'gather' | 'normal' | 'plan'
 
 
 export type GlobalSettings = {

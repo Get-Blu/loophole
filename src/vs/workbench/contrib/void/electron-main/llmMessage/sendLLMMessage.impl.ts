@@ -169,26 +169,26 @@ const newOpenAICompatibleSDK = async ({ settingsOfProvider, providerName, includ
 	}
 
 	else if (providerName === 'cohere') {
-        const thisConfig = settingsOfProvider[providerName]
-        return new OpenAI({ baseURL: 'https://api.cohere.com/compatibility/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
-    }
-		
-    else if (providerName === 'perplexity') {
-        const thisConfig = settingsOfProvider[providerName]
-        return new OpenAI({ baseURL: 'https://api.perplexity.ai', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
-    }
-		
-    else if (providerName === 'togetherAI') {
-        const thisConfig = settingsOfProvider[providerName]
-        return new OpenAI({ baseURL: 'https://api.together.xyz/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
-    }
-		
-    else if (providerName === 'fireworksAI') {
-        const thisConfig = settingsOfProvider[providerName]
-        return new OpenAI({ baseURL: 'https://api.fireworks.ai/inference/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
-    }
-		
-    else throw new Error(`Loophole providerName was invalid: ${providerName}.`)
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://api.cohere.com/compatibility/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+
+	else if (providerName === 'perplexity') {
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://api.perplexity.ai', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+
+	else if (providerName === 'togetherAI') {
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://api.together.xyz/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+
+	else if (providerName === 'fireworksAI') {
+		const thisConfig = settingsOfProvider[providerName]
+		return new OpenAI({ baseURL: 'https://api.fireworks.ai/inference/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+
+	else throw new Error(`Loophole providerName was invalid: ${providerName}.`)
 }
 
 
@@ -384,6 +384,8 @@ const _sendOpenAICompatibleChat = async ({ messages, onText, onFinalMessage, onE
 		.then(async response => {
 			_setAborter(() => response.controller.abort())
 			// when receive text
+			let tokenUsage: import('../../common/sendLLMMessageTypes.js').TokenUsageInfo | undefined = undefined;
+
 			for await (const chunk of response) {
 				// message
 				const newText = chunk.choices[0]?.delta?.content ?? ''
@@ -408,6 +410,20 @@ const _sendOpenAICompatibleChat = async ({ messages, onText, onFinalMessage, onE
 					fullReasoningSoFar += newReasoning
 				}
 
+				// Check for usage info in chunk (some providers include it)
+				// @ts-ignore
+				if (chunk.usage) {
+					// @ts-ignore
+					tokenUsage = {
+						// @ts-ignore
+						inputTokens: chunk.usage.prompt_tokens || 0,
+						// @ts-ignore
+						outputTokens: chunk.usage.completion_tokens || 0,
+						// @ts-ignore
+						totalTokens: chunk.usage.total_tokens || 0,
+					};
+				}
+
 				// call onText
 				onText({
 					fullText: fullTextSoFar,
@@ -416,6 +432,21 @@ const _sendOpenAICompatibleChat = async ({ messages, onText, onFinalMessage, onE
 				})
 
 			}
+
+			// Check for usage info on response object after streaming (OpenAI format)
+			// @ts-ignore
+			if (!tokenUsage && response.usage) {
+				// @ts-ignore
+				tokenUsage = {
+					// @ts-ignore
+					inputTokens: response.usage.prompt_tokens || 0,
+					// @ts-ignore
+					outputTokens: response.usage.completion_tokens || 0,
+					// @ts-ignore
+					totalTokens: response.usage.total_tokens || 0,
+				};
+			}
+
 			// on final
 			if (!fullTextSoFar && !fullReasoningSoFar && !toolName) {
 				onError({ message: 'Loophole: Response from model was empty.', fullError: null })
@@ -423,7 +454,7 @@ const _sendOpenAICompatibleChat = async ({ messages, onText, onFinalMessage, onE
 			else {
 				const toolCall = rawToolCallObjOfParamsStr(toolName, toolParamsStr, toolId)
 				const toolCallObj = toolCall ? { toolCall } : {}
-				onFinalMessage({ fullText: fullTextSoFar, fullReasoning: fullReasoningSoFar, anthropicReasoning: null, ...toolCallObj });
+				onFinalMessage({ fullText: fullTextSoFar, fullReasoning: fullReasoningSoFar, anthropicReasoning: null, tokenUsage, ...toolCallObj });
 			}
 		})
 		// when error/fail - this catches errors of both .create() and .then(for await)
@@ -605,7 +636,7 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 		}
 	})
 
-	// on done - (or when error/fail) - this is called AFTER last streamEvent
+	// on done - (or error/fail) - this is called AFTER last streamEvent
 	stream.on('finalMessage', (response) => {
 		const anthropicReasoning = response.content.filter(c => c.type === 'thinking' || c.type === 'redacted_thinking')
 		const tools = response.content.filter(c => c.type === 'tool_use')
@@ -614,7 +645,19 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 		const toolCall = tools[0] && rawToolCallObjOfAnthropicParams(tools[0])
 		const toolCallObj = toolCall ? { toolCall } : {}
 
-		onFinalMessage({ fullText, fullReasoning, anthropicReasoning, ...toolCallObj })
+		// Extract token usage from Anthropic response
+		// @ts-ignore - Anthropic SDK types may vary
+		const usage = response.usage;
+		const tokenUsage: import('../../common/sendLLMMessageTypes.js').TokenUsageInfo | undefined = usage ? {
+			// @ts-ignore
+			inputTokens: usage.input_tokens || 0,
+			// @ts-ignore
+			outputTokens: usage.output_tokens || 0,
+			// @ts-ignore
+			totalTokens: (usage.input_tokens || 0) + (usage.output_tokens || 0),
+		} : undefined;
+
+		onFinalMessage({ fullText, fullReasoning, anthropicReasoning, tokenUsage, ...toolCallObj })
 	})
 	// on error
 	stream.on('error', (error) => {

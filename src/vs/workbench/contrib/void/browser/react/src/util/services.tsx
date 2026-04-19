@@ -55,6 +55,7 @@ import { IMCPService } from '../../../../common/mcpService.js';
 import { IStorageService, StorageScope } from '../../../../../../../platform/storage/common/storage.js'
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js'
 import { IFileDialogService } from '../../../../../../../platform/dialogs/common/dialogs.js';
+import { ITokenUsageService } from '../../../../common/tokenUsageService.js';
 
 // normally to do this you'd use a useEffect that calls .onDidChangeState(), but useEffect mounts too late and misses initial state changes
 
@@ -83,6 +84,9 @@ const activeURIListeners: Set<(uri: URI | null) => void> = new Set();
 
 const mcpListeners: Set<() => void> = new Set()
 
+let tokenUsageTotal: number = 0
+const tokenUsageListeners: Set<(total: number) => void> = new Set()
+
 
 // must call this before you can use any of the hooks below
 // this should only be called ONCE! this is the only place you don't need to dispose onDidChange. If you use state.onDidChange anywhere else, make sure to dispose it!
@@ -101,9 +105,10 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		voidCommandBarService: accessor.get(ILoopholeCommandBarService),
 		modelService: accessor.get(IModelService),
 		mcpService: accessor.get(IMCPService),
+		tokenUsageService: accessor.get(ITokenUsageService),
 	}
 
-	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService } = stateServices
+	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService, tokenUsageService } = stateServices
 
 
 
@@ -176,6 +181,15 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		})
 	)
 
+	// Token usage listener
+	tokenUsageTotal = tokenUsageService.getTotalTokensUsed()
+	disposables.push(
+		tokenUsageService.onTokenUsageChanged(() => {
+			tokenUsageTotal = tokenUsageService.getTotalTokensUsed()
+			tokenUsageListeners.forEach(l => l(tokenUsageTotal))
+		})
+	)
+
 
 	return disposables
 }
@@ -230,6 +244,7 @@ const getReactAccessor = (accessor: ServicesAccessor) => {
 
 		IStorageService: accessor.get(IStorageService),
 		IFileDialogService: accessor.get(IFileDialogService),
+		ITokenUsageService: accessor.get(ITokenUsageService),
 
 	} as const
 	return reactAccessor
@@ -354,6 +369,18 @@ export const useIsDark = () => {
 	// s is the theme, return isDark instead of s
 	const isDark = s === ColorScheme.DARK || s === ColorScheme.HIGH_CONTRAST_DARK
 	return isDark
+}
+
+export const useTokenUsage = () => {
+	const accessor = useAccessor()
+	const tokenUsageService = accessor.get('ITokenUsageService')
+	const [total, setTotal] = useState(tokenUsageService.getTotalTokensUsed())
+	useEffect(() => {
+		setTotal(tokenUsageService.getTotalTokensUsed())
+		tokenUsageListeners.add(setTotal)
+		return () => { tokenUsageListeners.delete(setTotal) }
+	}, [tokenUsageService])
+	return total
 }
 
 export const useCommandBarURIListener = (listener: (uri: URI) => void) => {

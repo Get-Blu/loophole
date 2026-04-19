@@ -64,6 +64,9 @@ import './fileService.js'
 // register source control management
 import './voidSCMService.js'
 
+// register token usage status bar
+import './tokenUsageStatusBar.js'
+
 // ---------- common (unclear if these actually need to be imported, because they're already imported wherever they're used) ----------
 
 // llmMessage

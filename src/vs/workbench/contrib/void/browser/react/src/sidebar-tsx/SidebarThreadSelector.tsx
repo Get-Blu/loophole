@@ -89,20 +89,24 @@ export const PastThreadsList = ({ className = '' }: { className?: string }) => {
 
 
 
-// Format date to display as today, yesterday, or date
-const formatDate = (date: Date) => {
-	const now = new Date();
-	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	const yesterday = new Date(today);
-	yesterday.setDate(yesterday.getDate() - 1);
+// Format relative time like 5m, 1h, 2d
+const formatRelativeTime = (date: Date) => {
+	const now = new Date().getTime();
+	const then = date.getTime();
+	const diffMs = now - then;
+	const diffSec = Math.floor(diffMs / 1000);
+	const diffMin = Math.floor(diffSec / 60);
+	const diffHour = Math.floor(diffMin / 60);
+	const diffDay = Math.floor(diffHour / 24);
+	const diffWeek = Math.floor(diffDay / 7);
+	const diffMonth = Math.floor(diffDay / 30);
 
-	if (date >= today) {
-		return 'Today';
-	} else if (date >= yesterday) {
-		return 'Yesterday';
-	} else {
-		return `${date.toLocaleString('default', { month: 'short' })} ${date.getDate()}`;
-	}
+	if (diffMin < 1) return 'now';
+	if (diffMin < 60) return `${diffMin}m`;
+	if (diffHour < 24) return `${diffHour}h`;
+	if (diffDay < 7) return `${diffDay}d`;
+	if (diffMonth < 1) return `${diffWeek}w`;
+	return `${diffMonth}mo`;
 };
 
 // Format time to 12-hour format
@@ -226,14 +230,14 @@ const PastThreadElement = ({ pastThread, idx, hoveredIdx, setHoveredIdx, isRunni
 	>
 		<span className='opacity-60'>{numMessages}</span>
 		{` `}
-		{formatDate(new Date(pastThread.lastModified))}
+				{formatRelativeTime(new Date(pastThread.lastModified))}
 		{/* {` messages `} */}
 	</span>
 
 	return <div
 		key={pastThread.id}
 		className={`
-			py-1 px-2 rounded text-sm bg-zinc-700/5 hover:bg-zinc-700/10 dark:bg-zinc-300/5 dark:hover:bg-zinc-300/10 cursor-pointer opacity-80 hover:opacity-100
+			py-1.5 px-3 rounded-xl text-sm bg-zinc-700/5 hover:bg-zinc-700/10 dark:bg-zinc-300/5 dark:hover:bg-zinc-300/10 cursor-pointer opacity-80 hover:opacity-100
 		`}
 		onClick={() => {
 			chatThreadsService.switchToThread(pastThread.id);

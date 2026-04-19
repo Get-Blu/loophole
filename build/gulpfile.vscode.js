@@ -104,6 +104,9 @@ const vscodeResourceIncludes = [
 
 	// Tree Sitter injection queries
 	'out-build/vs/editor/common/languages/injections/*.scm',
+
+	// Loophole Icons
+	'out-build/../void_icons/**/*',
 ];
 
 const vscodeResources = [

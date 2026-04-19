@@ -11,6 +11,7 @@
 		"moduleResolution": "NodeNext",
 		"module": "NodeNext",
 		"esModuleInterop": true,
+		"types": ["react"]
 	},
 	"include": [
 		// this is just for type checking, so src/ is the correct dir

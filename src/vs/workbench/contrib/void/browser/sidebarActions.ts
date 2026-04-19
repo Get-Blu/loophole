@@ -6,7 +6,7 @@
 import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
 
 
-import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/common/actions.js';
+import { Action2, MenuId, MenuRegistry, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { ServicesAccessor } from '../../../../editor/browser/editorExtensions.js';
 
 import { KeybindingWeight } from '../../../../platform/keybinding/common/keybindingsRegistry.js';
@@ -19,9 +19,54 @@ import { IMetricsService } from '../common/metricsService.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { LOOPHOLE_TOGGLE_SETTINGS_ACTION_ID } from './voidSettingsPane.js';
 import { LOOPHOLE_CTRL_L_ACTION_ID } from './actionIDs.js';
-import { localize2 } from '../../../../nls.js';
+import { localize, localize2 } from '../../../../nls.js';
 import { IChatThreadService } from './chatThreadService.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
+import { ITokenUsageService } from '../common/tokenUsageService.js';
+import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
+import { Codicon } from '../../../../base/common/codicons.js';
+
+// Register Loophole sidebar icon - using custom CSS class for image-based icon
+const loopholeSidebarIcon = registerIcon('loophole-sidebar-toggle', Codicon.symbolMethod, localize('loopholeSidebarToggle', "Toggle Loophole AI Sidebar"));
+// CSS class for custom icon: .loophole-custom-icon (defined in titlebarpart.css)
+
+// ---------- Toggle Sidebar Action ----------
+
+export const TOGGLE_LOOPHOLE_SIDEBAR_ACTION_ID = 'loophole.sidebar.toggle';
+
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: TOGGLE_LOOPHOLE_SIDEBAR_ACTION_ID,
+			title: localize2('toggleLoopholeSidebar', 'Toggle Loophole AI Sidebar'),
+			icon: loopholeSidebarIcon,
+			category: { value: localize('loopholeCategory', 'Loophole'), original: 'Loophole' },
+			f1: true,
+		});
+	}
+
+	async run(accessor: ServicesAccessor): Promise<void> {
+		const viewsService = accessor.get(IViewsService);
+		const isVisible = viewsService.isViewContainerVisible(LOOPHOLE_VIEW_CONTAINER_ID);
+
+		if (isVisible) {
+			viewsService.closeViewContainer(LOOPHOLE_VIEW_CONTAINER_ID);
+		} else {
+			viewsService.openViewContainer(LOOPHOLE_VIEW_CONTAINER_ID);
+		}
+	}
+});
+
+// Add toggle button to Command Center (right side of search box)
+MenuRegistry.appendMenuItem(MenuId.CommandCenter, {
+	command: {
+		id: TOGGLE_LOOPHOLE_SIDEBAR_ACTION_ID,
+		title: localize('toggleLoopholeSidebar', 'Toggle Loophole AI Sidebar'),
+		icon: loopholeSidebarIcon,
+	},
+	order: 102,
+	group: 'navigation',
+});
 
 // ---------- Register commands and keybindings ----------
 
@@ -279,3 +324,19 @@ registerAction2(class extends Action2 {
 // 		this._register(this._editorService.onCodeEditorAdd(editor => { initializeEditor(editor) }))
 // 	}
 // }
+
+// Reset Token Usage command
+registerAction2(class extends Action2 {
+	constructor() {
+		super({
+			id: 'loophole.resetTokenUsage',
+			title: localize2('resetTokenUsage', 'Loophole: Reset Token Usage'),
+			f1: true,
+			category: { value: localize('loopholeCategory', 'Loophole'), original: 'Loophole' },
+		});
+	}
+	async run(accessor: ServicesAccessor): Promise<void> {
+		const tokenUsageService = accessor.get(ITokenUsageService);
+		tokenUsageService.resetTotalTokens();
+	}
+});
