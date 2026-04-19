@@ -3224,8 +3224,8 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[23px] px-0.5 py-0.5`}
-			placeholder='@ Add Context'
+			className={`min-h-[25px] px-0.5 py-0.5`}
+			placeholder='Ask anything (Ctrl+L)'
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
 			onFocus={() => { chatThreadsService.setCurrentlyFocusedMessageIdx(undefined) }}
@@ -3245,7 +3245,7 @@ export const SidebarChat = () => {
 
 	// Welcome screen component
 	const WelcomeScreen = () => (
-		<div className='flex flex-col items-center justify-center h-full select-none mt-5'>
+		<div className='flex flex-col items-center justify-center h-full select-none -mt-20'>
 			{/* Logo */}
 			<div className='mb-3'>
 				<img
