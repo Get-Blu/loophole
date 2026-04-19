@@ -3247,7 +3247,7 @@ export const SidebarChat = () => {
 	const WelcomeScreen = () => (
 		<div className='flex flex-col items-center justify-center h-full select-none mt-5'>
 			{/* Logo */}
-			<div className='mb-1'>
+			<div className='mb-3'>
 				<img
 					src="https://raw.githubusercontent.com/loophole-ai/loophole/dev/void_icons/loophole_logo.png"
 					alt='Loophole Logo'
@@ -3300,10 +3300,10 @@ export const SidebarChat = () => {
 		</ErrorBoundary>
 
 		{/* Middle section - Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-3 pb-30'>
+		<div className='flex-1 overflow-y-auto px-4 pb-28'>
 			{Object.keys(chatThreadsState.allThreads).length > 1 && (
 				<ErrorBoundary>
-					<div className='max-w-xl mx-auto px-3'>
+					<div className='max-w-lg mx-auto'>
 						<PastThreadsList />
 					</div>
 				</ErrorBoundary>
