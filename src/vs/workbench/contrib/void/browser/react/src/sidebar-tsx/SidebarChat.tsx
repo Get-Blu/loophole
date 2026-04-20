@@ -6,7 +6,8 @@
 import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
-import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState } from '../util/services.js';
+import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState, useTokenUsage } from '../util/services.js';
+import { formatTokenCount } from '../../../../common/tokenUsageService.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 
 import { ChatMarkdownRender, ChatMessageLocation, getApplyBoxId } from '../markdown/ChatMarkdownRender.js';
@@ -22,7 +23,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2 } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -148,7 +149,53 @@ export const IconLoading = ({ className = '' }: { className?: string }) => {
 
 }
 
+// Token usage display component - shows after each AI message
+const TokenDisplay = ({ tokenUsage }: { tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number } }) => {
+	if (!tokenUsage) return null;
 
+	return (
+		<div className="flex items-center gap-2 text-xs text-gray-500 mt-2 opacity-70">
+			<span>Input: {formatTokenCount(tokenUsage.inputTokens)}</span>
+			<span className="text-gray-400">|</span>
+			<span>Output: {formatTokenCount(tokenUsage.outputTokens)}</span>
+			<span className="text-gray-400">|</span>
+			<span>Total: {formatTokenCount(tokenUsage.totalTokens)}</span>
+		</div>
+	);
+};
+
+
+// Token counter component for sidebar header - shows total tokens used
+export const TokenCounter = () => {
+	const totalTokens = useTokenUsage();
+	const accessor = useAccessor();
+	const tokenUsageService = accessor.get('ITokenUsageService');
+	const [showReset, setShowReset] = useState(false);
+
+	const handleReset = () => {
+		tokenUsageService.resetTotalTokens();
+	};
+
+	return (
+		<div
+			className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors"
+			onMouseEnter={() => setShowReset(true)}
+			onMouseLeave={() => setShowReset(false)}
+			title="Total tokens used"
+		>
+			<span className="font-medium">{formatTokenCount(totalTokens)}</span>
+			{showReset && (
+				<button
+					onClick={handleReset}
+					className="text-gray-400 hover:text-red-400 ml-1"
+					title="Reset token counter"
+				>
+					×
+				</button>
+			)}
+		</div>
+	);
+};
 
 // SLIDER ONLY:
 const ReasoningOptionSlider = ({ featureName }: { featureName: FeatureName }) => {
@@ -252,12 +299,21 @@ const nameOfChatMode = {
 	'normal': 'Chat',
 	'gather': 'Gather',
 	'agent': 'Agent',
+	'plan': 'Plan',
 }
 
 const detailOfChatMode = {
 	'normal': 'Normal chat',
 	'gather': 'Reads files, but can\'t edit',
 	'agent': 'Edits files and uses tools',
+	'plan': 'Creates .md plans',
+}
+
+const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
+	'normal': <MessageSquare size={14} />,
+	'gather': <Search size={14} />,
+	'agent': <Bot size={14} />,
+	'plan': <FileText size={14} />,
 }
 
 
@@ -267,7 +323,7 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
 	const settingsState = useSettingsState()
 
-	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent'], [])
+	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent', 'plan'], [])
 
 	const onChangeOption = useCallback((newVal: ChatMode) => {
 		loopholeSettingsService.setGlobalSetting('chatMode', newVal)
@@ -278,17 +334,15 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 		options={options}
 		selectedOption={settingsState.globalSettings.chatMode}
 		onChangeOption={onChangeOption}
-		getOptionDisplayName={(val) => nameOfChatMode[val]}
+		getOptionDisplayName={(val) => iconOfChatMode[val]}
 		getOptionDropdownName={(val) => nameOfChatMode[val]}
 		getOptionDropdownDetail={(val) => detailOfChatMode[val]}
 		getOptionsEqual={(a, b) => a === b}
+		arrowTouchesText={false}
+		showArrow={false}
 	/>
 
 }
-
-
-
-
 
 interface VoidChatAreaProps {
 	// Required
@@ -1433,6 +1487,10 @@ const AssistantMessageComponent = ({ chatMessage, isCheckpointGhost, isCommitted
 						isLinkDetectionEnabled={true}
 					/>
 				</ProseWrapper>
+				{/* token usage display */}
+				{chatMessage.tokenUsage && (
+					<TokenDisplay tokenUsage={chatMessage.tokenUsage} />
+				)}
 			</div>
 		}
 	</>
@@ -3162,7 +3220,7 @@ export const SidebarChat = () => {
 		<LoopholeInputBox2
 			enableAtToMention
 			className={`min-h-[81px] px-0.5 py-0.5`}
-			placeholder={`@ to mention, ${keybindingString ? `${keybindingString} to add a selection. ` : ''}Enter instructions...`}
+			placeholder={`@ Add Context`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
 			onFocus={() => { chatThreadsService.setCurrentlyFocusedMessageIdx(undefined) }}
@@ -3178,7 +3236,7 @@ export const SidebarChat = () => {
 
 	// Get current chat mode from settings
 	const chatMode = settingsState.globalSettings.chatMode
-	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Plan' : 'Chat'
+	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Gather' : chatMode === 'plan' ? 'Plan' : 'Chat'
 
 	// Welcome screen component
 	const WelcomeScreen = () => (
@@ -3207,7 +3265,7 @@ export const SidebarChat = () => {
 
 			{/* Tagline */}
 			<p className='text-loophole-fg-3 text-center max-w-md text-sm leading-relaxed'>
-				Ask anything, edit any file, or automate your entire workflow.
+				Your AI coding companion. Build, refactor, and debug<br />with confidence. Ship faster than ever before.
 			</p>
 		</div>
 	)
