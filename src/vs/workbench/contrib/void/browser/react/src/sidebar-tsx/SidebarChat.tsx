@@ -3185,31 +3185,14 @@ export const SidebarChat = () => {
 		<div className='flex flex-col items-center justify-center flex-1 min-h-[300px] select-none'>
 			{/* Logo */}
 			<div className='mb-6'>
-				<svg
+				<img
+					src="https://raw.githubusercontent.com/loophole-ai/loophole/dev/void_icons/loophole_logo.png"
+					alt="loophole logo"
 					width="80"
 					height="80"
-					viewBox="0 0 100 100"
-					fill="none"
-					className='text-loophole-fg-1'
-				>
-					<path
-						d="M50 10 L90 30 L90 70 L50 90 L10 70 L10 30 Z"
-						stroke="currentColor"
-						strokeWidth="3"
-						fill="none"
-						strokeLinejoin="round"
-					/>
-					<text
-						x="50"
-						y="58"
-						textAnchor="middle"
-						fontSize="36"
-						fontWeight="bold"
-						fill="currentColor"
-					>
-						W
-					</text>
-				</svg>
+					className='dark:invert'
+				/>
+
 			</div>
 
 			{/* Title with shortcut */}
