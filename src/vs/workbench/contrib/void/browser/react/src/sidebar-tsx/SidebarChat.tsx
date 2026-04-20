@@ -6,8 +6,7 @@
 import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
-import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState, useTokenUsage } from '../util/services.js';
-import { formatTokenCount } from '../../../../common/tokenUsageService.js';
+import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState } from '../util/services.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 
 import { ChatMarkdownRender, ChatMessageLocation, getApplyBoxId } from '../markdown/ChatMarkdownRender.js';
@@ -23,7 +22,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2 } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -150,54 +149,6 @@ export const IconLoading = ({ className = '' }: { className?: string }) => {
 }
 
 
-// Token usage display component - shows after each AI message
-const TokenDisplay = ({ tokenUsage }: { tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number } }) => {
-	if (!tokenUsage) return null;
-
-	return (
-		<div className="flex items-center gap-2 text-xs text-gray-500 mt-2 opacity-70">
-			<span>Input: {formatTokenCount(tokenUsage.inputTokens)}</span>
-			<span className="text-gray-400">|</span>
-			<span>Output: {formatTokenCount(tokenUsage.outputTokens)}</span>
-			<span className="text-gray-400">|</span>
-			<span>Total: {formatTokenCount(tokenUsage.totalTokens)}</span>
-		</div>
-	);
-};
-
-
-// Token counter component for sidebar header - shows total tokens used
-export const TokenCounter = () => {
-	const totalTokens = useTokenUsage();
-	const accessor = useAccessor();
-	const tokenUsageService = accessor.get('ITokenUsageService');
-	const [showReset, setShowReset] = useState(false);
-
-	const handleReset = () => {
-		tokenUsageService.resetTotalTokens();
-	};
-
-	return (
-		<div
-			className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors"
-			onMouseEnter={() => setShowReset(true)}
-			onMouseLeave={() => setShowReset(false)}
-			title="Total tokens used"
-		>
-			<span className="font-medium">{formatTokenCount(totalTokens)}</span>
-			{showReset && (
-				<button
-					onClick={handleReset}
-					className="text-gray-400 hover:text-red-400 ml-1"
-					title="Reset token counter"
-				>
-					×
-				</button>
-			)}
-		</div>
-	);
-};
-
 
 // SLIDER ONLY:
 const ReasoningOptionSlider = ({ featureName }: { featureName: FeatureName }) => {
@@ -301,23 +252,14 @@ const nameOfChatMode = {
 	'normal': 'Chat',
 	'gather': 'Gather',
 	'agent': 'Agent',
-	'plan': 'Plan',
 }
 
 const detailOfChatMode = {
 	'normal': 'Normal chat',
 	'gather': 'Reads files, but can\'t edit',
 	'agent': 'Edits files and uses tools',
-	'plan': 'Creates .md plans',
 }
 
-
-const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
-	'normal': <MessageSquare size={14} />,
-	'gather': <Search size={14} />,
-	'agent': <Bot size={14} />,
-	'plan': <FileText size={14} />,
-}
 
 const ChatModeDropdown = ({ className }: { className: string }) => {
 	const accessor = useAccessor()
@@ -325,7 +267,7 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
 	const settingsState = useSettingsState()
 
-	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent', 'plan'], [])
+	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent'], [])
 
 	const onChangeOption = useCallback((newVal: ChatMode) => {
 		loopholeSettingsService.setGlobalSetting('chatMode', newVal)
@@ -336,15 +278,17 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 		options={options}
 		selectedOption={settingsState.globalSettings.chatMode}
 		onChangeOption={onChangeOption}
-		getOptionDisplayName={(val) => iconOfChatMode[val]}
+		getOptionDisplayName={(val) => nameOfChatMode[val]}
 		getOptionDropdownName={(val) => nameOfChatMode[val]}
 		getOptionDropdownDetail={(val) => detailOfChatMode[val]}
 		getOptionsEqual={(a, b) => a === b}
-		arrowTouchesText={false}
-		showArrow={false}
 	/>
 
 }
+
+
+
+
 
 interface VoidChatAreaProps {
 	// Required
@@ -1489,10 +1433,6 @@ const AssistantMessageComponent = ({ chatMessage, isCheckpointGhost, isCommitted
 						isLinkDetectionEnabled={true}
 					/>
 				</ProseWrapper>
-				{/* token usage display */}
-				{chatMessage.tokenUsage && (
-					<TokenDisplay tokenUsage={chatMessage.tokenUsage} />
-				)}
 			</div>
 		}
 	</>
@@ -2585,9 +2525,8 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 	}, [isRunning, streamState])
 
 	return <div
-		className={`flex items-center gap-2 px-3 py-1`}
+		className={`flex items-center justify-center px-2 `}
 	>
-		<div className="flex-1 h-px bg-loophole-border-2 opacity-30" />
 		<div
 			className={`
                     text-xs
@@ -2614,7 +2553,6 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 		>
 			Checkpoint
 		</div>
-		<div className="flex-1 h-px bg-loophole-border-2 opacity-30" />
 	</div>
 }
 
@@ -3144,10 +3082,9 @@ export const SidebarChat = () => {
 		className={`
 			flex flex-col
 			px-4 py-4 space-y-4
-			w-full flex-1
+			w-full h-full
 			overflow-x-hidden
 			overflow-y-auto
-			mb-2
 			${previousMessagesHTML.length === 0 && !displayContentSoFar ? 'hidden' : ''}
 		`}
 	>
@@ -3224,8 +3161,8 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[23px] px-0.5 py-0.5`}
-			placeholder='@ Add Context'
+			className={`min-h-[81px] px-0.5 py-0.5`}
+			placeholder={`@ to mention, ${keybindingString ? `${keybindingString} to add a selection. ` : ''}Enter instructions...`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
 			onFocus={() => { chatThreadsService.setCurrentlyFocusedMessageIdx(undefined) }}
@@ -3241,52 +3178,70 @@ export const SidebarChat = () => {
 
 	// Get current chat mode from settings
 	const chatMode = settingsState.globalSettings.chatMode
-	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Gather' : chatMode === 'plan' ? 'Plan' : 'Chat'
+	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Plan' : 'Chat'
 
 	// Welcome screen component
 	const WelcomeScreen = () => (
-		<div className='flex flex-col items-center justify-center h-full select-none mt-5'>
+		<div className='flex flex-col items-center justify-center flex-1 min-h-[300px] select-none'>
 			{/* Logo */}
-			<div className='mb-3'>
+			<div className='mb-6'>
 				<img
 					src="https://raw.githubusercontent.com/loophole-ai/loophole/dev/void_icons/loophole_logo.png"
-					alt='Loophole Logo'
+					alt="loophole logo"
 					width="80"
 					height="80"
 					className='dark:invert'
 				/>
+
 			</div>
 
 			{/* Title with shortcut */}
-			<div className='flex items-center gap-2 mb-2'>
-				<h1 className='text-[15px] font-semibold text-loophole-fg-1 tracking-tight'>
+			<div className='flex items-center gap-3 mb-3'>
+				<h1 className='text-2xl font-semibold text-loophole-fg-1'>
 					Loophole {modeTitle}
 				</h1>
-				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-2 border border-loophole-border-2 rounded text-loophole-fg-3 font-mono'>
-					Ctrl
-				</span>
-				<span className='px-1.5 py-0.5 text-[10px] bg-loophole-bg-2 border border-loophole-border-2 rounded text-loophole-fg-3 font-mono'>
-					L
+				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
+					Ctrl+L
 				</span>
 			</div>
 
 			{/* Tagline */}
-			<p className='text-loophole-fg-3 text-center text-[12px] leading-relaxed mt-0.5 opacity-80'>
-				Your AI coding companion. Build, refactor, and debug<br />with confidence. Ship faster than ever before.
+			<p className='text-loophole-fg-3 text-center max-w-md text-sm leading-relaxed'>
+				Ask anything, edit any file, or automate your entire workflow.
 			</p>
 		</div>
 	)
 
+	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-2 w-full text-nowrap text-loophole-fg-3 select-none'>
+		{[
+			'Summarize project',
+			'Explain this code',
+			'Find bugs',
+			'Refactor file',
+			'Create .loopholerules'
+		].map((text, index) => (
+			<div
+				key={index}
+				className='py-1 px-2 rounded text-sm bg-zinc-700/5 hover:bg-zinc-700/10 dark:bg-zinc-300/5 dark:hover:bg-zinc-300/10 cursor-pointer opacity-80 hover:opacity-100'
+				onClick={() => onSubmit(text)}
+			>
+				{text}
+			</div>
+		))}
+	</div>
+
+
+
 	const threadPageInput = <div key={'input' + chatThreadsState.currentThreadId}>
-		<div className='px-3'>
+		<div className='px-4'>
 			<CommandBarInChat />
 		</div>
-		<div className='px-3 pb-1'>
+		<div className='px-2 pb-2'>
 			{inputChatArea}
 		</div>
 	</div>
 
-	const landingPageInput = <div className='w-full max-w-xl mx-auto px-3 pb-1'>
+	const landingPageInput = <div className='w-full max-w-2xl mx-auto px-4 pb-6'>
 		{inputChatArea}
 	</div>
 
@@ -3299,15 +3254,19 @@ export const SidebarChat = () => {
 			<WelcomeScreen />
 		</ErrorBoundary>
 
-		{/* Middle section - Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-30'>
-			{Object.keys(chatThreadsState.allThreads).length > 1 && (
+		{/* Middle section - Suggestions or Previous Threads */}
+		<div className='flex-1 overflow-y-auto px-4 pb-4'>
+			{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
 				<ErrorBoundary>
-					<div className='max-w-lg mx-auto'>
-						<PastThreadsList />
-					</div>
+					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Previous Threads</div>
+					<PastThreadsList />
 				</ErrorBoundary>
-			)}
+				:
+				<ErrorBoundary>
+					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Suggestions</div>
+					{initiallySuggestedPromptsHTML}
+				</ErrorBoundary>
+			}
 		</div>
 
 		{/* Input at bottom */}
