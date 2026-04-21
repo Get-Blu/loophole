@@ -5,10 +5,6 @@
 
 import { FeatureName, ModelSelectionOptions, OverridesOfModel, ProviderName } from './voidSettingsTypes.js';
 
-
-
-
-
 export const defaultProviderSettings = {
 	anthropic: {
 		apiKey: '',
@@ -80,9 +76,6 @@ export const defaultProviderSettings = {
 
 } as const
 
-
-
-
 export const defaultModelsOfProvider = {
 	openAI: [
 		'gpt-5.4',
@@ -121,6 +114,7 @@ export const defaultModelsOfProvider = {
 	],
 	lmStudio: [],
 	openRouter: [
+		'anthropic/claude-opus-4.7',
 		'anthropic/claude-opus-4.6',
 		'anthropic/claude-sonnet-4.6',
 		'anthropic/claude-sonnet-4.5',
@@ -158,6 +152,8 @@ export const defaultModelsOfProvider = {
 		'qwen/qwen3-235b-a22b',
 		'moonshotai/kimi-k2.5-0127',
 		'moonshotai/kimi-k3-preview',
+		'moonshotai/kimi-k2.5',
+		'moonshotai/kimi-k2.6',
 		'perplexity/sonar-pro',
 		'perplexity/sonar',
 		'perplexity/sonar-reasoning',
