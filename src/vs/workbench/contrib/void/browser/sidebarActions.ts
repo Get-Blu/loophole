@@ -23,6 +23,7 @@ import { localize, localize2 } from '../../../../nls.js';
 import { IChatThreadService } from './chatThreadService.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { ITokenUsageService } from '../common/tokenUsageService.js';
+import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 
@@ -262,20 +263,68 @@ registerAction2(class extends Action2 {
 	}
 	async run(accessor: ServicesAccessor): Promise<void> {
 
-		// do not do anything if there are no messages (without this it clears all of the user's selections if the button is pressed)
-		// TODO the history button should be disabled in this case so we can remove this logic
-		const thread = accessor.get(IChatThreadService).getCurrentThread()
-		if (thread.messages.length === 0) {
-			return;
-		}
-
+		const chatThreadsService = accessor.get(IChatThreadService)
+		const quickInputService = accessor.get(IQuickInputService)
 		const metricsService = accessor.get(IMetricsService)
 
-		const commandService = accessor.get(ICommandService)
-
 		metricsService.capture('Chat Navigation', { type: 'History' })
-		commandService.executeCommand(LOOPHOLE_CMD_SHIFT_L_ACTION_ID)
 
+		const { allThreads } = chatThreadsService.state
+
+		// Build quick pick items from all threads (sorted by most recent, excluding empty threads)
+		const sortedThreadIds = Object.keys(allThreads)
+			.sort((a, b) => (allThreads[a]?.lastModified ?? 0) > (allThreads[b]?.lastModified ?? 0) ? -1 : 1)
+			.filter(threadId => (allThreads[threadId]?.messages.length ?? 0) !== 0)
+
+		if (sortedThreadIds.length === 0) {
+			return
+		}
+
+		const picks: IQuickPickItem[] = sortedThreadIds.map(threadId => {
+			const thread = allThreads[threadId]!
+
+			// Get first user message as label
+			const firstUserMsg = thread.messages.find(m => m.role === 'user')
+			const label = firstUserMsg?.displayContent || '(No messages)'
+
+			// Truncate label for display
+			const truncatedLabel = label.length > 80 ? label.slice(0, 80) + '...' : label
+
+			// Format relative time
+			const lastModified = new Date(thread.lastModified)
+			const diffMs = Date.now() - lastModified.getTime()
+			const diffMin = Math.floor(diffMs / 60000)
+			const diffHour = Math.floor(diffMin / 60)
+			const diffDay = Math.floor(diffHour / 24)
+			const diffWeek = Math.floor(diffDay / 7)
+			const diffMonth = Math.floor(diffDay / 30)
+			let timeStr: string
+			if (diffMin < 1) timeStr = 'just now'
+			else if (diffMin < 60) timeStr = `${diffMin}m ago`
+			else if (diffHour < 24) timeStr = `${diffHour}h ago`
+			else if (diffDay < 7) timeStr = `${diffDay}d ago`
+			else if (diffMonth < 1) timeStr = `${diffWeek}w ago`
+			else timeStr = `${diffMonth}mo ago`
+
+			const numMessages = thread.messages.filter(m => m.role === 'assistant' || m.role === 'user').length
+
+			return {
+				id: threadId,
+				label: truncatedLabel,
+				description: timeStr,
+				detail: `${numMessages} messages`,
+			}
+		})
+
+		const selected = await quickInputService.pick(picks, {
+			placeHolder: 'Search past chats...',
+			matchOnDescription: true,
+			matchOnDetail: true,
+		})
+
+		if (selected?.id) {
+			chatThreadsService.switchToThread(selected.id)
+		}
 	}
 })
 
