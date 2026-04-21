@@ -761,7 +761,7 @@ export const SelectedFiles = (
 	}
 
 	return (
-		<div className='flex items-center flex-wrap text-left relative gap-x-0.5 gap-y-1 pb-0.5'>
+		<div className='flex items-center flex-wrap text-left relative gap-x-0.5 gap-y-1 pb-0.5 pt-2 pl-2'>
 
 			{allSelections.map((selection, i) => {
 
