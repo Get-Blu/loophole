@@ -3219,7 +3219,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[81px] px-0.5 py-0.5`}
+			className={`min-h-[30px] px-0.5 py-0.5`}
 			placeholder={`@ Add Context`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
@@ -3259,7 +3259,10 @@ export const SidebarChat = () => {
 					Loophole {modeTitle}
 				</h1>
 				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
-					Ctrl+L
+					Ctrl
+				</span>
+				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
+					L
 				</span>
 			</div>
 
