@@ -96,6 +96,8 @@ export type TokenUsageInfo = {
 	inputTokens: number;
 	outputTokens: number;
 	totalTokens: number;
+	providerName?: string;
+	modelName?: string;
 }
 
 export type OnText = (p: { fullText: string; fullReasoning: string; toolCall?: RawToolCallObj }) => void
@@ -158,14 +160,6 @@ export type EventLLMMessageOnErrorParams = Parameters<OnError>[0] & { requestId:
 
 // service -> main -> internal -> event (back to main)
 // (browser)
-
-
-
-
-
-
-
-
 
 // These are from 'ollama' SDK
 interface OllamaModelDetails {

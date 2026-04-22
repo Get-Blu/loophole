@@ -834,7 +834,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 						resMessageIsDonePromise({ type: 'llmDone', toolCall, info: { fullText, fullReasoning, anthropicReasoning, tokenUsage } }) // resolve with tool calls
 						// Track token usage if available
 						if (tokenUsage) {
-							this._tokenUsageService.addTokens(tokenUsage)
+							this._tokenUsageService.addTokens({ ...tokenUsage, providerName: modelSelection?.providerName, modelName: modelSelection?.modelName })
 						}
 					},
 					onError: async (error) => {

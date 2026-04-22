@@ -48,7 +48,7 @@ import { acceptBg, acceptBorder, buttonFontSize, buttonTextColor, rejectBg, reje
 import { DiffArea, Diff, CtrlKZone, VoidFileSnapshot, DiffAreaSnapshotEntry, diffAreaSnapshotKeys, DiffZone, TrackingZone, ComputedDiff } from '../common/editCodeServiceTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 // import { isMacintosh } from '../../../../base/common/platform.js';
-// import { VOID_OPEN_SETTINGS_ACTION_ID } from './voidSettingsPane.js';
+// import { LOOPHOLE_OPEN_SETTINGS_ACTION_ID } from './voidSettingsPane.js';
 
 const numLinesOfStr = (str: string) => str.split('\n').length
 
@@ -1535,7 +1535,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 						// console.log('DONE! FULL TEXT\n', extractText(fullText), diffZone.startLine, diffZone.endLine)
 						// Track token usage for inline edit
 						if (tokenUsage) {
-							this._tokenUsageService.addTokens(tokenUsage)
+							this._tokenUsageService.addTokens({ ...tokenUsage, providerName: modelSelection?.providerName, modelName: modelSelection?.modelName })
 						}
 						// at the end, re-write whole thing to make sure no sync errors
 						const [croppedText, _1, _2] = extractText(fullText, 0)
@@ -1972,7 +1972,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 						const { fullText, tokenUsage } = params
 						// Track token usage for inline edit
 						if (tokenUsage) {
-							this._tokenUsageService.addTokens(tokenUsage)
+							this._tokenUsageService.addTokens({ ...tokenUsage, providerName: modelSelection?.providerName, modelName: modelSelection?.modelName })
 						}
 						onText(params)
 
