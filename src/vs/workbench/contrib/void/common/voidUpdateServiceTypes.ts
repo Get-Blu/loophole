@@ -11,4 +11,11 @@ export type LoopholeCheckUpdateRespose = {
 	actions?: undefined,
 } | null
 
+export interface ILoopholeUpdateInfo {
+	version?: string;
+	assetName?: string;
+	isDownloaded?: boolean;
+	isReady?: boolean;
+}
+
 
