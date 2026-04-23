@@ -18,6 +18,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { tmpdir, platform, arch } from 'os';
 import { join } from 'path';
 import * as fs from 'fs';
+import * as pfs from '../../../../base/node/pfs.js';
 import { spawn } from 'child_process';
 import { asJson } from '../../../../platform/request/common/request.js';
 import { timeout } from '../../../../base/common/async.js';
@@ -394,20 +395,48 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		const downloadPath = this._currentUpdate.downloadPath;
 
 		if (platformName === 'win32' && downloadPath.endsWith('.exe')) {
-			// Windows: Run installer and quit
-			this._logService.info('[LoopholeUpdate] Quitting and installing update...');
+			// Windows: Spawn a detached watcher that runs installer after app closes
+			this._logService.info('[LoopholeUpdate] Preparing Windows update with watcher...');
 
-			spawn(downloadPath, ['/verysilent', '/mergetasks=runcode,!desktopicon,!quicklaunchicon', '/nocancel', '/nocloseapplications'], {
+			const installerPath = downloadPath;
+			const updateScriptPath = join(this._cachePath, 'update-watcher.bat');
+
+			// Create a batch script that waits for the app to close, then runs installer
+			const batchScriptLines = [
+				'@echo off',
+				':: Wait for Loophole to close (check every 500ms for up to 10 seconds)',
+				'set /a attempts=0',
+				':waitloop',
+				'set /a attempts+=1',
+				'if %attempts% gtr 20 goto runinstaller',
+				'ping -n 1 127.0.0.1 >nul 2>&1',
+				':: Check if loophole is still running',
+				'tasklist /FI "IMAGENAME eq loophole.exe" 2>nul | find /I "loophole.exe" >nul',
+				'if %errorlevel% equ 0 goto waitloop',
+				'',
+				':runinstaller',
+				':: Run installer after app closes',
+				`"${installerPath}" /verysilent /mergetasks=runcode,!desktopicon,!quicklaunchicon /nocancel /nocloseapplications`,
+				':: Clean up',
+				`rmdir /s /q "${this._cachePath}"`,
+				':: Delete self',
+				'del "%~f0"'
+			];
+
+			await pfs.Promises.writeFile(updateScriptPath, batchScriptLines.join('\n'));
+
+			// Spawn the watcher script (detached, hidden)
+			spawn('cmd.exe', ['/c', 'start', '/min', updateScriptPath], {
 				detached: true,
 				stdio: ['ignore', 'ignore', 'ignore'],
 				windowsVerbatimArguments: true
 			});
 
-			// Give the installer a moment to start before quitting
-			await timeout(2000);
+			// Small delay to ensure watcher has started
+			await timeout(500);
 
-			// Use lifecycle service for proper app shutdown (allows graceful cleanup)
-			// Pass true for willRestart since we're updating/restarting
+			// Now quit the app - watcher will run installer after we close
+			this._logService.info('[LoopholeUpdate] Quitting app for update...');
 			await this._lifecycleMainService.quit(true);
 		} else {
 			// For other platforms, just apply (user needs to manually restart)
