@@ -12,6 +12,7 @@ import { LoopholeCheckUpdateRespose } from '../common/voidUpdateServiceTypes.js'
 import { IRequestService } from '../../../../platform/request/common/request.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
+import { ILifecycleMainService } from '../../../../platform/lifecycle/electron-main/lifecycleMainService.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { URI } from '../../../../base/common/uri.js';
 import { tmpdir, platform, arch } from 'os';
@@ -70,6 +71,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		@IRequestService private readonly _requestService: IRequestService,
 		@IFileService private readonly _fileService: IFileService,
 		@ILogService private readonly _logService: ILogService,
+		@ILifecycleMainService private readonly _lifecycleMainService: ILifecycleMainService,
 	) {
 		super();
 		this._cachePath = join(tmpdir(), `loophole-updates-${this._productService.version}`);
@@ -395,15 +397,18 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			// Windows: Run installer and quit
 			this._logService.info('[LoopholeUpdate] Quitting and installing update...');
 
-			spawn(downloadPath, ['/verysilent', '/mergetasks=runcode,!desktopicon,!quicklaunchicon', '/nocancel', '/norestart'], {
+			spawn(downloadPath, ['/verysilent', '/mergetasks=runcode,!desktopicon,!quicklaunchicon', '/nocancel', '/nocloseapplications'], {
 				detached: true,
 				stdio: ['ignore', 'ignore', 'ignore'],
 				windowsVerbatimArguments: true
 			});
 
-			// Give the installer a moment to start, then quit
-			await timeout(1000);
-			process.exit(0);
+			// Give the installer a moment to start before quitting
+			await timeout(2000);
+
+			// Use lifecycle service for proper app shutdown (allows graceful cleanup)
+			// Pass true for willRestart since we're updating/restarting
+			await this._lifecycleMainService.quit(true);
 		} else {
 			// For other platforms, just apply (user needs to manually restart)
 			await this.applyUpdate();
