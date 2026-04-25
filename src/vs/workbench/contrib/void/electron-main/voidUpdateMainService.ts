@@ -95,7 +95,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 
 	private async _manualCheckGHTagIfDisabled(explicit: boolean): Promise<LoopholeCheckUpdateRespose> {
 		try {
-			const response = await fetch('https://api.github.com/repos/loophole/loophole/releases/latest');
+			const response = await fetch('https://api.github.com/repos/loophole-ai/loophole/releases/latest');
 
 			const data = await response.json();
 			const version = data.tag_name;

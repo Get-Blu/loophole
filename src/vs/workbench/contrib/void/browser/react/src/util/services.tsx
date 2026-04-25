@@ -86,6 +86,8 @@ const mcpListeners: Set<() => void> = new Set()
 
 let tokenUsageTotal: number = 0
 const tokenUsageListeners: Set<(total: number) => void> = new Set()
+let estimatedCostTotal: number = 0
+const estimatedCostListeners: Set<(cost: number) => void> = new Set()
 
 
 // must call this before you can use any of the hooks below
@@ -187,6 +189,8 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		tokenUsageService.onTokenUsageChanged(() => {
 			tokenUsageTotal = tokenUsageService.getTotalTokensUsed()
 			tokenUsageListeners.forEach(l => l(tokenUsageTotal))
+			estimatedCostTotal = tokenUsageService.getEstimatedCost()
+			estimatedCostListeners.forEach(l => l(estimatedCostTotal))
 		})
 	)
 
@@ -381,6 +385,18 @@ export const useTokenUsage = () => {
 		return () => { tokenUsageListeners.delete(setTotal) }
 	}, [tokenUsageService])
 	return total
+}
+
+export const useEstimatedCost = () => {
+	const accessor = useAccessor()
+	const tokenUsageService = accessor.get('ITokenUsageService')
+	const [cost, setCost] = useState(tokenUsageService.getEstimatedCost())
+	useEffect(() => {
+		setCost(tokenUsageService.getEstimatedCost())
+		estimatedCostListeners.add(setCost)
+		return () => { estimatedCostListeners.delete(setCost) }
+	}, [tokenUsageService])
+	return cost
 }
 
 export const useCommandBarURIListener = (listener: (uri: URI) => void) => {

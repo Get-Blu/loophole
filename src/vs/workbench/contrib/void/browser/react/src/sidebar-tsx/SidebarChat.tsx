@@ -6,8 +6,8 @@
 import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
-import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState, useTokenUsage } from '../util/services.js';
-import { formatTokenCount } from '../../../../common/tokenUsageService.js';
+import { useAccessor, useChatThreadsState, useChatThreadsStreamState, useSettingsState, useActiveURI, useCommandBarState, useFullChatThreadsStreamState, useTokenUsage, useEstimatedCost } from '../util/services.js';
+import { formatTokenCount, formatDollarCount } from '../../../../common/tokenUsageService.js';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 
 import { ChatMarkdownRender, ChatMessageLocation, getApplyBoxId } from '../markdown/ChatMarkdownRender.js';
@@ -168,6 +168,7 @@ const TokenDisplay = ({ tokenUsage }: { tokenUsage?: { inputTokens: number; outp
 // Token counter component for sidebar header - shows total tokens used
 export const TokenCounter = () => {
 	const totalTokens = useTokenUsage();
+	const estimatedCost = useEstimatedCost();
 	const accessor = useAccessor();
 	const tokenUsageService = accessor.get('ITokenUsageService');
 	const [showReset, setShowReset] = useState(false);
@@ -181,9 +182,12 @@ export const TokenCounter = () => {
 			className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer hover:text-gray-400 transition-colors"
 			onMouseEnter={() => setShowReset(true)}
 			onMouseLeave={() => setShowReset(false)}
-			title="Total tokens used"
+			title="Total tokens used & estimated cost"
 		>
 			<span className="font-medium">{formatTokenCount(totalTokens)}</span>
+			{estimatedCost > 0 && (
+				<span className="text-green-500">• {formatDollarCount(estimatedCost)}</span>
+			)}
 			{showReset && (
 				<button
 					onClick={handleReset}
@@ -461,7 +465,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			)}
 
 			{/* Input section */}
-			<div className="relative w-full p-3">
+			<div className="relative w-full px-3 pt-3 pb-1">
 				{children}
 
 				{/* Close button (X) if onClose is provided */}
@@ -477,7 +481,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			</div>
 
 			{/* Bottom row - Cleaner design */}
-			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-3 pt-1'>
+			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-1 pt-1'>
 				{showModelDropdown && (
 					<div className='flex items-center gap-2 text-nowrap'>
 						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:bg-loophole-bg-2 rounded-lg py-1 px-2 transition-colors' />}
