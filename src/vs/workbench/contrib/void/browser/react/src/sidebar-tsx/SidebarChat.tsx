@@ -465,7 +465,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			)}
 
 			{/* Input section */}
-			<div className="relative w-full p-3">
+			<div className="relative w-full px-3 pt-3 pb-1">
 				{children}
 
 				{/* Close button (X) if onClose is provided */}
@@ -481,7 +481,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			</div>
 
 			{/* Bottom row - Cleaner design */}
-			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-3 pt-1'>
+			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-1 pt-1'>
 				{showModelDropdown && (
 					<div className='flex items-center gap-2 text-nowrap'>
 						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:bg-loophole-bg-2 rounded-lg py-1 px-2 transition-colors' />}
