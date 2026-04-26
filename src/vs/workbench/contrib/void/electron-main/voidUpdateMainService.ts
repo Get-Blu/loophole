@@ -100,8 +100,8 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			const data = await response.json();
 			const version = data.tag_name;
 
-			const myVersion = this._productService.version
-			const latestVersion = version
+			const myVersion = this._productService.version.replace(/^v/, '')
+			const latestVersion = version.replace(/^v/, '')
 
 			const isUpToDate = myVersion === latestVersion // only makes sense if response.ok
 
