@@ -174,7 +174,10 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			this._logService.info(`[LoopholeUpdate] Current: ${myVersion}, Latest: ${latestVersion}`);
 
 			// Compare versions (simple string comparison, could be enhanced with semver)
-			const isUpToDate = myVersion === latestVersion;
+			const parseVer = (v: string) => v.split('.').map(Number);
+			const [la, lb, lc] = parseVer(latestVersion);
+			const [ca, cb, cc] = parseVer(myVersion);
+			const isUpToDate = !(la > ca || (la === ca && lb > cb) || (la === ca && lb === cb && lc > cc));
 
 			if (isUpToDate) {
 				this._githubState = GitHubUpdateState.Idle;
