@@ -101,12 +101,12 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		}
 
 		// First try VS Code's built-in update service (works on Windows with updateUrl configured)
-		if (!this._useGitHubUpdates && this._updateService.state.type !== StateType.Disabled) {
-			this._updateService.checkForUpdates(false);
-			return this._getResponseFromVSCodeState(explicit);
+		const vscodeState = this._updateService.state.type;
+		if (vscodeState === StateType.Ready || vscodeState === StateType.Downloaded ||
+    		vscodeState === StateType.Downloading || vscodeState === StateType.AvailableForDownload) {
+    		return this._getResponseFromVSCodeState(explicit);
 		}
 
-		// Fall back to GitHub-based updates
 		return await this._checkGitHubReleases(explicit);
 	}
 
