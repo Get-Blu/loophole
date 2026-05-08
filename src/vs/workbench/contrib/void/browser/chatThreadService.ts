@@ -651,6 +651,15 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					}
 				}
 			}
+			// check plan mode restrictions - block edit/rewrite/delete/terminal tools
+			if (toolName === 'edit_file' || toolName === 'rewrite_file' || toolName === 'delete_file_or_folder' || toolName === 'run_command' || toolName === 'run_persistent_command' || toolName === 'open_persistent_terminal' || toolName === 'kill_persistent_terminal') {
+				const chatMode = this._settingsService.state.globalSettings.chatMode
+				if (chatMode === 'plan') {
+					const errorMessage = `In Plan mode, you cannot use the "${toolName}" tool. You can only create new .md files.`
+					this._addMessageToThread(threadId, { role: 'tool', type: 'invalid_params', rawParams: opts.unvalidatedToolParams, result: null, name: toolName, content: errorMessage, id: toolId, mcpServerName })
+					return {}
+				}
+			}
 			// once validated, add checkpoint for edit
 			if (toolName === 'edit_file') { this._addToolEditCheckpoint({ threadId, uri: (toolParams as BuiltinToolCallParams['edit_file']).uri }) }
 			if (toolName === 'rewrite_file') { this._addToolEditCheckpoint({ threadId, uri: (toolParams as BuiltinToolCallParams['rewrite_file']).uri }) }

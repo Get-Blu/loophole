@@ -363,10 +363,9 @@ export const availableTools = (chatMode: ChatMode | null, mcpTools: InternalTool
 	const builtinToolNames: BuiltinToolName[] | undefined = chatMode === 'normal' ? undefined
 		: chatMode === 'gather' ? (Object.keys(builtinTools) as BuiltinToolName[]).filter(toolName => !(toolName in approvalTypeOfBuiltinToolName))
 			: chatMode === 'plan' ? (Object.keys(builtinTools) as BuiltinToolName[]).filter(toolName => {
-				// Allow read/search/list tools (no approval needed)
+				// Only allow read/search/list tools in plan mode - block all edit/delete/terminal tools
 				if (!(toolName in approvalTypeOfBuiltinToolName)) return true
-				// Allow creating files (for .md plans) - runtime check restricts to .md only
-				if (toolName === 'create_file_or_folder') return true
+				// Block all editing tools (create, edit, rewrite, delete) - runtime will also validate create_file_or_folder
 				return false
 			})
 				: chatMode === 'agent' ? Object.keys(builtinTools) as BuiltinToolName[]
@@ -500,9 +499,8 @@ ${directoryStr}
 	if (mode === 'plan') {
 		details.push(`You are in Plan mode. Your job is to help the user create comprehensive planning documents (.md files).`)
 		details.push(`You can read files, search the codebase, and gather context to understand the project.`)
-		details.push(`You can create new .md files to write plans, documentation, or analysis. ONLY create .md files, never other file types.`)
-		details.push(`You CANNOT edit, delete, or modify existing files. You can only create new .md files.`)
-		details.push(`Focus on creating clear, well-structured markdown documents that help the user plan their work.`)
+		details.push(`You can create new .md files. ONLY create .md files, never other file types.`)
+		details.push(`You CANNOT edit, delete, run commands, or modify existing files in any way. Focus on reading and creating markdown documents.`)
 	}
 
 	details.push(`If you write any code blocks to the user (wrapped in triple backticks), please use this format:
