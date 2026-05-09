@@ -113,7 +113,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 		if (params.messagesType === 'chatMessages' && (params.messages?.length ?? 0) === 0) {
 			const message = `No messages detected.`
 			onError({ message, fullError: null })
-			return nullconst
+			return null
 		}
 
 		const { settingsOfProvider, } = this.voidSettingsService.state
