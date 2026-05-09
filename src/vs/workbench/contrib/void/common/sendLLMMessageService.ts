@@ -113,12 +113,14 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 		if (params.messagesType === 'chatMessages' && (params.messages?.length ?? 0) === 0) {
 			const message = `No messages detected.`
 			onError({ message, fullError: null })
-			return null
+			return nullconst
 		}
 
 		const { settingsOfProvider, } = this.voidSettingsService.state
 
-		const mcpTools = this.mcpService.getMCPTools()
+		const allMcpTools = this.mcpService.getMCPTools()
+		// Only agent mode gets MCP tools; all other modes get none
+		const mcpTools = ('chatMode' in params && params.chatMode === 'agent') ? allMcpTools : undefined
 
 		// add state for request id
 		const requestId = generateUuid();
