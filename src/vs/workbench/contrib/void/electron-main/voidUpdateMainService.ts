@@ -154,7 +154,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			this._githubState = GitHubUpdateState.Checking;
 
 			const response = await this._requestService.request({
-				url: 'https://api.github.com/repos/loophole-ai/loophole/releases/latest',
+				url: 'https://api.github.com/repos/loophole-ai/loophole-ide/releases/latest',
 				headers: {
 					'Accept': 'application/vnd.github.v3+json',
 					'User-Agent': `Loophole/${this._productService.version}`
@@ -173,8 +173,9 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 
 			this._logService.info(`[LoopholeUpdate] Current: ${myVersion}, Latest: ${latestVersion}`);
 
-			// Compare versions (simple string comparison, could be enhanced with semver)
-			const parseVer = (v: string) => v.split('.').map(Number);
+			// Strip any build metadata after the patch number (e.g. "1.91.7-202605090344" → "1.91.7")
+			const stripBuild = (v: string) => v.replace(/-.*$/, '');
+			const parseVer = (v: string) => stripBuild(v).split('.').map(Number);
 			const [la, lb, lc] = parseVer(latestVersion);
 			const [ca, cb, cc] = parseVer(myVersion);
 			const isUpToDate = !(la > ca || (la === ca && lb > cb) || (la === ca && lb === cb && lc > cc));
