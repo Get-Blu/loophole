@@ -5,7 +5,7 @@
   "author": {
     "name": "Garv Agnihotri, Open Source"
   },
-  "license": "MIT",
+  "license": "Apache License",
   "main": "./out/main.js",
   "type": "module",
   "private": true,
