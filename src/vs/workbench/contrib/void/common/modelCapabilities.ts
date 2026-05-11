@@ -224,25 +224,36 @@ export const defaultModelsOfProvider = {
 	cohere: [
 		'command-r-plus',
 		'command-r',
+		'command-a',
+		'command-a-reasoning',
 	],
 	perplexity: [
 		'sonar-pro',
 		'sonar',
-		'sonar-reasoning',
+		'sonar-reasoning-pro',
 	],
 	togetherAI: [
-		'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
-		'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-		'deepseek-ai/DeepSeek-V3',
-		'mistralai/Mistral-Small-24B-Instruct-2501',
+    
+   		 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8', 
+    		'deepseek-ai/DeepSeek-V4-Pro', 
+    		'meta-llama/Llama-3.3-70B-Instruct-Turbo', 
+    		'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8', 
+    		'mistralai/Mistral-Small-24B-Instruct-2501', 
+    		'google/gemma-4-31B-it'
 	],
 	fireworksAI: [
-		'accounts/fireworks/models/gpt-oss-120b',
-		'accounts/fireworks/models/llama4-maverick-instruct-basic',
-		'accounts/fireworks/models/llama-v3p3-70b-instruct',
-		'accounts/fireworks/models/deepseek-v3p1',
-		'accounts/fireworks/models/kimi-k2-instruct-0905',
+    		'accounts/fireworks/models/kimi-k2-6-thinking',
+    		'accounts/fireworks/models/deepseek-v4-pro',
+  		'accounts/fireworks/models/llama-4-maverick-instruct-fp8',
+   		'accounts/fireworks/models/glm-5-1',
+   		'accounts/fireworks/models/qwen3-coder-480b-a35b-instruct',
+   		'accounts/fireworks/models/llama-v3p3-70b-instruct',
+   		'accounts/fireworks/models/gpt-oss-120b',
+    		'accounts/fireworks/models/deepseek-v3p2',
+    		'accounts/fireworks/models/gemma-4-31b-it-vision',
+    		'accounts/fireworks/models/kimi-k2-5-fast'
 	],
+
 
 } as const satisfies Record<ProviderName, string[]>
 
