@@ -367,6 +367,7 @@ export const availableTools = (chatMode: ChatMode | null, mcpTools: InternalTool
 				if (!(toolName in approvalTypeOfBuiltinToolName)) return true
 				// Allow creating files for .md plans - runtime check restricts to .md only
 				if (toolName === 'create_file_or_folder') return true
+				if (toolName === 'rewrite_file') return true
 				// Block all other editing/terminal tools
 				return false
 			})
@@ -499,12 +500,13 @@ ${directoryStr}
 		details.push(`You should extensively read files, types, and content to gather full context.`)
 		details.push(`STRICT RULE: You are READ-ONLY. You MUST NOT call create_file_or_folder, edit_file, rewrite_file, delete_file_or_folder, run_command, run_persistent_command, open_persistent_terminal, or kill_persistent_terminal. You can ONLY read and search.`)
 	}
-	
+
 	if (mode === 'plan') {
 		details.push(`You are in Plan mode. Your ONLY job is to read the codebase and create Markdown planning documents.`)
 		details.push(`You can read files, search the codebase, and gather context to understand the project.`)
 		details.push(`STRICT RULE: When calling create_file_or_folder, the uri MUST end with ".md". Creating .ts, .js, .py, .json, .css, .html, or any non-markdown file is FORBIDDEN and will be rejected with an error.`)
-		details.push(`STRICT RULE: You MUST NOT call edit_file, rewrite_file, delete_file_or_folder, run_command, run_persistent_command, open_persistent_terminal, or kill_persistent_terminal. These are disabled in Plan mode.`)
+		details.push(`STRICT RULE: You can call rewrite_file ONLY on .md files you just created. Using rewrite_file on any non-markdown file is FORBIDDEN and will be rejected with an error.`)
+		details.push(`STRICT RULE: You MUST NOT call edit_file, delete_file_or_folder, run_command, run_persistent_command, open_persistent_terminal, or kill_persistent_terminal. These are disabled in Plan mode.`)
 		details.push(`To show code changes, write them as code blocks in your response instead of editing files.`)
 	}
 
