@@ -1,14 +1,16 @@
 {
 	"nameShort": "Loophole",
 	"nameLong": "Loophole",
-	"loopholeVersion": "1.0.0",
-	"loopholeRelease": "1.0",
+	"loopholeVersion": "1.92.1",
+	"loopholeRelease": "1.92.1",
+	"quality": "stable",
 	"applicationName": "loophole",
 	"dataFolderName": ".loop-hole",
 	"win32MutexName": "loophole",
 	"licenseName": "MIT",
-	"licenseUrl": "https://github.com/loophole-ai/loophole/blob/main/LICENSE.txt",
-	"serverLicenseUrl": "https://github.com/loophole-ai/loophole/blob/main/LICENSE.txt",
+	"licenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE.txt",
+	"serverLicenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE.txt",
+	"documentationUrl": "https://github.com/loophole-ai/loophole-ide/wiki",
 	"serverGreeting": [],
 	"serverLicense": [],
 	"serverLicensePrompt": "",
@@ -30,7 +32,7 @@
 	"darwinBundleIdentifier": "com.loophole.code",
 	"linuxIconName": "loophole-editor",
 	"licenseFileName": "LICENSE.txt",
-	"reportIssueUrl": "https://github.com/loophole-ai/loophole/issues/new",
+	"reportIssueUrl": "https://github.com/loophole-ai/loophole-ide/issues/new",
 	"nodejsRepository": "https://nodejs.org",
 	"urlProtocol": "loophole",
 	"extensionsGallery": {
@@ -39,7 +41,9 @@
 	},
 	"builtInExtensions": [],
 	"linkProtectionTrustedDomains": [
-		"https://github.com/loophole-ai/loophole",
-		"https://ollama.com"
+		"https://github.com/loophole-ai/loophole-ide",
+		"https://ollama.com",
+		"https://huggingface.co",
+		"https://nodejs.org"
 	]
 }
