@@ -63,7 +63,8 @@ To build and run Loophole from source:
 
 ## License
 
-Loophole is licensed under the MIT License. It includes code from VS Code and Void editor.
+Loophole is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+See LICENSE.txt for details.
 
 ## Author
 
