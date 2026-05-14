@@ -1,14 +1,3 @@
-Copyright (C) 2026 Garv Agnihotri
-Loophole — The AI IDE that thinks while you code.
-https://github.com/loophole-ai/loophole-ide
-
-NOTE: This project includes code from Void Editor and VS Code.
-Their original licenses are preserved in LICENSE-VS-Code.txt and NOTICE.md.
-Loophole's original contributions are licensed under AGPL v3.
-
-
----
-
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
