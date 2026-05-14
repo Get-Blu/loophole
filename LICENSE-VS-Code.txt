@@ -1,11 +1,3 @@
-Loophole is a fork of Void Editor, which is a fork of VS Code.
-
-VS Code is licensed under the MIT License (below) — Copyright (c) Microsoft Corporation.
-Void's additions are licensed under Apache 2.0.
-Loophole's own additions are licensed under AGPL-3.0 (see LICENSE.txt).
-
---------------------
-
 MIT License
 
 Copyright (c) 2015 - present Microsoft Corporation
@@ -27,3 +19,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--------------------
+ATTRIBUTION:
+Loophole is a fork of Void Editor, which is a fork of VS Code.
+VS Code is licensed under MIT (above) — Copyright (c) Microsoft Corporation.
+Void's additions are licensed under Apache 2.0.
+Loophole's additions are licensed under AGPL-3.0 (see LICENSE.txt).
