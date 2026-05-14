@@ -1,8 +1,8 @@
 {
 	"nameShort": "Loophole",
 	"nameLong": "Loophole",
-	"loopholeVersion": "1.92.1",
-	"loopholeRelease": "1.92.1",
+	"loopholeVersion": "1.92.2",
+	"loopholeRelease": "1.92.2",
 	"quality": "stable",
 	"applicationName": "loophole",
 	"dataFolderName": ".loop-hole",
