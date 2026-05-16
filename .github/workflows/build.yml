@@ -31,10 +31,11 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
 
-      - name: Install React dependencies
-        run: cd src/vs/workbench/contrib/void/browser/react && npm install
-        env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
+      - name: Install Tailwind CSS
+        run: npm install -g tailwindcss@3
+        
+      - name: Verify Tailwind
+        run: tailwindcss --version
 
       - name: Build React Components
         run: npm run buildreact
