@@ -33,9 +33,6 @@ jobs:
 
       - name: Install Tailwind CSS
         run: npm install -g tailwindcss@3
-        
-      - name: Verify Tailwind
-        run: tailwindcss --version
 
       - name: Build React Components
         run: npm run buildreact
