@@ -1,0 +1,50 @@
+name: Build Windows Script
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Build React Components
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Compile
+        run: npm run compile
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Build Windows App
+        run: npm run gulp -- loophole-win32-x64
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Build Windows Installer
+        run: npm run gulp -- loophole-win32-x64-user-setup
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: loophole-windows
+          path: |
+            Loophole-win32-x64/
+            .build/win32-x64/user-setup/
