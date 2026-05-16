@@ -32,7 +32,7 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=8192"
 
       - name: Install Tailwind CSS
-        run: npm install -g tailwindcss@3
+        run: npm install -g tailwindcss@3 @tailwindcss/typography
 
       - name: Build React Components
         run: npm run buildreact
