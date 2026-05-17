@@ -103,8 +103,8 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		// First try VS Code's built-in update service (works on Windows with updateUrl configured)
 		const vscodeState = this._updateService.state.type;
 		if (vscodeState === StateType.Ready || vscodeState === StateType.Downloaded ||
-    		vscodeState === StateType.Downloading || vscodeState === StateType.AvailableForDownload) {
-    		return this._getResponseFromVSCodeState(explicit);
+			vscodeState === StateType.Downloading || vscodeState === StateType.AvailableForDownload) {
+			return this._getResponseFromVSCodeState(explicit);
 		}
 
 		return await this._checkGitHubReleases(explicit);
@@ -158,9 +158,8 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 				headers: {
 					'Accept': 'application/vnd.github.v3+json',
 					'User-Agent': `Loophole/${this._productService.version}`
-				}
+				},
 				callSite: new Error()
-
 			}, CancellationToken.None);
 
 			const release = await asJson<IGitHubRelease>(response);
@@ -325,7 +324,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 
 			// Download the file
 			const context = await this._requestService.request({
-				url: this._currentUpdate.assetUrl
+				url: this._currentUpdate.assetUrl,
 				callSite: new Error()
 			}, CancellationToken.None);
 
