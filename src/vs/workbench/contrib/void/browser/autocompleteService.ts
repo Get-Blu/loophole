@@ -906,7 +906,7 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 				// console.log('item: ', items?.[0]?.insertText)
 				return { items: items, }
 			},
-			provideInlineCompletions: (completions: any) => {
+			handleItemDidShow: (_completions, _item, updatedInsertText) => {
 				// get the `docUriStr` and the `position` of the cursor
 				const activePane = this._editorService.activeEditorPane;
 				if (!activePane) return;
@@ -937,6 +937,9 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 					}
 				});
 
+			},
+			disposeInlineCompletions: (_completions, _reason) => {
+				// nothing to dispose — completions are managed by the LRU cache
 			},
 		}))
 	}

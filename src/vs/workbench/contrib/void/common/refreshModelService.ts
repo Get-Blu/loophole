@@ -157,7 +157,7 @@ export class RefreshModelService extends Disposable implements IRefreshModelServ
 		const autoPoll = () => {
 			if (this.voidSettingsService.state.globalSettings.autoRefreshModels) {
 				// resume auto-polling
-				const timeoutId = setTimeout(() => this.startRefreshingModels(providerName, autoOptions), REFRESH_INTERVAL) as unknown as Timeout
+				const timeoutId = setTimeout(() => this.startRefreshingModels(providerName, autoOptions), REFRESH_INTERVAL) as unknown as NodeJS.Timeout
 				this._setTimeoutId(providerName, timeoutId)
 			}
 		}
