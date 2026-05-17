@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "loophole-react",
   "version": "1.0.0",
   "private": true,
@@ -11,6 +11,7 @@
     "react-tooltip": "^5.28.1",
     "@floating-ui/react": "^0.27.8",
     "typescript": "^5.0.0",
-    "tsup": "^8.5.1"
+    "tsup": "^8.5.1",
+    "marked": "^9.0.0"
   }
 }
