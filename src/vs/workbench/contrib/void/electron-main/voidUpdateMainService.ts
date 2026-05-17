@@ -241,7 +241,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 
 			if (explicit) {
 				return {
-					message: `Error checking for updates: ${e}. Please try again later.`,
+					message: `Error checking for updates: ${e instanceof Error ? e.message : String(e)}. Please try again later.`,
 					action: 'reinstall'
 				} as const;
 			}
@@ -347,7 +347,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			return true;
 		} catch (e) {
 			this._githubState = GitHubUpdateState.Error;
-			this._logService.error('[LoopholeUpdate] Download failed:', e);
+			this._logService.error('[LoopholeUpdate] Download failed:', e instanceof Error ? e.message : String(e));
 			return false;
 		}
 	}
