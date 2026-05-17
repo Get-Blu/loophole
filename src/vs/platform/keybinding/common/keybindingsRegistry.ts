@@ -64,7 +64,8 @@ export const enum KeybindingWeight {
 	EditorContrib = 100,
 	WorkbenchContrib = 200,
 	BuiltinExtension = 300,
-	ExternalExtension = 400
+	ExternalExtension = 400,
+	LoopholeExtension = 200,
 }
 
 export interface ICommandAndKeybindingRule<Args extends unknown[] = unknown[]> extends IKeybindingRule {

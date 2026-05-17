@@ -159,6 +159,8 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 					'Accept': 'application/vnd.github.v3+json',
 					'User-Agent': `Loophole/${this._productService.version}`
 				}
+				callSite: new Error()
+
 			}, CancellationToken.None);
 
 			const release = await asJson<IGitHubRelease>(response);
@@ -324,6 +326,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			// Download the file
 			const context = await this._requestService.request({
 				url: this._currentUpdate.assetUrl
+				callSite: new Error()
 			}, CancellationToken.None);
 
 			await this._fileService.writeFile(URI.file(tempPath), context.stream);
