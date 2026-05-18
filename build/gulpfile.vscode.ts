@@ -740,7 +740,7 @@ BUILD_TARGETS.forEach(buildTarget => {
 			packageTasks.push(patchWin32DependenciesTask(destinationFolderName));
 		}
 
-		const vscodeTaskCI = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
+		const vscodeTaskCI = task.define(`loophole${dashed(platform)}${dashed(arch)}${dashed(minified)}-ci`, task.series(...packageTasks));
 		gulp.task(vscodeTaskCI);
 
 		let vscodeTask: task.Task;
@@ -755,7 +755,7 @@ BUILD_TARGETS.forEach(buildTarget => {
 					minified && useCdnSourceMapsForPackagingTasks ? `${sourceMappingURLBase}/core` : undefined
 				)
 			);
-			vscodeTask = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
+			vscodeTask = task.define(`loophole${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
 				copyCodiconsTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
@@ -766,7 +766,7 @@ BUILD_TARGETS.forEach(buildTarget => {
 				vscodeTaskCI
 			));
 		} else {
-			vscodeTask = task.define(`vscode${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
+			vscodeTask = task.define(`loophole${dashed(platform)}${dashed(arch)}${dashed(minified)}`, task.series(
 				minified ? compileBuildWithManglingTask : compileBuildWithoutManglingTask,
 				cleanExtensionsBuildTask,
 				compileNonNativeExtensionsBuildTask,
@@ -782,8 +782,8 @@ BUILD_TARGETS.forEach(buildTarget => {
 	});
 
 	if (process.platform === platform && process.arch === arch) {
-		gulp.task(task.define('vscode', task.series(vscode)));
-		gulp.task(task.define('vscode-min', task.series(vscodeMin)));
+		gulp.task(task.define('loophole', task.series(vscode)));
+		gulp.task(task.define('loophole-min', task.series(vscodeMin)));
 	}
 });
 
