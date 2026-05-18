@@ -34,6 +34,8 @@ const baseNodeBuildOptions = {
 		'./.vscode-test.mjs',
 		'playwright',
 		'keytar',
+		'../../../../../test/base/cache',
+		'../../../../../test/base/salts',
 		'@azure/functions-core',
 		'applicationinsights-native-metrics',
 		'@opentelemetry/instrumentation',
