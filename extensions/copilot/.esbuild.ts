@@ -401,9 +401,6 @@ async function main() {
 		await Promise.all([
 			esbuild.build(nodeExtHostBuildOptions),
 			esbuild.build(webExtHostBuildOptions),
-			esbuild.build(nodeSimulationBuildOptions),
-			esbuild.build(nodeSimulationWorkbenchUIBuildOptions),
-			esbuild.build(nodeExtHostSimulationTestOptions),
 			esbuild.build(typeScriptServerPluginBuildOptions),
 			esbuild.build(webviewBuildOptions),
 		]);
