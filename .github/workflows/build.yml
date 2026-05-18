@@ -23,6 +23,10 @@ jobs:
         run: node --experimental-strip-types build/npm/postinstall.ts
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
+      - name: Rebuild native modules
+        run: npm rebuild node-pty
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
       - name: Install React dependencies
         run: cd src/vs/workbench/contrib/void/browser/react && npm install
         env:
