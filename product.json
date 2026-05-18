@@ -45,7 +45,7 @@
 		"https://ollama.com",
 		"https://huggingface.co",
 		"https://nodejs.org"
-	]
+	], 
 	"win32ContextMenu": {
     "x64": {
         "clsid": "{B5A0A538-0C04-4B4A-9E46-DB7EF4A6C7B3}"
