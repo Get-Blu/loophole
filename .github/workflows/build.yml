@@ -31,6 +31,11 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
 
+      - name: Compile
+        run: npm run compile
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
       - name: Install React dependencies
         run: cd src/vs/workbench/contrib/void/browser/react && npm install
         env:
@@ -38,11 +43,6 @@ jobs:
 
       - name: Build React Components
         run: npm run buildreact
-        env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
-
-      - name: Compile
-        run: npm run compile
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
 
