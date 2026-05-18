@@ -27,6 +27,10 @@ jobs:
         run: npm rebuild node-pty
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
+      - name: Download ripgrep
+        run: node node_modules/@vscode/ripgrep/lib/postinstall.js
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
       - name: Install React dependencies
         run: cd src/vs/workbench/contrib/void/browser/react && npm install
         env:
