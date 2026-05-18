@@ -37,6 +37,8 @@ jobs:
         run: npm run compile
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
+      - name: Remove copilot test extension
+        run: Remove-Item -Recurse -Force extensions/copilot/test/simulation -ErrorAction SilentlyContinue
       - name: Build Windows App
         run: npm run gulp -- loophole-win32-x64
         env:
