@@ -47,12 +47,11 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=8192"
       - name: Remove copilot test extension
         run: Remove-Item -Recurse -Force extensions/copilot/test/simulation -ErrorAction SilentlyContinue
+
       - name: Remove non-Windows native binaries
         run: |
-          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/arm64-linux" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/x64-linux" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/x64-darwin" -ErrorAction SilentlyContinue
-          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/arm64-darwin" -ErrorAction SilentlyContinue
+          Get-ChildItem -Path "node_modules" -Recurse -Directory | Where-Object { $_.Name -in @("arm64-linux", "x64-linux", "x64-darwin", "arm64-darwin") } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          Get-ChildItem -Path "node_modules" -Recurse -Filter "*.node" | Where-Object { $_.FullName -match "linux|darwin" } | Remove-Item -Force -ErrorAction SilentlyContinue
       - name: Build Windows App
         run: npm run gulp -- loophole-win32-x64
         env:
