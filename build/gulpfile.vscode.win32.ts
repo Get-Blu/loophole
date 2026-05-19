@@ -145,7 +145,7 @@ function buildWin32Setup(arch: string, target: string): task.CallbackTask {
 
 function defineWin32SetupTasks(arch: string, target: string) {
 	const cleanTask = util.rimraf(setupDir(arch, target));
-	gulp.task(task.define(`vscode-win32-${arch}-${target}-setup`, task.series(cleanTask, buildWin32Setup(arch, target))));
+	gulp.task(task.define(`loophole-win32-${arch}-${target}-setup`, task.series(cleanTask, buildWin32Setup(arch, target))));
 }
 
 defineWin32SetupTasks('x64', 'system');
