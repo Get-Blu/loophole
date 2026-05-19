@@ -49,9 +49,10 @@ jobs:
         run: Remove-Item -Recurse -Force extensions/copilot/test/simulation -ErrorAction SilentlyContinue
       - name: Remove non-Windows native binaries
         run: |
-          Remove-Item -Recurse -Force node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture -ErrorAction SilentlyContinue
-        env:
-          NODE_OPTIONS: "--max-old-space-size=8192"
+          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/arm64-linux" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/x64-linux" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/x64-darwin" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "node_modules/@anthropic-ai/claude-agent-sdk/vendor/audio-capture/arm64-darwin" -ErrorAction SilentlyContinue
       - name: Build Windows App
         run: npm run gulp -- loophole-win32-x64
         env:
