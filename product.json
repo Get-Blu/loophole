@@ -13,7 +13,7 @@
 	"serverLicensePrompt": "",
 	"serverApplicationName": "loophole-server",
 	"serverDataFolderName": ".loophole-server",
-	"tunnelApplicationName": "loophole-server",
+	"tunnelApplicationName": "loophole-tunnel",
 	"win32DirName": "Loophole",
 	"win32NameVersion": "Loophole",
 	"win32RegValueName": "Loophole",
