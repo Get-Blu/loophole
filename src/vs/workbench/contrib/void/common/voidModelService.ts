@@ -6,6 +6,8 @@ import { registerSingleton, InstantiationType } from '../../../../platform/insta
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 
+export const ILoopholeModelService = createDecorator<ILoopholeModelService>('loopholeModelService');
+
 type LoopholeModelType = {
 	model: ITextModel | null;
 	editorModel: IResolvedTextEditorModel | null;
@@ -21,7 +23,6 @@ export interface ILoopholeModelService {
 
 }
 
-export const ILoopholeModelService = createDecorator<ILoopholeModelService>('loopholeModelService');
 
 class LoopholeModelService extends Disposable implements ILoopholeModelService {
 	_serviceBrand: undefined;
