@@ -8,6 +8,9 @@ import { registerSingleton, InstantiationType } from '../../../../platform/insta
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 
+export const ITokenUsageService = createDecorator<ITokenUsageService>('tokenUsageService');
+
+
 // Storage key for total token usage
 const TOTAL_TOKENS_STORAGE_KEY = 'loophole.totalTokensUsed';
 const ESTIMATED_COST_STORAGE_KEY = 'loophole.estimatedCostUsed';
@@ -211,7 +214,5 @@ export class TokenUsageService implements ITokenUsageService {
 		this._onTokenUsageChanged.fire();
 	}
 }
-
-export const ITokenUsageService = createDecorator<ITokenUsageService>('tokenUsageService');
 
 registerSingleton(ITokenUsageService, TokenUsageService, InstantiationType.Eager);
