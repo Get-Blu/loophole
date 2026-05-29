@@ -12,6 +12,9 @@ import { InstantiationType, registerSingleton } from '../../../../../platform/in
 import { createDecorator } from '../../../../../platform/instantiation/common/instantiation.js';
 
 
+export const IConsistentEditorItemService = createDecorator<IConsistentEditorItemService>('ConsistentEditorItemService');
+
+
 // lets you add a "consistent" item to a Model (aka URI), instead of just to a single editor
 
 type AddItemInputs = { uri: URI; fn: (editor: ICodeEditor) => (() => void); }
@@ -201,8 +204,6 @@ export interface IConsistentEditorItemService {
 	addToEditor(editor: ICodeEditor, fn: () => () => void): string;
 	removeFromEditor(itemId: string): void;
 }
-export const IConsistentEditorItemService = createDecorator<IConsistentEditorItemService>('ConsistentEditorItemService');
-
 
 export class ConsistentEditorItemService extends Disposable {
 	readonly _serviceBrand: undefined;
