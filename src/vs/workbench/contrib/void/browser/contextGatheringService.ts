@@ -11,6 +11,8 @@ import { IModelService } from '../../../../editor/common/services/model.js';
 import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
 import { URI } from '../../../../base/common/uri.js';
 
+export const IContextGatheringService = createDecorator<IContextGatheringService>('contextGatheringService');
+
 
 // make sure snippet logic works
 // change logic for `visited` to intervals
@@ -28,8 +30,6 @@ export interface IContextGatheringService {
 	updateCache(model: ITextModel, pos: Position): Promise<void>;
 	getCachedSnippets(): string[];
 }
-
-export const IContextGatheringService = createDecorator<IContextGatheringService>('contextGatheringService');
 
 class ContextGatheringService extends Disposable implements IContextGatheringService {
 	_serviceBrand: undefined;
