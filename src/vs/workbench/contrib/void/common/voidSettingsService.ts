@@ -15,6 +15,7 @@ import { defaultProviderSettings, getModelCapabilities, ModelOverrides } from '.
 import { LOOPHOLE_SETTINGS_STORAGE_KEY } from './storageKeys.js';
 import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, LoopholeStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, OptionsOfModelSelection, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './voidSettingsTypes.js';
 
+export const ILoopholeSettingsService = createDecorator<ILoopholeSettingsService>('LoopholeSettingsService');
 
 // name is the name in the dropdown
 export type ModelOption = { name: string, selection: ModelSelection }
@@ -225,7 +226,6 @@ const defaultState = () => {
 }
 
 
-export const ILoopholeSettingsService = createDecorator<ILoopholeSettingsService>('LoopholeSettingsService');
 class LoopholeSettingsService extends Disposable implements ILoopholeSettingsService {
 	_serviceBrand: undefined;
 
