@@ -12,6 +12,8 @@ import { IWorkspaceContextService } from '../../../../platform/workspace/common/
 import { ShallowDirectoryItem, BuiltinToolCallParams, BuiltinToolResultType } from './toolsServiceTypes.js';
 import { MAX_CHILDREN_URIs_PAGE, MAX_DIRSTR_CHARS_TOTAL_BEGINNING, MAX_DIRSTR_CHARS_TOTAL_TOOL } from './prompt/prompts.js';
 
+export const IDirectoryStrService = createDecorator<IDirectoryStrService>('loopholeDirectoryStrService');
+
 
 const MAX_FILES_TOTAL = 1000;
 
@@ -31,8 +33,6 @@ export interface IDirectoryStrService {
 	getAllURIsInDirectory(uri: URI, opts: { maxResults: number }): Promise<URI[]>
 
 }
-export const IDirectoryStrService = createDecorator<IDirectoryStrService>('loopholeDirectoryStrService');
-
 
 
 
