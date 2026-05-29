@@ -13,7 +13,7 @@ import { registerSingleton, InstantiationType } from '../../../../platform/insta
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 
 
-
+export const IRefreshModelService = createDecorator<IRefreshModelService>('RefreshModelService');
 
 type RefreshableState = ({
 	state: 'init',
@@ -68,8 +68,6 @@ export interface IRefreshModelService {
 	onDidChangeState: Event<RefreshableProviderName>;
 	state: RefreshModelStateOfProvider;
 }
-
-export const IRefreshModelService = createDecorator<IRefreshModelService>('RefreshModelService');
 
 export class RefreshModelService extends Disposable implements IRefreshModelService {
 
