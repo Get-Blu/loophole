@@ -23,6 +23,7 @@ import { FeatureName } from '../common/voidSettingsTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
 // import { IContextGatheringService } from './contextGatheringService.js';
 
+export const IAutocompleteService = createDecorator<IAutocompleteService>('AutocompleteService');
 
 
 const allLinebreakSymbols = ['\r\n', '\n']
@@ -612,8 +613,6 @@ const getCompletionOptions = (prefixAndSuffix: PrefixAndSuffixInfo, relevantCont
 export interface IAutocompleteService {
 	readonly _serviceBrand: undefined;
 }
-
-export const IAutocompleteService = createDecorator<IAutocompleteService>('AutocompleteService');
 
 export class AutocompleteService extends Disposable implements IAutocompleteService {
 
