@@ -42,6 +42,8 @@ import { RawMCPToolCall } from '../common/mcpServiceTypes.js';
 import { ITokenUsageService } from '../common/tokenUsageService.js';
 import { TokenUsageInfo } from '../common/sendLLMMessageTypes.js';;
 
+export const IChatThreadService = createDecorator<IChatThreadService>('voidChatThreadService');
+
 
 // related to retrying when LLM message has error
 const CHAT_RETRIES = 3
@@ -294,8 +296,6 @@ export interface IChatThreadService {
 	focusCurrentChat: () => Promise<void>
 	blurCurrentChat: () => Promise<void>
 }
-
-export const IChatThreadService = createDecorator<IChatThreadService>('voidChatThreadService');
 class ChatThreadService extends Disposable implements IChatThreadService {
 	_serviceBrand: undefined;
 
