@@ -21,6 +21,7 @@ import { IMCPService } from '../common/mcpService.js';
 
 export const EMPTY_MESSAGE = '(empty message)'
 
+export const IConvertToLLMMessageService = createDecorator<IConvertToLLMMessageService>('ConvertToLLMMessageService');
 
 
 type SimpleLLMMessage = {
@@ -525,8 +526,6 @@ export interface IConvertToLLMMessageService {
 	prepareLLMChatMessages: (opts: { chatMessages: ChatMessage[], chatMode: ChatMode, modelSelection: ModelSelection | null }) => Promise<{ messages: LLMChatMessage[], separateSystemMessage: string | undefined }>
 	prepareFIMMessage(opts: { messages: LLMFIMMessage, }): { prefix: string, suffix: string, stopTokens: string[] }
 }
-
-export const IConvertToLLMMessageService = createDecorator<IConvertToLLMMessageService>('ConvertToLLMMessageService');
 
 
 class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMessageService {
