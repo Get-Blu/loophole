@@ -20,6 +20,8 @@ import { MAX_CHILDREN_URIs_PAGE, MAX_FILE_CHARS_PAGE, MAX_TERMINAL_BG_COMMAND_TI
 import { ILoopholeSettingsService } from '../common/voidSettingsService.js'
 import { generateUuid } from '../../../../base/common/uuid.js'
 
+export const IToolsService = createDecorator<IToolsService>('ToolsService');
+
 
 // tool use for AI
 type ValidateBuiltinParams = { [T in BuiltinToolName]: (p: RawToolParamsObj) => BuiltinToolCallParams[T] }
@@ -131,7 +133,6 @@ export interface IToolsService {
 	stringOfResult: BuiltinToolResultToString;
 }
 
-export const IToolsService = createDecorator<IToolsService>('ToolsService');
 
 export class ToolsService implements IToolsService {
 
