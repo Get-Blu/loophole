@@ -21,6 +21,8 @@ import { ILoopholeSettingsService } from './voidSettingsService.js';
 import { MCPUserStateOfName } from './voidSettingsTypes.js';
 
 
+export const IMCPService = createDecorator<IMCPService>('mcpConfigService');
+
 type MCPServiceState = {
 	mcpServerOfName: MCPServerOfName,
 	error: string | undefined, // global parsing error
@@ -38,8 +40,6 @@ export interface IMCPService {
 	callMCPTool(toolData: MCPToolCallParams): Promise<{ result: RawMCPToolCall }>;
 	stringifyResult(result: RawMCPToolCall): string
 }
-
-export const IMCPService = createDecorator<IMCPService>('mcpConfigService');
 
 
 
