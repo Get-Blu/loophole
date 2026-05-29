@@ -1,0 +1,13 @@
+name: Check Decorators
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Find createDecorator usage
+        run: |
+          Get-ChildItem -Path "src/vs/workbench/contrib/void" -Filter "*.ts" -Recurse | Select-String -Pattern "createDecorator"
