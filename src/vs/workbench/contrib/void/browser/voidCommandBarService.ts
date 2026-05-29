@@ -29,7 +29,7 @@ import { KeyCode } from '../../../../base/common/keyCodes.js';
 import { ScrollType } from '../../../../editor/common/editorCommon.js';
 import { ILoopholeModelService } from '../common/voidModelService.js';
 
-
+export const ILoopholeCommandBarService = createDecorator<ILoopholeCommandBarService>('loopholeCommandBarService');
 
 export interface ILoopholeCommandBarService {
 	readonly _serviceBrand: undefined;
@@ -52,9 +52,6 @@ export interface ILoopholeCommandBarService {
 	anyFileIsStreaming(): boolean;
 
 }
-
-
-export const ILoopholeCommandBarService = createDecorator<ILoopholeCommandBarService>('loopholeCommandBarService');
 
 
 export type CommandBarStateType = undefined | {
