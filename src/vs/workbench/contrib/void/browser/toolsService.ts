@@ -133,6 +133,15 @@ export interface IToolsService {
 	stringOfResult: BuiltinToolResultToString;
 }
 
+console.log('DEBUG DECORATORS:', {
+    IFileService: typeof IFileService,
+    ILoopholeModelService: typeof ILoopholeModelService,
+    IEditCodeService: typeof IEditCodeService,
+    ITerminalToolService: typeof ITerminalToolService,
+    ILoopholeCommandBarService: typeof ILoopholeCommandBarService,
+    IDirectoryStrService: typeof IDirectoryStrService,
+    ILoopholeSettingsService: typeof ILoopholeSettingsService,
+})
 
 export class ToolsService implements IToolsService {
 
