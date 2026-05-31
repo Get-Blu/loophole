@@ -30,6 +30,8 @@ import { ScrollType } from '../../../../editor/common/editorCommon.js';
 import { ILoopholeModelService } from '../common/voidModelService.js';
 import { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
 
+export { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
+
 export type CommandBarStateType = undefined | {
 	sortedDiffZoneIds: string[]; // sorted by line number
 	sortedDiffIds: string[]; // sorted by line number (computed)
