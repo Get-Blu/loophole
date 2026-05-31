@@ -2445,7 +2445,7 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 
 
 		// Listen for state changes in the loophole command bar service
-		this._register(this._loopholeCommandBarService.onDidChangeState(e => {
+		this._register(this._loopholeCommandBarService.onDidChangeState((e: any) => {
 			if (uri && e.uri.fsPath === uri.fsPath) {
 
 				const { acceptText, rejectText } = getAcceptRejectText()
