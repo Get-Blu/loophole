@@ -1,0 +1,70 @@
+name: Diagnose Build Issues
+on:
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check decorator order
+        run: |
+          Write-Host "=== DECORATOR ORDER CHECK ===" -ForegroundColor Cyan
+          $files = Get-ChildItem -Path "src/vs/workbench/contrib/void" -Filter "*.ts" -Recurse
+          foreach ($file in $files) {
+            $lines = Get-Content $file.FullName
+            $importLine = 0
+            $decoratorLine = 0
+            $interfaceLine = 0
+            for ($i = 0; $i -lt $lines.Length; $i++) {
+              if ($lines[$i] -match "import.*createDecorator" -and $importLine -eq 0) {
+                $importLine = $i + 1
+              }
+              if ($lines[$i] -match "createDecorator<" -and $decoratorLine -eq 0) {
+                $decoratorLine = $i + 1
+              }
+              if ($lines[$i] -match "^export interface I" -and $interfaceLine -eq 0) {
+                $interfaceLine = $i + 1
+              }
+            }
+            if ($decoratorLine -gt 0 -and $interfaceLine -gt 0 -and $interfaceLine -lt $decoratorLine) {
+              Write-Host "BAD (interface before createDecorator): $($file.Name) - interface:$interfaceLine createDecorator:$decoratorLine"
+            } elseif ($decoratorLine -gt ($importLine + 50)) {
+              Write-Host "BAD (createDecorator too far): $($file.Name) - import:$importLine createDecorator:$decoratorLine"
+            }
+          }
+          Write-Host "=== DONE ===" -ForegroundColor Cyan
+
+      - name: Check circular imports
+        run: |
+          Write-Host "=== CIRCULAR IMPORT CHECK ===" -ForegroundColor Cyan
+          $files = Get-ChildItem -Path "src/vs/workbench/contrib/void" -Filter "*.ts" -Recurse
+          foreach ($file in $files) {
+            $lines = Get-Content $file.FullName
+            $fileName = $file.Name -replace '\.ts$', ''
+            foreach ($line in $lines) {
+              if ($line -match "import.*from.*void" -or $line -match "import.*from.*loophole") {
+                Write-Host "$($file.Name) imports: $line"
+              }
+            }
+          }
+          Write-Host "=== DONE ===" -ForegroundColor Cyan
+
+      - name: Check missing exports
+        run: |
+          Write-Host "=== MISSING EXPORT CHECK ===" -ForegroundColor Cyan
+          $files = Get-ChildItem -Path "src/vs/workbench/contrib/void" -Filter "*.ts" -Recurse
+          foreach ($file in $files) {
+            $lines = Get-Content $file.FullName
+            foreach ($line in $lines) {
+              if ($line -match "^import \{([^}]+)\} from '([^']+)'") {
+                $imports = $matches[1] -split ',' | ForEach-Object { $_.Trim() }
+                $fromFile = $matches[2]
+                if ($fromFile -match "void|loophole") {
+                  Write-Host "CHECK: $($file.Name) imports [$imports] from $fromFile"
+                }
+              }
+            }
+          }
+          Write-Host "=== DONE ===" -ForegroundColor Cyan
