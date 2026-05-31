@@ -5,6 +5,8 @@
 
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 
+export const ILoopholeSCMService = createDecorator<ILoopholeSCMService>('loopholeSCMService')
+
 export interface ILoopholeSCMService {
 	readonly _serviceBrand: undefined;
 	/**
@@ -33,4 +35,4 @@ export interface ILoopholeSCMService {
 	gitLog(path: string): Promise<string>
 }
 
-export const ILoopholeSCMService = createDecorator<ILoopholeSCMService>('loopholeSCMService')
+
