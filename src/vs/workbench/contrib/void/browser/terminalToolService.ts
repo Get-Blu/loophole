@@ -17,6 +17,7 @@ import { TerminalResolveReason } from '../common/toolsServiceTypes.js';
 import { timeout } from '../../../../base/common/async.js';
 
 
+export const ITerminalToolService = createDecorator<ITerminalToolService>('TerminalToolService');
 
 export interface ITerminalToolService {
 	readonly _serviceBrand: undefined;
@@ -39,7 +40,7 @@ export interface ITerminalToolService {
 	getPersistentTerminal(terminalId: string): ITerminalInstance | undefined
 	getTemporaryTerminal(terminalId: string): ITerminalInstance | undefined
 }
-export const ITerminalToolService = createDecorator<ITerminalToolService>('TerminalToolService');
+
 
 
 
