@@ -1,0 +1,21 @@
+- name: Debug decorator order in void files
+  run: |
+    $files = Get-ChildItem -Path "src/vs/workbench/contrib/void" -Filter "*.ts" -Recurse
+    foreach ($file in $files) {
+      $lines = Get-Content $file.FullName
+      $importLine = 0
+      $decoratorLine = 0
+      for ($i = 0; $i -lt $lines.Length; $i++) {
+        if ($lines[$i] -match "import.*createDecorator" -and $importLine -eq 0) {
+          $importLine = $i + 1
+        }
+        if ($lines[$i] -match "createDecorator<" -and $decoratorLine -eq 0) {
+          $decoratorLine = $i + 1
+        }
+      }
+      if ($decoratorLine -gt ($importLine + 20)) {
+        Write-Host "BAD: $($file.FullName) - import:$importLine createDecorator:$decoratorLine"
+      } else {
+        Write-Host "OK: $($file.FullName) - import:$importLine createDecorator:$decoratorLine"
+      }
+    }
