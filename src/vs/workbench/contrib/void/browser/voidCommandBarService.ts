@@ -4,12 +4,12 @@
  *--------------------------------------------------------------------------------------*/
 
 import { Disposable, IDisposable, toDisposable } from '../../../../base/common/lifecycle.js';
-import { createDecorator, IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
+import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { URI } from '../../../../base/common/uri.js';
 import * as dom from '../../../../base/browser/dom.js';
 import { Widget } from '../../../../base/browser/ui/widget.js';
 import { IOverlayWidget, ICodeEditor, OverlayWidgetPositionPreference } from '../../../../editor/browser/editorBrowser.js';
-import { Emitter, Event } from '../../../../base/common/event.js';
+import { Emitter } from '../../../../base/common/event.js';
 import { ICodeEditorService } from '../../../../editor/browser/services/codeEditorService.js';
 import { mountLoopholeCommandBar } from './react/out/void-editor-widgets-tsx/index.js'
 import { deepClone } from '../../../../base/common/objects.js';
@@ -29,8 +29,6 @@ import { KeyCode } from '../../../../base/common/keyCodes.js';
 import { ScrollType } from '../../../../editor/common/editorCommon.js';
 import { ILoopholeModelService } from '../common/voidModelService.js';
 import { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
-
-export const ILoopholeCommandBarService = createDecorator<ILoopholeCommandBarService>('loopholeCommandBarService');
 
 export type CommandBarStateType = undefined | {
 	sortedDiffZoneIds: string[]; // sorted by line number
