@@ -38,17 +38,6 @@ type SetGlobalSettingFn = <T extends GlobalSettingName>(settingName: T, newVal: 
 type SetOptionsOfModelSelection = (featureName: FeatureName, providerName: ProviderName, modelName: string, newVal: Partial<ModelSelectionOptions>) => void
 
 
-export type LoopholeSettingsState = {
-	readonly settingsOfProvider: SettingsOfProvider; // optionsOfProvider
-	readonly modelSelectionOfFeature: ModelSelectionOfFeature; // stateOfFeature
-	readonly optionsOfModelSelection: OptionsOfModelSelection;
-	readonly overridesOfModel: OverridesOfModel;
-	readonly globalSettings: GlobalSettings;
-	readonly mcpUserStateOfName: MCPUserStateOfName; // user-controlled state of MCP servers
-
-	readonly _modelOptions: ModelOption[] // computed based on the two above items
-}
-
 // type RealVoidSettings = Exclude<keyof LoopholeSettingsState, '_modelOptions'>
 // type EventProp<T extends RealVoidSettings = RealVoidSettings> = T extends 'globalSettings' ? [T, keyof LoopholeSettingsState[T]] : T | 'all'
 
