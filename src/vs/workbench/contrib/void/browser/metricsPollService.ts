@@ -10,7 +10,7 @@ import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/
 import * as dom from '../../../../base/browser/dom.js';
 import { IMetricsService } from '../common/metricsService.js';
 
-
+export const IMetricsPollService = createDecorator<IMetricsPollService>('voidMetricsPollService');
 
 export interface IMetricsPollService {
 	readonly _serviceBrand: undefined;
@@ -19,7 +19,7 @@ export interface IMetricsPollService {
 
 const PING_EVERY_MS = 15 * 1000 * 60  // 15 minutes
 
-export const IMetricsPollService = createDecorator<IMetricsPollService>('voidMetricsPollService');
+
 class MetricsPollService extends Disposable implements IMetricsPollService {
 	_serviceBrand: undefined;
 
