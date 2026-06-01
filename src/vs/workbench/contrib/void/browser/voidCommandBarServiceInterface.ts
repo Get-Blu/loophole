@@ -1,7 +1,6 @@
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { URI } from '../../../../base/common/uri.js';
 import { Event } from '../../../../base/common/event.js';
-import { CommandBarStateType } from './voidCommandBarService.js';
 
 export const ILoopholeCommandBarService = createDecorator<ILoopholeCommandBarService>('loopholeCommandBarService');
 
