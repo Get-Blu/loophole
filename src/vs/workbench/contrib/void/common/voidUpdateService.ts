@@ -9,6 +9,7 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
 import { LoopholeCheckUpdateRespose, ILoopholeUpdateInfo } from './voidUpdateServiceTypes.js';
 
+export const ILoopholeUpdateService = createDecorator<ILoopholeUpdateService>('LoopholeUpdateService');
 
 
 export interface ILoopholeUpdateService {
@@ -21,7 +22,7 @@ export interface ILoopholeUpdateService {
 }
 
 
-export const ILoopholeUpdateService = createDecorator<ILoopholeUpdateService>('LoopholeUpdateService');
+
 
 
 // implemented by calling channel
