@@ -11,6 +11,8 @@ import { localize2 } from '../../../../nls.js';
 import { registerAction2, Action2 } from '../../../../platform/actions/common/actions.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 
+export const IMetricsService = createDecorator<IMetricsService>('metricsService');
+
 export interface IMetricsService {
 	readonly _serviceBrand: undefined;
 	capture(event: string, params: Record<string, any>): void;
@@ -18,7 +20,7 @@ export interface IMetricsService {
 	getDebuggingProperties(): Promise<object>;
 }
 
-export const IMetricsService = createDecorator<IMetricsService>('metricsService');
+
 
 
 // implemented by calling channel
