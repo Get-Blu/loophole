@@ -2,6 +2,13 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { URI } from '../../../../base/common/uri.js';
 import { Event } from '../../../../base/common/event.js';
 
+export type CommandBarStateType = undefined | {
+    sortedDiffZoneIds: string[];
+    sortedDiffIds: string[];
+    isStreaming: boolean;
+    diffIdx: number | null;
+}
+
 export const ILoopholeCommandBarService = createDecorator<ILoopholeCommandBarService>('loopholeCommandBarService');
 
 export interface ILoopholeCommandBarService {
