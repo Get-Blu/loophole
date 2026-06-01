@@ -28,18 +28,9 @@ import { KeyMod } from '../../../../editor/common/services/editorBaseApi.js';
 import { KeyCode } from '../../../../base/common/keyCodes.js';
 import { ScrollType } from '../../../../editor/common/editorCommon.js';
 import { ILoopholeModelService } from '../common/voidModelService.js';
-import { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
+import { ILoopholeCommandBarService, CommandBarStateType} from './voidCommandBarServiceInterface.js';
 
 export { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
-
-export type CommandBarStateType = undefined | {
-	sortedDiffZoneIds: string[]; // sorted by line number
-	sortedDiffIds: string[]; // sorted by line number (computed)
-	isStreaming: boolean; // is any diffZone streaming in this URI
-
-	diffIdx: number | null; // must refresh whenever sortedDiffIds does so it's valid
-}
-
 
 
 const defaultState: NonNullable<CommandBarStateType> = {
