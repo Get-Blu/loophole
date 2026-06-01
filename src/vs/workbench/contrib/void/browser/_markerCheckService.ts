@@ -15,11 +15,13 @@ import { CodeActionContext, CodeActionTriggerType } from '../../../../editor/com
 import { URI } from '../../../../base/common/uri.js';
 import * as dom from '../../../../base/browser/dom.js';
 
+export const IMarkerCheckService = createDecorator<IMarkerCheckService>('markerCheckService');
+
 export interface IMarkerCheckService {
 	readonly _serviceBrand: undefined;
 }
 
-export const IMarkerCheckService = createDecorator<IMarkerCheckService>('markerCheckService');
+
 
 class MarkerCheckService extends Disposable implements IMarkerCheckService {
 	_serviceBrand: undefined;
