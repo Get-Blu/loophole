@@ -11,11 +11,13 @@ import { ITokenUsageService, formatTokenCount, formatDollarCount } from '../comm
 import { localize } from '../../../../nls.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
+export const ITokenUsageStatusBarService = createDecorator<ITokenUsageStatusBarService>('tokenUsageStatusBarService');
+
 export interface ITokenUsageStatusBarService {
 	readonly _serviceBrand: undefined;
 }
 
-export const ITokenUsageStatusBarService = createDecorator<ITokenUsageStatusBarService>('tokenUsageStatusBarService');
+
 
 const TOKEN_USAGE_STATUS_BAR_ID = 'loophole.tokenUsage';
 
