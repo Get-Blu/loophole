@@ -12,6 +12,7 @@ import { InstantiationType, registerSingleton } from '../../../../platform/insta
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { TransferEditorType, TransferFilesInfo } from './extensionTransferTypes.js';
 
+export const IExtensionTransferService = createDecorator<IExtensionTransferService>('ExtensionTransferService');
 
 export interface IExtensionTransferService {
 	readonly _serviceBrand: undefined; // services need this, just leave it undefined
@@ -20,7 +21,7 @@ export interface IExtensionTransferService {
 
 }
 
-export const IExtensionTransferService = createDecorator<IExtensionTransferService>('ExtensionTransferService');
+
 
 
 
