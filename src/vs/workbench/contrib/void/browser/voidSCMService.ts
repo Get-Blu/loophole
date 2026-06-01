@@ -31,13 +31,15 @@ interface ModelOptions {
 	overridesOfModel: OverridesOfModel
 }
 
+export const IGenerateCommitMessageService = createDecorator<IGenerateCommitMessageService>('loopholeGenerateCommitMessageService');
+
+
 export interface IGenerateCommitMessageService {
 	readonly _serviceBrand: undefined
 	generateCommitMessage(): Promise<void>
 	abort(): void
 }
 
-export const IGenerateCommitMessageService = createDecorator<IGenerateCommitMessageService>('loopholeGenerateCommitMessageService');
 
 const loadingContextKey = 'loopholeSCMGenerateCommitMessageLoading'
 
