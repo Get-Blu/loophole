@@ -6,7 +6,6 @@
 
 import { defaultModelsOfProvider, defaultProviderSettings, ModelOverrides } from './modelCapabilities.js';
 import { ToolApprovalType } from './toolsServiceTypes.js';
-import { LoopholeSettingsState } from './voidSettingsService.js'
 
 
 type UnionOfKeys<T> = T extends T ? keyof T : never;
@@ -560,4 +559,16 @@ export interface MCPUserStateOfName {
 
 export interface MCPUserState {
 	isOn: boolean;
+}
+
+export type ModelOption = { name: string, selection: ModelSelection }
+
+export type LoopholeSettingsState = {
+	readonly settingsOfProvider: SettingsOfProvider;
+	readonly modelSelectionOfFeature: ModelSelectionOfFeature;
+	readonly optionsOfModelSelection: OptionsOfModelSelection;
+	readonly overridesOfModel: OverridesOfModel;
+	readonly globalSettings: GlobalSettings;
+	readonly mcpUserStateOfName: MCPUserStateOfName;
+	readonly _modelOptions: ModelOption[]
 }
