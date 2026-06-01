@@ -15,12 +15,13 @@ import { KeybindingWeight } from '../../../../platform/keybinding/common/keybind
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 
 
+export const IDummyService = createDecorator<IDummyService>('DummyService');
+
 // to change this, just Cmd+Shift+F and replace DummyService with YourServiceName, and create a unique ID below
 export interface IDummyService {
 	readonly _serviceBrand: undefined; // services need this, just leave it undefined
 }
 
-export const IDummyService = createDecorator<IDummyService>('DummyService');
 
 
 
