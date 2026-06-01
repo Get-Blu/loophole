@@ -11,6 +11,8 @@ type LoopholeModelType = {
 	editorModel: IResolvedTextEditorModel | null;
 };
 
+export const ILoopholeModelService = createDecorator<ILoopholeModelService>('loopholeModelService');
+
 export interface ILoopholeModelService {
 	readonly _serviceBrand: undefined;
 	initializeModel(uri: URI): Promise<void>;
@@ -21,7 +23,7 @@ export interface ILoopholeModelService {
 
 }
 
-export const ILoopholeModelService = createDecorator<ILoopholeModelService>('loopholeModelService');
+
 
 class LoopholeModelService extends Disposable implements ILoopholeModelService {
 	_serviceBrand: undefined;
