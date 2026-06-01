@@ -17,10 +17,6 @@ import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfF
 
 export const ILoopholeSettingsService = createDecorator<ILoopholeSettingsService>('LoopholeSettingsService');
 
-// name is the name in the dropdown
-export type ModelOption = { name: string, selection: ModelSelection }
-
-
 
 type SetSettingOfProviderFn = <S extends SettingName>(
 	providerName: ProviderName,
