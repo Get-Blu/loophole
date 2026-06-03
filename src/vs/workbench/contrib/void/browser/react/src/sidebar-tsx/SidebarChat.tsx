@@ -314,10 +314,10 @@ const detailOfChatMode = {
 }
 
 const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
-	'normal': <MessageSquare size={14} />,
-	'gather': <Search size={14} />,
-	'agent': <Bot size={14} />,
-	'plan': <FileText size={14} />,
+	'normal': <span className='flex items-center gap-0.5 text-xs'>Chat <ChevronRight size={10} className='rotate-90' /></span>,
+	'gather': <span className='flex items-center gap-0.5 text-xs'>Gather <ChevronRight size={10} className='rotate-90' /></span>,
+	'agent': <span className='flex items-center gap-0.5 text-xs'>Agent <ChevronRight size={10} className='rotate-90' /></span>,
+	'plan': <span className='flex items-center gap-0.5 text-xs'>Plan <ChevronRight size={10} className='rotate-90' /></span>,
 }
 
 
@@ -442,30 +442,51 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			ref={divRef}
 			className={`
 				flex flex-col relative text-left shrink-0
-				rounded-2xl
-				bg-loophole-bg-1
+				rounded-lg
+				bg-[#1e1e1e]
 				transition-all duration-200
-				border border-loophole-border-2 focus-within:border-loophole-border-1 focus-within:ring-1 focus-within:ring-loophole-border-1/50
-				shadow-sm
 				max-h-[80vh] overflow-y-auto
+				pb-[6px] pl-[6px] pr-[6px]
 				${className}
             `}
 			onClick={(e) => {
 				onClickAnywhere?.()
 			}}
 		>
-			{/* Selections section */}
+			{/* Top row: + button + file chips */}
 			{showSelections && selections && setSelections && (
-				<SelectedFiles
-					type='staging'
-					selections={selections}
-					setSelections={setSelections}
-					showProspectiveSelections={showProspectiveSelections}
-				/>
+				<div className='flex items-center pt-1 pl-1' style={{ gap: '2px' }}>
+					{/* + button */}
+					<button
+						type="button"
+						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#181818]"
+						onClick={handleAddFile}
+						title="Add file to context"
+					>
+						<span className="text-sm leading-none select-none">+</span>
+					</button>
+
+					{/* @ Mentions button */}
+					<button
+						type="button"
+						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#181818] text-xs font-medium"
+						title="Mention a file or symbol"
+					>
+						<span className="leading-none select-none">@</span>
+					</button>
+
+					{/* File chips inline */}
+					<SelectedFiles
+						type='staging'
+						selections={selections}
+						setSelections={setSelections}
+						showProspectiveSelections={showProspectiveSelections}
+					/>
+				</div>
 			)}
 
 			{/* Input section */}
-			<div className="relative w-full px-3 pt-3 pb-1">
+			<div className="relative w-full px-3 pt-2 pb-1">
 				{children}
 
 				{/* Close button (X) if onClose is provided */}
@@ -484,23 +505,17 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-1 pt-1'>
 				{showModelDropdown && (
 					<div className='flex items-center gap-2 text-nowrap'>
-						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:bg-loophole-bg-2 rounded-lg py-1 px-2 transition-colors' />}
-						<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 hover:bg-loophole-bg-2 rounded-lg py-1 px-2 transition-colors' />
+						<div className='flex items-center gap-0.5'>
+							<ChevronRight size={11} className='text-loophole-fg-3 rotate-90 flex-shrink-0' />
+							<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 hover:text-loophole-fg-1 transition-colors' />
+						</div>
+						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:text-loophole-fg-1 transition-colors' />}
 					</div>
 				)}
 
 				<div className="flex items-center gap-1">
 
-					{showSelections && selections && setSelections && (
-						<button
-							type="button"
-							className="text-loophole-fg-3 hover:text-loophole-fg-1 hover:bg-loophole-bg-2 p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-							onClick={handleAddFile}
-							title="Add file to context"
-						>
-							<Paperclip size={16} />
-						</button>
-					)}
+
 
 					{/* Mic Button - Voice to Text */}
 					{isSupported && (
@@ -765,7 +780,7 @@ export const SelectedFiles = (
 	}
 
 	return (
-		<div className='flex items-center flex-wrap text-left relative gap-x-0.5 gap-y-1 pb-0.5 pt-2 pl-2'>
+		<div className='flex items-center flex-wrap text-left relative gap-x-0.5 gap-y-1'>
 
 			{allSelections.map((selection, i) => {
 
@@ -798,17 +813,12 @@ export const SelectedFiles = (
 						<div
 							className={`
 								flex items-center gap-1 relative
-								px-1
-								w-fit h-fit
+								px-1.5
+								w-fit h-5
 								select-none
 								text-xs text-nowrap
-								border rounded-sm
-								${isThisSelectionProspective ? 'bg-loophole-bg-1 text-loophole-fg-3 opacity-80' : 'bg-loophole-bg-1 hover:brightness-95 text-loophole-fg-1'}
-								${isThisSelectionProspective
-									? 'border-loophole-border-2'
-									: 'border-loophole-border-1'
-								}
-								hover:border-loophole-border-1
+								rounded
+								${isThisSelectionProspective ? 'bg-[#181818] text-loophole-fg-3 opacity-80' : 'bg-[#181818] hover:brightness-110 text-loophole-fg-1'}
 								transition-all duration-150
 							`}
 							onClick={() => {
@@ -3223,7 +3233,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[30px] px-0.5 py-0.5`}
+			className={`min-h-[30px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight`}
 			placeholder={`@ Add Context`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
