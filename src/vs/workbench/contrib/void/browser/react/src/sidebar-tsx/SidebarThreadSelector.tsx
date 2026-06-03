@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------------------------
- *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *  Copyright 2026 Garv Agnihotri, Inc. All rights reserved.
  *--------------------------------------------------------------------------------------*/
 
 import { useMemo, useState } from 'react';
@@ -84,10 +83,6 @@ export const PastThreadsList = ({ className = '' }: { className?: string }) => {
 		</div>
 	);
 };
-
-
-
-
 
 // Format timestamp like "Today at 2:11 AM", "Yesterday at 4:25 AM", "24/01/25 4:04 PM"
 const formatTimestamp = (date: Date) => {
