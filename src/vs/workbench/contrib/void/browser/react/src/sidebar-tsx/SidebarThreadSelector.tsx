@@ -43,7 +43,7 @@ export const PastThreadsList = ({ className = '' }: { className?: string }) => {
 	const displayThreads = showAll ? sortedThreadIds : sortedThreadIds.slice(0, numInitialThreads);
 
 	return (
-		<div className={`flex flex-col mb-2 gap-2 w-full text-nowrap text-loophole-fg-3 select-none relative ${className}`}>
+		<div className={`flex flex-col w-full text-nowrap select-none relative ${className}`}>
 			{displayThreads.length === 0 // this should never happen
 				? <></>
 				: displayThreads.map((threadId, i) => {
@@ -89,33 +89,24 @@ export const PastThreadsList = ({ className = '' }: { className?: string }) => {
 
 
 
-// Format relative time like 5m, 1h, 2d
-const formatRelativeTime = (date: Date) => {
-	const now = new Date().getTime();
-	const then = date.getTime();
-	const diffMs = now - then;
-	const diffSec = Math.floor(diffMs / 1000);
-	const diffMin = Math.floor(diffSec / 60);
-	const diffHour = Math.floor(diffMin / 60);
-	const diffDay = Math.floor(diffHour / 24);
-	const diffWeek = Math.floor(diffDay / 7);
-	const diffMonth = Math.floor(diffDay / 30);
-
-	if (diffMin < 1) return 'now';
-	if (diffMin < 60) return `${diffMin}m`;
-	if (diffHour < 24) return `${diffHour}h`;
-	if (diffDay < 7) return `${diffDay}d`;
-	if (diffMonth < 1) return `${diffWeek}w`;
-	return `${diffMonth}mo`;
+// Format timestamp like "Today at 2:11 AM", "Yesterday at 4:25 AM", "24/01/25 4:04 PM"
+const formatTimestamp = (date: Date) => {
+	const now = new Date();
+	const time = date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+	const isToday = date.toDateString() === now.toDateString();
+	const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+	const isYesterday = date.toDateString() === yesterday.toDateString();
+	if (isToday) return `Today at ${time}`;
+	if (isYesterday) return `Yesterday at ${time}`;
+	const d = String(date.getDate()).padStart(2, '0');
+	const m = String(date.getMonth() + 1).padStart(2, '0');
+	const y = String(date.getFullYear()).slice(2);
+	return `${d}/${m}/${y} ${time}`;
 };
 
 // Format time to 12-hour format
 const formatTime = (date: Date) => {
-	return date.toLocaleString('en-US', {
-		hour: 'numeric',
-		minute: '2-digit',
-		hour12: true
-	});
+	return date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 };
 
 
@@ -223,60 +214,36 @@ const PastThreadElement = ({ pastThread, idx, hoveredIdx, setHoveredIdx, isRunni
 
 	const numMessages = pastThread.messages.filter((msg) => msg.role === 'assistant' || msg.role === 'user').length;
 
-	const detailsHTML = <span
-	// data-tooltip-id='loophole-tooltip'
-	// data-tooltip-content={`Last modified ${formatTime(new Date(pastThread.lastModified))}`}
-	// data-tooltip-place='top'
-	>
-		<span className='opacity-60'>{numMessages}</span>
-		{` `}
-				{formatRelativeTime(new Date(pastThread.lastModified))}
-		{/* {` messages `} */}
-	</span>
-
 	return <div
 		key={pastThread.id}
-		className={`
-			py-1 px-2 rounded-xl text-sm bg-zinc-700/5 hover:bg-zinc-700/10 dark:bg-zinc-300/5 dark:hover:bg-zinc-300/10 cursor-pointer opacity-80 hover:opacity-100
-		`}
-		onClick={() => {
-			chatThreadsService.switchToThread(pastThread.id);
-		}}
+		className='flex items-center justify-between gap-2 px-4 py-2 cursor-pointer hover:bg-zinc-300/5 transition-colors group'
+		onClick={() => { chatThreadsService.switchToThread(pastThread.id); }}
 		onMouseEnter={() => setHoveredIdx(idx)}
 		onMouseLeave={() => setHoveredIdx(null)}
 	>
-		<div className="flex items-center justify-between gap-1">
-			<span className="flex items-center gap-2 min-w-0 overflow-hidden">
-				{/* spinner */}
-				{isRunning === 'LLM' || isRunning === 'tool' || isRunning === 'idle' ? <LoaderCircle className="animate-spin bg-void-stroke-1 flex-shrink-0 flex-grow-0" size={14} />
-					:
-					isRunning === 'awaiting_user' ? <MessageCircleQuestion className="bg-void-stroke-1 flex-shrink-0 flex-grow-0" size={14} />
-						:
-						null}
-				{/* name */}
-				<span className="truncate overflow-hidden text-ellipsis"
-					data-tooltip-id='loophole-tooltip'
-					data-tooltip-content={numMessages + ' messages'}
-					data-tooltip-place='top'
-				>{firstMsg}</span>
+		{/* Left: spinner + title */}
+		<span className='flex items-center gap-2 min-w-0 overflow-hidden flex-1'>
+			{isRunning === 'LLM' || isRunning === 'tool' || isRunning === 'idle'
+				? <LoaderCircle className='animate-spin flex-shrink-0' size={13} />
+				: isRunning === 'awaiting_user'
+					? <MessageCircleQuestion className='flex-shrink-0' size={13} />
+					: null}
+			<span className='truncate text-sm text-loophole-fg-1 font-medium'>{firstMsg}</span>
+		</span>
 
-				{/* <span className='opacity-60'>{`(${numMessages})`}</span> */}
-			</span>
-
-			<div className="flex items-center gap-x-1 opacity-60">
-				{idx === hoveredIdx ?
-					<>
-						{/* trash icon */}
-						<DuplicateButton threadId={pastThread.id} />
-
-						{/* trash icon */}
-						<TrashButton threadId={pastThread.id} />
-					</>
-					: <>
-						{detailsHTML}
-					</>
-				}
-			</div>
+		{/* Right: timestamp or actions on hover */}
+		<div className='flex items-center gap-1 flex-shrink-0'>
+			{idx === hoveredIdx ? <>
+				<DuplicateButton threadId={pastThread.id} />
+				<TrashButton threadId={pastThread.id} />
+			</> : <>
+				<span className='text-xs text-loophole-fg-3 whitespace-nowrap'>
+					{formatTimestamp(new Date(pastThread.lastModified))}
+				</span>
+				<span className='text-loophole-fg-3 opacity-0 group-hover:opacity-60 transition-opacity ml-1'>
+					<Trash2 size={12} />
+				</span>
+			</>}
 		</div>
 	</div>
 }
