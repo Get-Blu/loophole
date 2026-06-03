@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------------------------
- *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *  Copyright 2026 Garv Agnihotri, Inc. All rights reserved.
  *--------------------------------------------------------------------------------------*/
 
 import React, { ButtonHTMLAttributes, FormEvent, FormHTMLAttributes, Fragment, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -314,10 +313,10 @@ const detailOfChatMode = {
 }
 
 const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
-	'normal': <span className='flex items-center gap-0.5 text-xs'>Chat <ChevronRight size={10} className='rotate-90' /></span>,
-	'gather': <span className='flex items-center gap-0.5 text-xs'>Gather <ChevronRight size={10} className='rotate-90' /></span>,
-	'agent': <span className='flex items-center gap-0.5 text-xs'>Agent <ChevronRight size={10} className='rotate-90' /></span>,
-	'plan': <span className='flex items-center gap-0.5 text-xs'>Plan <ChevronRight size={10} className='rotate-90' /></span>,
+	'normal': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Chat</span>,
+	'gather': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Gather</span>,
+	'agent': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Agent</span>,
+	'plan': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Plan</span>,
 }
 
 
@@ -516,6 +515,24 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 				<div className="flex items-center gap-1">
 
 
+
+					{/* Context Window Indicator */}
+					{/* TODO: calculate context window usage here — different models have different sizes (e.g. 200k, 246k tokens). Show a circular progress ring that fills as context is consumed. */}
+					<button
+						type="button"
+						className="p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-loophole-bg-2 text-loophole-fg-3 hover:text-loophole-fg-1"
+						title="Context window usage"
+					>
+						<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+							<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"
+								strokeDasharray="37.7"
+								strokeDashoffset="28"
+								strokeLinecap="round"
+								transform="rotate(-90 8 8)"
+							/>
+						</svg>
+					</button>
 
 					{/* Mic Button - Voice to Text */}
 					{isSupported && (
@@ -3234,7 +3251,7 @@ export const SidebarChat = () => {
 		<LoopholeInputBox2
 			enableAtToMention
 			className={`min-h-[30px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight`}
-			placeholder={`@ Add Context`}
+			placeholder={`Ask anything — @ to mention`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
 			onFocus={() => { chatThreadsService.setCurrentlyFocusedMessageIdx(undefined) }}
@@ -3253,39 +3270,7 @@ export const SidebarChat = () => {
 	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Gather' : chatMode === 'plan' ? 'Plan' : 'Chat'
 
 	// Welcome screen component
-	const WelcomeScreen = () => (
-		<div className='flex flex-col items-center justify-center flex-1 min-h-[300px] select-none'>
-			{/* Logo */}
-			<div className='mb-6'>
-				<img
-					src="https://raw.githubusercontent.com/loophole-ai/loophole/dev/void_icons/loophole_logo.png"
-					alt="loophole logo"
-					width="80"
-					height="80"
-					className='dark:invert'
-				/>
-
-			</div>
-
-			{/* Title with shortcut */}
-			<div className='flex items-center gap-3 mb-3'>
-				<h1 className='text-2xl font-semibold text-loophole-fg-1'>
-					Loophole {modeTitle}
-				</h1>
-				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
-					Ctrl
-				</span>
-				<span className='px-2 py-0.5 text-xs bg-loophole-bg-1 border border-loophole-border-2 rounded text-loophole-fg-3'>
-					L
-				</span>
-			</div>
-
-			{/* Tagline */}
-			<p className='text-loophole-fg-3 text-center max-w-md text-sm leading-relaxed'>
-				Your AI coding companion. Build, refactor, and debug<br />with confidence. Ship faster than ever before.
-			</p>
-		</div>
-	)
+	const WelcomeScreen = () => null
 
 	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-2 w-full text-nowrap text-loophole-fg-3 select-none'>
 		{[
@@ -3316,7 +3301,7 @@ export const SidebarChat = () => {
 		</div>
 	</div>
 
-	const landingPageInput = <div className='w-full max-w-2xl mx-auto px-4 pb-6'>
+	const landingPageInput = <div className='w-full px-2 pb-2'>
 		{inputChatArea}
 	</div>
 
@@ -3329,20 +3314,28 @@ export const SidebarChat = () => {
 			<WelcomeScreen />
 		</ErrorBoundary>
 
-		{/* Middle section - Suggestions or Previous Threads */}
-		<div className='flex-1 overflow-y-auto px-4 pb-4'>
-			{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
+		{/* Past Interactions */}
+		<div className='flex-1 overflow-y-auto'>
+			{Object.keys(chatThreadsState.allThreads).length > 1 &&
 				<ErrorBoundary>
-					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Previous Threads</div>
-					<PastThreadsList />
-				</ErrorBoundary>
-				:
-				<ErrorBoundary>
-					<div className='pt-4 mb-2 text-loophole-fg-3 text-sm select-none pointer-events-none text-center'>Suggestions</div>
-					{initiallySuggestedPromptsHTML}
+					{/* Header row */}
+					<div className='flex items-center justify-between px-4 py-2 select-none'>
+						<span className='text-xs text-loophole-fg-3 font-medium'>Past Interactions</span>
+						<span className='text-xs text-loophole-fg-3 flex items-center gap-1 cursor-pointer hover:text-loophole-fg-1 transition-colors'>
+							View All
+							<kbd className='text-[10px] opacity-60'>⌘⇧H</kbd>
+						</span>
+					</div>
+					{/* Thread rows */}
+					<div className='px-2'>
+						<PastThreadsList />
+					</div>
 				</ErrorBoundary>
 			}
 		</div>
+
+		{/* Separator line above input */}
+		<div className='h-px bg-loophole-border-2 mx-2 mb-1' />
 
 		{/* Input at bottom */}
 		<ErrorBoundary>
