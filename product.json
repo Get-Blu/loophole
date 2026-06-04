@@ -85,6 +85,41 @@
 			}
 		}
 	],
+
+	"defaultChatAgent": {
+	    "extensionId": "loophole.loophole",
+	    "chatExtensionId": "loophole.loophole",
+	    "documentationUrl": "",
+	    "privacyStatementUrl": "",
+	    "skusDocumentationUrl": "",
+	    "publicCodeMatchesUrl": "",
+	    "managePlanUrl": "",
+	    "upgradePlanUrl": "",
+	    "signUpUrl": "",
+	    "walkthroughCommand": "",
+	    "completionsMenuCommand": "",
+	    "chatRefreshTokenCommand": "",
+	    "generateCommitMessageCommand": "",
+	    "resolveMergeConflictsCommand": "",
+	    "completionsAdvancedSetting": "",
+	    "completionsEnablementSetting": "",
+	    "nextEditSuggestionsSetting": "",
+	    "tokenEntitlementUrl": "",
+	    "entitlementUrl": "",
+	    "entitlementSignupLimitedUrl": "",
+	    "chatQuotaExceededContext": "",
+	    "completionsQuotaExceededContext": "",
+	    "mcpRegistryDataUrl": "",
+	    "provider": {
+	        "default": {
+	            "id": "loophole",
+	            "name": "Loophole"
+	        }
+	    },
+	    "providerExtensionId": "",
+	    "providerUriSetting": "",
+	    "providerScopes": []
+	},
 	"onboardingKeymaps": [
 		{
 			"id": "vscode",
