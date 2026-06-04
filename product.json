@@ -111,14 +111,32 @@
 	    "completionsQuotaExceededContext": "",
 	    "mcpRegistryDataUrl": "",
 	    "provider": {
-	        "default": {
-	            "id": "loophole",
-	            "name": "Loophole"
-	        }
-	    },
+    		"default": {
+        		"id": "loophole",
+        		"name": "Loophole"
+    		},
+		    "enterprise": {
+		        "id": "loophole-enterprise",
+		        "name": "Loophole Enterprise"
+		    },
+		    "google": {
+		        "id": "loophole-google",
+		        "name": "Loophole Google"
+		    },
+		    "apple": {
+		        "id": "loophole-apple",
+		        "name": "Loophole Apple"
+		    }
+		},
 	    "providerExtensionId": "",
 	    "providerUriSetting": "",
 	    "providerScopes": []
+	},
+
+	"trustedExtensionAuthAccess": {
+    	"loophole": [
+        	"loophole.loophole"
+    	]
 	},
 	"onboardingKeymaps": [
 		{
