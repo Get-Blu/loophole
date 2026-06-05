@@ -22,7 +22,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2 } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2, Plus, AtSign } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -443,6 +443,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 				flex flex-col relative text-left shrink-0
 				rounded-lg
 				bg-[#1e1e1e]
+				border border-white/[0.06]
 				transition-all duration-200
 				max-h-[80vh] overflow-y-auto
 				pb-[6px] pl-[6px] pr-[6px]
@@ -455,23 +456,38 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			{/* Top row: + button + file chips */}
 			{showSelections && selections && setSelections && (
 				<div className='flex items-center pt-1 pl-1' style={{ gap: '2px' }}>
-					{/* + button */}
+					{/* + Add file button */}
 					<button
 						type="button"
-						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#181818]"
+						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-6 h-6 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#1e1e1e] border border-white/10 hover:border-white/20"
 						onClick={handleAddFile}
 						title="Add file to context"
 					>
-						<span className="text-sm leading-none select-none">+</span>
+						<Plus size={13} strokeWidth={2} />
 					</button>
 
 					{/* @ Mentions button */}
 					<button
 						type="button"
-						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#181818] text-xs font-medium"
+						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-6 h-6 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#1e1e1e] border border-white/10 hover:border-white/20"
 						title="Mention a file or symbol"
+						onClick={() => {
+							// Insert @ into textarea to trigger the mention context menu
+							const textarea = divRef?.current?.querySelector('textarea') as HTMLTextAreaElement | null;
+							if (textarea) {
+								textarea.focus();
+								const start = textarea.selectionStart ?? textarea.value.length;
+								const end = textarea.selectionEnd ?? textarea.value.length;
+								const before = textarea.value.substring(0, start);
+								const after = textarea.value.substring(end);
+								const newVal = before + '@' + after;
+								textarea.value = newVal;
+								textarea.setSelectionRange(start + 1, start + 1);
+								textarea.dispatchEvent(new Event('input', { bubbles: true }));
+							}
+						}}
 					>
-						<span className="leading-none select-none">@</span>
+						<AtSign size={13} strokeWidth={2} />
 					</button>
 
 					{/* File chips inline */}
@@ -485,7 +501,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			)}
 
 			{/* Input section */}
-			<div className="relative w-full px-3 pt-2 pb-1">
+			<div className="relative w-full px-1.5 pt-1 pb-0">
 				{children}
 
 				{/* Close button (X) if onClose is provided */}
@@ -501,14 +517,14 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 			</div>
 
 			{/* Bottom row - Cleaner design */}
-			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-1 pt-1'>
+			<div className='flex flex-row justify-between items-end gap-2 px-1.5 pb-1 pt-1'>
 				{showModelDropdown && (
 					<div className='flex items-center gap-2 text-nowrap'>
 						<div className='flex items-center gap-0.5'>
-							<ChevronRight size={11} className='text-loophole-fg-3 rotate-90 flex-shrink-0' />
-							<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 hover:text-loophole-fg-1 transition-colors' />
+							<ChevronRight size={11} className='text-[#c9c9c9] rotate-90 flex-shrink-0' />
+							<ModelDropdown featureName={featureName} className='text-xs text-[#c9c9c9] hover:text-white transition-colors' />
 						</div>
-						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:text-loophole-fg-1 transition-colors' />}
+						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-[#c9c9c9] hover:text-white transition-colors' />}
 					</div>
 				)}
 
@@ -831,11 +847,11 @@ export const SelectedFiles = (
 							className={`
 								flex items-center gap-1 relative
 								px-1.5
-								w-fit h-5
+								w-fit h-6
 								select-none
 								text-xs text-nowrap
 								rounded
-								${isThisSelectionProspective ? 'bg-[#181818] text-loophole-fg-3 opacity-80' : 'bg-[#181818] hover:brightness-110 text-loophole-fg-1'}
+								${isThisSelectionProspective ? 'bg-[#1e1e1e] text-loophole-fg-3 opacity-80' : 'bg-[#1e1e1e] hover:brightness-110 text-loophole-fg-1'}
 								transition-all duration-150
 							`}
 							onClick={() => {
@@ -1238,8 +1254,12 @@ const UserMessageComponent = ({ chatMessage, messageIdx, isCheckpointGhost, curr
 	let chatbubbleContents: React.ReactNode
 	if (mode === 'display') {
 		chatbubbleContents = <>
-			<SelectedFiles type='past' messageIdx={messageIdx} selections={chatMessage.selections || []} />
-			<span className='px-0.5'>{chatMessage.displayContent}</span>
+			{(chatMessage.selections?.length ?? 0) > 0 && (
+				<div className='px-3 pt-2.5 pb-1'>
+					<SelectedFiles type='past' messageIdx={messageIdx} selections={chatMessage.selections || []} />
+				</div>
+			)}
+			<span className='px-3 pt-2 pb-2.5 block text-sm leading-relaxed'>{chatMessage.displayContent}</span>
 		</>
 	}
 	else if (mode === 'edit') {
@@ -1337,9 +1357,9 @@ const UserMessageComponent = ({ chatMessage, messageIdx, isCheckpointGhost, curr
 		<div
 			// style chatbubble according to role
 			className={`
-            text-left rounded-lg max-w-full
+            text-left rounded-xl max-w-full
             ${mode === 'edit' ? ''
-					: mode === 'display' ? 'p-2 flex flex-col bg-loophole-bg-1 text-loophole-fg-1 overflow-x-auto cursor-pointer' : ''
+					: mode === 'display' ? 'flex flex-col bg-[#1e1e1e] border border-white/[0.12] text-loophole-fg-1 overflow-x-auto cursor-pointer' : ''
 				}
         `}
 			onClick={() => { if (mode === 'display') { onOpenEdit() } }}
@@ -3250,7 +3270,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[30px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight`}
+			className={`min-h-[30px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight bg-[#1e1e1e] !bg-[#1e1e1e]`}
 			placeholder={`Ask anything — @ to mention`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
@@ -3314,8 +3334,8 @@ export const SidebarChat = () => {
 			<WelcomeScreen />
 		</ErrorBoundary>
 
-		{/* Past Interactions */}
-		<div className='flex-1 overflow-y-auto'>
+		{/* Past Interactions — pushed to bottom */}
+		<div className='flex-1 overflow-y-auto flex flex-col justify-end'>
 			{Object.keys(chatThreadsState.allThreads).length > 1 &&
 				<ErrorBoundary>
 					{/* Header row */}
@@ -3327,9 +3347,7 @@ export const SidebarChat = () => {
 						</span>
 					</div>
 					{/* Thread rows */}
-					<div className='px-2'>
-						<PastThreadsList />
-					</div>
+					<PastThreadsList />
 				</ErrorBoundary>
 			}
 		</div>
