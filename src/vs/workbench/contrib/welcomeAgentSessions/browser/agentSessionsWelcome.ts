@@ -702,7 +702,8 @@ export class AgentSessionsWelcomePage extends EditorPane {
 		}
 
 		const providers = this.productService.defaultChatAgent?.provider;
-		if (!providers || !providers.default || !this.productService.defaultChatAgent?.termsStatementUrl || !this.productService.defaultChatAgent?.privacyStatementUrl) {
+		// Copilot removed - no privacy notice without defaultChatAgent
+		if (!providers || !providers.default) {
 			return;
 		}
 

@@ -919,9 +919,16 @@ export class GettingStartedPage extends EditorPane {
 			onShowOnStartupChanged();
 		}));
 
-		const header = $('.header', {},
+		// Loophole-style centered header with logo
+		const logoImg = $('img.welcome-logo', {
+			src: 'resources/win32/loophole.ico',
+			alt: 'Loophole'
+		});
+
+		const header = $('.header.loophole-header', {},
+			logoImg,
 			$('h1.product-name.caption', {}, this.productService.nameLong),
-			$('p.subtitle.description', {}, localize({ key: 'gettingStarted.editingEvolved', comment: ['Shown as subtitle on the Welcome page.'] }, "Editing evolved"))
+			$('p.subtitle.description', {}, localize({ key: 'gettingStarted.loopholeTagline', comment: ['Shown as subtitle on the Welcome page.'] }, "The AI IDE that thinks while you code"))
 		);
 
 		const leftColumn = $('.categories-column.categories-column-left', {},);

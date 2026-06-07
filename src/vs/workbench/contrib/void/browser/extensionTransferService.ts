@@ -38,8 +38,11 @@ const extensionBlacklist = [
 	'codeium.codeium',
 	'saoudrizwan.claude-dev', // cline
 	'rooveterinaryinc.roo-cline', // roo
-	'supermaven.supermaven' // supermaven
-	// 'github.copilot',
+	'supermaven.supermaven', // supermaven
+	'github.copilot',
+	'github.copilot-chat',
+	'github.copilot-labs',
+	'github.copilot-nightly'
 ];
 
 

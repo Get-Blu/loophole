@@ -201,6 +201,112 @@ export const TokenCounter = () => {
 	);
 };
 
+// Hook to calculate context window usage for current thread
+const useContextWindowUsage = (featureName: FeatureName): { usedTokens: number; maxTokens: number; percentage: number } => {
+	const chatThreadsState = useChatThreadsState();
+	const settingsState = useSettingsState();
+
+	// Get current thread and its messages
+	const currentThreadId = chatThreadsState.currentThreadId;
+	const currentThread = chatThreadsState.allThreads[currentThreadId];
+	const messages = currentThread?.messages || [];
+
+	// Calculate total tokens used in current thread
+	const usedTokens = useMemo(() => {
+		return messages.reduce((total, message) => {
+			if (message.role === 'assistant' && message.tokenUsage) {
+				return total + message.tokenUsage.totalTokens;
+			}
+			return total;
+		}, 0);
+	}, [messages]);
+
+	// Get model selection and context window size
+	const modelSelection = settingsState.modelSelectionOfFeature[featureName];
+	const overridesOfModel = settingsState.overridesOfModel;
+
+	const maxTokens = useMemo(() => {
+		if (!modelSelection) return 128_000; // Default fallback
+
+		const { modelName, providerName } = modelSelection;
+		const capabilities = getModelCapabilities(providerName, modelName, overridesOfModel);
+		return capabilities.contextWindow || 128_000;
+	}, [modelSelection, overridesOfModel]);
+
+	const percentage = useMemo(() => {
+		if (maxTokens === 0) return 0;
+		return Math.min((usedTokens / maxTokens) * 100, 100);
+	}, [usedTokens, maxTokens]);
+
+	return { usedTokens, maxTokens, percentage };
+};
+
+// Context Window Indicator Component
+const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) => {
+	const { usedTokens, maxTokens, percentage } = useContextWindowUsage(featureName);
+	const [showTooltip, setShowTooltip] = useState(false);
+
+	// Calculate stroke dash offset for circular progress
+	// Full circle circumference = 2 * π * r = 2 * π * 6 = 37.7
+	const circumference = 37.7;
+	const strokeDashoffset = circumference - (circumference * percentage) / 100;
+
+	// Determine color based on usage percentage
+	const getColor = () => {
+		if (percentage >= 90) return '#ef4444'; // red
+		if (percentage >= 75) return '#f59e0b'; // orange
+		return 'currentColor'; // default
+	};
+
+	return (
+		<div className="relative">
+			<button
+				type="button"
+				className="p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-loophole-bg-2 text-loophole-fg-3 hover:text-loophole-fg-1"
+				onMouseEnter={() => setShowTooltip(true)}
+				onMouseLeave={() => setShowTooltip(false)}
+			>
+				<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+					{/* Background circle */}
+					<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+					{/* Progress circle */}
+					<circle
+						cx="8"
+						cy="8"
+						r="6"
+						stroke={getColor()}
+						strokeWidth="1.5"
+						strokeDasharray={circumference}
+						strokeDashoffset={strokeDashoffset}
+						strokeLinecap="round"
+						transform="rotate(-90 8 8)"
+						style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+					/>
+				</svg>
+			</button>
+
+			{/* Tooltip */}
+			{showTooltip && (
+				<div
+					className="absolute bottom-full mb-2 right-0 bg-[var(--vscode-editorHoverWidget-background)] border border-[var(--vscode-editorHoverWidget-border)] rounded px-2 py-1.5 text-xs whitespace-nowrap shadow-lg z-50"
+					style={{ minWidth: '120px' }}
+				>
+					<div className="flex justify-between items-center text-gray-400 mb-0.5">
+						<span>Context usage</span>
+					</div>
+					<div className="flex justify-between items-center text-loophole-fg-1">
+						<span>Total</span>
+						<span className="font-medium">{percentage.toFixed(0)}%</span>
+					</div>
+					<div className="text-gray-500 text-[10px] mt-0.5">
+						{formatTokenCount(usedTokens)} / {formatTokenCount(maxTokens)}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+};
+
 // SLIDER ONLY:
 const ReasoningOptionSlider = ({ featureName }: { featureName: FeatureName }) => {
 	const accessor = useAccessor()

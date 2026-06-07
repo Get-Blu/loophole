@@ -27,9 +27,8 @@ import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickin
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 
-// Register Loophole sidebar icon - using custom CSS class for image-based icon
-const loopholeSidebarIcon = registerIcon('loophole-sidebar-toggle', Codicon.symbolMethod, localize('loopholeSidebarToggle', "Toggle Loophole AI Sidebar"));
-// CSS class for custom icon: .loophole-custom-icon (defined in titlebarpart.css)
+// Register Loophole sidebar icon - using sparkle icon for AI features
+const loopholeSidebarIcon = registerIcon('loophole-sidebar-toggle', Codicon.sparkle, localize('loopholeSidebarToggle', "Toggle Loophole AI Sidebar"));
 
 // ---------- Toggle Sidebar Action ----------
 

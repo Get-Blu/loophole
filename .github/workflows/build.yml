@@ -7,27 +7,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          
+
       - name: Install dependencies
         run: npm install --ignore-scripts
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Run preinstall
         run: node --experimental-strip-types build/npm/preinstall.ts
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Run postinstall
         run: node --experimental-strip-types build/npm/postinstall.ts
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Rebuild native modules
         run: npm rebuild node-pty
         env:
@@ -37,30 +37,30 @@ jobs:
         run: npm rebuild
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Download ripgrep
         run: node node_modules/@vscode/ripgrep/lib/postinstall.js
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Install React dependencies
         run: cd src/vs/workbench/contrib/void/browser/react && npm install
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Build React Components
         run: npm run buildreact
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Remove react node_modules before compile
         run: Remove-Item -Recurse -Force src/vs/workbench/contrib/void/browser/react/node_modules
-        
+
       - name: Compile
         run: npm run compile
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Remove copilot test extension
         run: Remove-Item -Recurse -Force extensions/copilot/test/simulation -ErrorAction SilentlyContinue
 
@@ -68,21 +68,21 @@ jobs:
         run: |
           Get-ChildItem -Path "node_modules" -Recurse -Directory | Where-Object { $_.Name -in @("arm64-linux", "x64-linux", "x64-darwin", "arm64-darwin") } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
           Get-ChildItem -Path "node_modules" -Recurse -Filter "*.node" | Where-Object { $_.FullName -match "linux|darwin" } | Remove-Item -Force -ErrorAction SilentlyContinue
-          
+
       - name: Build Windows App
         run: npm run gulp -- loophole-win32-x64
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Build Windows Installer
         run: npm run gulp -- loophole-win32-x64-user-setup
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-          
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: loophole-windows
           path: |
             Loophole-win32-x64/
-            .build/win32-x64/user-setup/
+            .build/

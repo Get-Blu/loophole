@@ -405,11 +405,11 @@ export class ChatEntitlementService extends Disposable implements IChatEntitleme
 	}
 
 	get previewFeaturesDisabled(): boolean {
-		return this.contextKeyService.getContextKeyValue<boolean>('github.copilot.previewFeaturesDisabled') === true;
+		return false; // Copilot removed
 	}
 
 	get clientByokEnabled(): boolean {
-		return this.contextKeyService.getContextKeyValue<boolean>('github.copilot.clientByokEnabled') === true;
+		return false; // Copilot removed
 	}
 
 	//#endregion

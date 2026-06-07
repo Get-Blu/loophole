@@ -17,34 +17,16 @@ import { IExtensionService } from '../../extensions/common/extensions.js';
 export enum ExtensionsFilter {
 
 	/**
-	 * Version of the github.copilot extension.
-	 */
-	CopilotExtensionVersion = 'X-Copilot-RelatedPluginVersion-githubcopilot',
-
-	/**
-	 * Version of the github.copilot-chat extension.
-	 */
-	CopilotChatExtensionVersion = 'X-Copilot-RelatedPluginVersion-githubcopilotchat',
-
-	/**
-	 * Version of the completions version.
+	 * Version of the completions version (Copilot removed).
 	 */
 	CompletionsVersionInCopilotChat = 'X-VSCode-CompletionsInChatExtensionVersion',
-
-	/**
-	 * SKU of the copilot entitlement.
-	 */
-	CopilotSku = 'X-GitHub-Copilot-SKU',
 
 	/**
 	 * The internal org of the user.
 	 */
 	MicrosoftInternalOrg = 'X-Microsoft-Internal-Org',
 
-	/**
-	 * The tracking ID of the user from Copilot entitlement API.
-	 */
-	CopilotTrackingId = 'X-Copilot-Tracking-Id',
+
 
 	/**
 	 * Whether the `sn` flag is set to `'1'` in the copilot token.
@@ -121,80 +103,38 @@ export class CopilotAssignmentFilterProvider extends Disposable implements IExpe
 	}
 
 	private async updateExtensionVersions() {
-		let copilotExtensionVersion;
-		let copilotChatExtensionVersion;
-		let copilotCompletionsVersion;
-
-		try {
-			const [copilotExtension, copilotChatExtension] = await Promise.all([
-				this._extensionService.getExtension('github.copilot'),
-				this._extensionService.getExtension('github.copilot-chat'),
-			]);
-
-			copilotExtensionVersion = copilotExtension?.version;
-			copilotChatExtensionVersion = copilotChatExtension?.version;
-			copilotCompletionsVersion = (copilotChatExtension as typeof copilotChatExtension & { completionsCoreVersion?: string })?.completionsCoreVersion;
-		} catch (error) {
-			this._logService.error('Failed to update extension version assignments', error);
-		}
-
-		if (this.copilotCompletionsVersion === copilotCompletionsVersion &&
-			this.copilotExtensionVersion === copilotExtensionVersion &&
-			this.copilotChatExtensionVersion === copilotChatExtensionVersion) {
-			return;
-		}
-
-		this.copilotExtensionVersion = copilotExtensionVersion;
-		this.copilotChatExtensionVersion = copilotChatExtensionVersion;
-		this.copilotCompletionsVersion = copilotCompletionsVersion;
-
-		this._storageService.store(StorageVersionKeys.CopilotExtensionVersion, this.copilotExtensionVersion, StorageScope.PROFILE, StorageTarget.MACHINE);
-		this._storageService.store(StorageVersionKeys.CopilotChatExtensionVersion, this.copilotChatExtensionVersion, StorageScope.PROFILE, StorageTarget.MACHINE);
-		this._storageService.store(StorageVersionKeys.CompletionsVersion, this.copilotCompletionsVersion, StorageScope.PROFILE, StorageTarget.MACHINE);
-
-		// Notify that the filters have changed.
-		this._onDidChangeFilters.fire();
+		// Copilot extension tracking removed
+		return;
 	}
 
 	private updateCopilotEntitlementInfo() {
-		const newSku = this._chatEntitlementService.sku;
-		const newTrackingId = this._chatEntitlementService.copilotTrackingId;
-		const newInternalOrg = getInternalOrg(this._chatEntitlementService.organisations);
-
-		if (this.copilotSku === newSku && this.copilotInternalOrg === newInternalOrg && this.copilotTrackingId === newTrackingId) {
-			return;
-		}
-
-		this.copilotSku = newSku;
-		this.copilotInternalOrg = newInternalOrg;
-		this.copilotTrackingId = newTrackingId;
-
-		this._storageService.store(StorageVersionKeys.CopilotSku, this.copilotSku, StorageScope.PROFILE, StorageTarget.MACHINE);
-		this._storageService.store(StorageVersionKeys.CopilotInternalOrg, this.copilotInternalOrg, StorageScope.PROFILE, StorageTarget.MACHINE);
+		// Copilot entitlement tracking removed
+		return;
+	}
 		this._storageService.store(StorageVersionKeys.CopilotTrackingId, this.copilotTrackingId, StorageScope.PROFILE, StorageTarget.MACHINE);
 
-		// Notify that the filters have changed.
-		this._onDidChangeFilters.fire();
+// Notify that the filters have changed.
+this._onDidChangeFilters.fire();
 	}
 
 	private updateCopilotTokenInfo() {
-		const tokenInfo = this._defaultAccountService.copilotTokenInfo;
-		const newIsSn = tokenInfo?.sn === '1' ? '1' : '0';
-		const newIsFcv1 = tokenInfo?.fcv1 === '1' ? '1' : '0';
+	const tokenInfo = this._defaultAccountService.copilotTokenInfo;
+	const newIsSn = tokenInfo?.sn === '1' ? '1' : '0';
+	const newIsFcv1 = tokenInfo?.fcv1 === '1' ? '1' : '0';
 
-		if (this.copilotIsSn === newIsSn && this.copilotIsFcv1 === newIsFcv1) {
-			return;
-		}
-
-		this.copilotIsSn = newIsSn;
-		this.copilotIsFcv1 = newIsFcv1;
-
-		this._storageService.store(StorageVersionKeys.CopilotIsSn, this.copilotIsSn, StorageScope.PROFILE, StorageTarget.MACHINE);
-		this._storageService.store(StorageVersionKeys.CopilotIsFcv1, this.copilotIsFcv1, StorageScope.PROFILE, StorageTarget.MACHINE);
-
-		// Notify that the filters have changed.
-		this._onDidChangeFilters.fire();
+	if (this.copilotIsSn === newIsSn && this.copilotIsFcv1 === newIsFcv1) {
+		return;
 	}
+
+	this.copilotIsSn = newIsSn;
+	this.copilotIsFcv1 = newIsFcv1;
+
+	this._storageService.store(StorageVersionKeys.CopilotIsSn, this.copilotIsSn, StorageScope.PROFILE, StorageTarget.MACHINE);
+	this._storageService.store(StorageVersionKeys.CopilotIsFcv1, this.copilotIsFcv1, StorageScope.PROFILE, StorageTarget.MACHINE);
+
+	// Notify that the filters have changed.
+	this._onDidChangeFilters.fire();
+}
 
 	/**
 	 * Returns a version string that can be parsed by the TAS client.
@@ -204,42 +144,42 @@ export class CopilotAssignmentFilterProvider extends Disposable implements IExpe
 	 * @param version Version string to be trimmed.
 	*/
 	private static trimVersionSuffix(version: string): string {
-		const regex = /\-[a-zA-Z0-9]+$/;
-		const result = version.split(regex);
+	const regex = /\-[a-zA-Z0-9]+$/;
+	const result = version.split(regex);
 
-		return result[0];
+	return result[0];
+}
+
+getFilterValue(filter: string): string | null {
+	switch (filter) {
+		case ExtensionsFilter.CopilotExtensionVersion:
+			return this.copilotExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotExtensionVersion) : null;
+		case ExtensionsFilter.CompletionsVersionInCopilotChat:
+			return this.copilotCompletionsVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotCompletionsVersion) : null;
+		case ExtensionsFilter.CopilotChatExtensionVersion:
+			return this.copilotChatExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotChatExtensionVersion) : null;
+		case ExtensionsFilter.CopilotSku:
+			return this.copilotSku ?? null;
+		case ExtensionsFilter.MicrosoftInternalOrg:
+			return this.copilotInternalOrg ?? null;
+		case ExtensionsFilter.CopilotTrackingId:
+			return this.copilotTrackingId ?? null;
+		case ExtensionsFilter.CopilotIsSn:
+			return this.copilotIsSn ?? null;
+		case ExtensionsFilter.CopilotIsFcv1:
+			return this.copilotIsFcv1 ?? null;
+		default:
+			return null;
 	}
+}
 
-	getFilterValue(filter: string): string | null {
-		switch (filter) {
-			case ExtensionsFilter.CopilotExtensionVersion:
-				return this.copilotExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotExtensionVersion) : null;
-			case ExtensionsFilter.CompletionsVersionInCopilotChat:
-				return this.copilotCompletionsVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotCompletionsVersion) : null;
-			case ExtensionsFilter.CopilotChatExtensionVersion:
-				return this.copilotChatExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotChatExtensionVersion) : null;
-			case ExtensionsFilter.CopilotSku:
-				return this.copilotSku ?? null;
-			case ExtensionsFilter.MicrosoftInternalOrg:
-				return this.copilotInternalOrg ?? null;
-			case ExtensionsFilter.CopilotTrackingId:
-				return this.copilotTrackingId ?? null;
-			case ExtensionsFilter.CopilotIsSn:
-				return this.copilotIsSn ?? null;
-			case ExtensionsFilter.CopilotIsFcv1:
-				return this.copilotIsFcv1 ?? null;
-			default:
-				return null;
-		}
+getFilters(): Map < string, string | null > {
+	const filters = new Map<string, string | null>();
+	const filterValues = Object.values(ExtensionsFilter);
+	for(const value of filterValues) {
+		filters.set(value, this.getFilterValue(value));
 	}
-
-	getFilters(): Map<string, string | null> {
-		const filters = new Map<string, string | null>();
-		const filterValues = Object.values(ExtensionsFilter);
-		for (const value of filterValues) {
-			filters.set(value, this.getFilterValue(value));
-		}
 
 		return filters;
-	}
+}
 }

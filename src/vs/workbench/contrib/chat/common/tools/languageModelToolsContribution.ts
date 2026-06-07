@@ -257,9 +257,8 @@ export class LanguageModelToolsExtensionPointHandler implements IWorkbenchContri
 					}
 
 					// If OSS and the product.json is not set up, fall back to checking api proposal
-					const isBuiltinTool = productService.defaultChatAgent?.chatExtensionId ?
-						ExtensionIdentifier.equals(extension.description.identifier, productService.defaultChatAgent.chatExtensionId) :
-						isProposedApiEnabled(extension.description, 'chatParticipantPrivate');
+					// Copilot removed - check API proposal only
+					const isBuiltinTool = isProposedApiEnabled(extension.description, 'chatParticipantPrivate');
 
 					const source: ToolDataSource = isBuiltinTool
 						? ToolDataSource.Internal
@@ -299,9 +298,8 @@ export class LanguageModelToolsExtensionPointHandler implements IWorkbenchContri
 					continue;
 				}
 
-				const isBuiltinTool = productService.defaultChatAgent?.chatExtensionId ?
-					ExtensionIdentifier.equals(extension.description.identifier, productService.defaultChatAgent.chatExtensionId) :
-					isProposedApiEnabled(extension.description, 'chatParticipantPrivate');
+				// Copilot removed - check API proposal only
+				const isBuiltinTool = isProposedApiEnabled(extension.description, 'chatParticipantPrivate');
 
 				const source: ToolDataSource = isBuiltinTool
 					? ToolDataSource.Internal

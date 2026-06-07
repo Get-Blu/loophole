@@ -8,21 +8,21 @@
 AppId={#AppId}
 AppName={#NameLong}
 AppVerName={#NameVersion}
-AppPublisher=Microsoft Corporation
-AppPublisherURL=https://code.visualstudio.com/
-AppSupportURL=https://code.visualstudio.com/
-AppUpdatesURL=https://code.visualstudio.com/
+AppPublisher=Garv Agnihotri
+AppPublisherURL=https://github.com/loophole-ai/loophole-ide
+AppSupportURL=https://github.com/loophole-ai/loophole-ide
+AppUpdatesURL=https://github.com/loophole-ai/loophole-ide
 DefaultGroupName={#NameLong}
 AllowNoIcons=yes
 OutputDir={#OutputDir}
-OutputBaseFilename=VSCodeSetup
+OutputBaseFilename=LoopholeSetup
 Compression=lzma
 SolidCompression=yes
 AppMutex={code:GetAppMutex}
 SetupMutex={code:GetSetupMutex}
 WizardImageFile="{#RepoDir}\resources\win32\inno-big-100.bmp,{#RepoDir}\resources\win32\inno-big-125.bmp,{#RepoDir}\resources\win32\inno-big-150.bmp,{#RepoDir}\resources\win32\inno-big-175.bmp,{#RepoDir}\resources\win32\inno-big-200.bmp,{#RepoDir}\resources\win32\inno-big-225.bmp,{#RepoDir}\resources\win32\inno-big-250.bmp"
 WizardSmallImageFile="{#RepoDir}\resources\win32\inno-small-100.bmp,{#RepoDir}\resources\win32\inno-small-125.bmp,{#RepoDir}\resources\win32\inno-small-150.bmp,{#RepoDir}\resources\win32\inno-small-175.bmp,{#RepoDir}\resources\win32\inno-small-200.bmp,{#RepoDir}\resources\win32\inno-small-225.bmp,{#RepoDir}\resources\win32\inno-small-250.bmp"
-SetupIconFile={#RepoDir}\resources\win32\code.ico
+SetupIconFile={#RepoDir}\resources\win32\loophole.ico
 UninstallDisplayIcon={app}\{#ExeBasename}.exe
 ChangesEnvironment=true
 ChangesAssociations=true
@@ -35,9 +35,6 @@ ArchitecturesAllowed={#ArchitecturesAllowed}
 ArchitecturesInstallIn64BitMode={#ArchitecturesInstallIn64BitMode}
 WizardStyle=modern
 
-// We've seen an uptick on broken installations from updates which were unable
-// to shutdown VS Code. We rely on the fact that the update signals
-// that VS Code is ready to be shutdown, so we're good to use `force` here.
 CloseApplications=force
 
 #ifdef Sign

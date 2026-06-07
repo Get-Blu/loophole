@@ -1118,3 +1118,101 @@
 .monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlide .getting-started-checkbox {
 	border-color: var(--vscode-checkbox-border) !important;
 }
+
+
+/* ============================================
+   Loophole Custom Cursor-style Welcome Screen
+   ============================================ */
+
+/* Center everything like Cursor */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	padding: 60px 24px;
+}
+
+/* Logo styling */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .welcome-logo {
+	width: 64px;
+	height: 64px;
+	margin-bottom: 24px;
+	display: block;
+}
+
+/* Loophole header - centered */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .loophole-header {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	margin-bottom: 48px;
+	grid-area: unset !important;
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .loophole-header h1 {
+	font-size: 2.5em;
+	font-weight: 600;
+	margin: 16px 0 8px 0;
+	white-space: normal;
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .loophole-header .subtitle {
+	font-size: 1.1em;
+	font-weight: 500;
+	opacity: 0.8;
+	margin-top: 8px;
+	max-width: 600px;
+}
+
+/* Hide the grid layout for columns - we want centered */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .categories-column-left,
+.monaco-workbench .part.editor > .content .gettingStartedContainer .categories-column-right {
+	grid-area: unset !important;
+	width: 100%;
+	max-width: 700px;
+	margin: 0 auto;
+}
+
+/* Action buttons like Cursor's */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories .getting-started-category {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 20px;
+	background: var(--vscode-button-secondaryBackground);
+	border: 1px solid var(--vscode-button-secondaryBorder, transparent);
+	border-radius: 8px;
+	margin-bottom: 12px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories .getting-started-category:hover {
+	background: var(--vscode-button-secondaryHoverBackground);
+	transform: translateY(-1px);
+}
+
+/* Recent projects styling */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .recently-opened {
+	margin-top: 48px;
+	width: 100%;
+	max-width: 700px;
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .recently-opened .category-title {
+	font-size: 13px;
+	opacity: 0.7;
+	margin-bottom: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+/* Footer - centered and minimal */
+.monaco-workbench .part.editor > .content .gettingStartedContainer .footer {
+	grid-area: unset !important;
+	margin-top: 48px;
+	opacity: 0.7;
+}

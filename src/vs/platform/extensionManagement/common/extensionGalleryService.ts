@@ -1169,18 +1169,11 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 			const { extensions, total } = await this.queryGalleryExtensions(query, { targetPlatform: CURRENT_TARGET_PLATFORM, compatible: false, includePreRelease: !!options.includePreRelease, productVersion: options.productVersion ?? { version: this.productService.version, date: this.productService.date } }, extensionGalleryManifest, token);
 
 			const result: IGalleryExtension[] = [];
-			let defaultChatAgentExtension: IGalleryExtension | undefined;
+			// Copilot removed - no special extension handling
 			for (let index = 0; index < extensions.length; index++) {
 				const extension = extensions[index];
 				setTelemetry(extension, ((query.pageNumber - 1) * query.pageSize) + index, options.source);
-				if (areSameExtensions(extension.identifier, { id: this.productService.defaultChatAgent.extensionId, })) {
-					defaultChatAgentExtension = extension;
-				} else {
-					result.push(extension);
-				}
-			}
-			if (defaultChatAgentExtension) {
-				result.push(defaultChatAgentExtension);
+				result.push(extension);
 			}
 
 			return { extensions: result, total };
@@ -2005,15 +1998,7 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 			}
 		}
 
-		deprecated[this.productService.defaultChatAgent.extensionId.toLowerCase()] = {
-			disallowInstall: true,
-			extension: {
-				id: this.productService.defaultChatAgent.chatExtensionId,
-				displayName: 'GitHub Copilot Chat',
-				autoMigrate: { storage: false, donotDisable: true },
-				preRelease: this.productService.quality !== 'stable'
-			}
-		};
+		// Copilot removed - no deprecated extension migration
 
 		return { malicious, deprecated, search, autoUpdate };
 	}

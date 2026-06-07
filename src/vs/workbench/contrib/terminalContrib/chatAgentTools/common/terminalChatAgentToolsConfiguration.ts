@@ -38,9 +38,7 @@ export const enum TerminalChatAgentToolsSettingId {
 	DeprecatedAgentSandboxMacFileSystem = 'chat.agent.sandboxFileSystem.mac',
 	DeprecatedAutoApproveCompatible = 'chat.agent.terminal.autoApprove',
 	DeprecatedAutoApprove1 = 'chat.agent.terminal.allowList',
-	DeprecatedAutoApprove2 = 'chat.agent.terminal.denyList',
-	DeprecatedAutoApprove3 = 'github.copilot.chat.agent.terminal.allowList',
-	DeprecatedAutoApprove4 = 'github.copilot.chat.agent.terminal.denyList',
+	DeprecatedAutoApprove2 = 'chat.agent.terminal.denyList'
 }
 
 export const enum TerminalChatAgentToolsSandboxEnabledValue {
