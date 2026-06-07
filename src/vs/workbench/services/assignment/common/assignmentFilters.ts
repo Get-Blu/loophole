@@ -111,30 +111,25 @@ export class CopilotAssignmentFilterProvider extends Disposable implements IExpe
 		// Copilot entitlement tracking removed
 		return;
 	}
-		this._storageService.store(StorageVersionKeys.CopilotTrackingId, this.copilotTrackingId, StorageScope.PROFILE, StorageTarget.MACHINE);
-
-// Notify that the filters have changed.
-this._onDidChangeFilters.fire();
-	}
 
 	private updateCopilotTokenInfo() {
-	const tokenInfo = this._defaultAccountService.copilotTokenInfo;
-	const newIsSn = tokenInfo?.sn === '1' ? '1' : '0';
-	const newIsFcv1 = tokenInfo?.fcv1 === '1' ? '1' : '0';
+		const tokenInfo = this._defaultAccountService.copilotTokenInfo;
+		const newIsSn = tokenInfo?.sn === '1' ? '1' : '0';
+		const newIsFcv1 = tokenInfo?.fcv1 === '1' ? '1' : '0';
 
-	if (this.copilotIsSn === newIsSn && this.copilotIsFcv1 === newIsFcv1) {
-		return;
+		if (this.copilotIsSn === newIsSn && this.copilotIsFcv1 === newIsFcv1) {
+			return;
+		}
+
+		this.copilotIsSn = newIsSn;
+		this.copilotIsFcv1 = newIsFcv1;
+
+		this._storageService.store(StorageVersionKeys.CopilotIsSn, this.copilotIsSn, StorageScope.PROFILE, StorageTarget.MACHINE);
+		this._storageService.store(StorageVersionKeys.CopilotIsFcv1, this.copilotIsFcv1, StorageScope.PROFILE, StorageTarget.MACHINE);
+
+		// Notify that the filters have changed.
+		this._onDidChangeFilters.fire();
 	}
-
-	this.copilotIsSn = newIsSn;
-	this.copilotIsFcv1 = newIsFcv1;
-
-	this._storageService.store(StorageVersionKeys.CopilotIsSn, this.copilotIsSn, StorageScope.PROFILE, StorageTarget.MACHINE);
-	this._storageService.store(StorageVersionKeys.CopilotIsFcv1, this.copilotIsFcv1, StorageScope.PROFILE, StorageTarget.MACHINE);
-
-	// Notify that the filters have changed.
-	this._onDidChangeFilters.fire();
-}
 
 	/**
 	 * Returns a version string that can be parsed by the TAS client.
@@ -144,42 +139,42 @@ this._onDidChangeFilters.fire();
 	 * @param version Version string to be trimmed.
 	*/
 	private static trimVersionSuffix(version: string): string {
-	const regex = /\-[a-zA-Z0-9]+$/;
-	const result = version.split(regex);
+		const regex = /\-[a-zA-Z0-9]+$/;
+		const result = version.split(regex);
 
-	return result[0];
-}
-
-getFilterValue(filter: string): string | null {
-	switch (filter) {
-		case ExtensionsFilter.CopilotExtensionVersion:
-			return this.copilotExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotExtensionVersion) : null;
-		case ExtensionsFilter.CompletionsVersionInCopilotChat:
-			return this.copilotCompletionsVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotCompletionsVersion) : null;
-		case ExtensionsFilter.CopilotChatExtensionVersion:
-			return this.copilotChatExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotChatExtensionVersion) : null;
-		case ExtensionsFilter.CopilotSku:
-			return this.copilotSku ?? null;
-		case ExtensionsFilter.MicrosoftInternalOrg:
-			return this.copilotInternalOrg ?? null;
-		case ExtensionsFilter.CopilotTrackingId:
-			return this.copilotTrackingId ?? null;
-		case ExtensionsFilter.CopilotIsSn:
-			return this.copilotIsSn ?? null;
-		case ExtensionsFilter.CopilotIsFcv1:
-			return this.copilotIsFcv1 ?? null;
-		default:
-			return null;
+		return result[0];
 	}
-}
 
-getFilters(): Map < string, string | null > {
-	const filters = new Map<string, string | null>();
-	const filterValues = Object.values(ExtensionsFilter);
-	for(const value of filterValues) {
-		filters.set(value, this.getFilterValue(value));
+	getFilterValue(filter: string): string | null {
+		switch (filter) {
+			case ExtensionsFilter.CopilotExtensionVersion:
+				return this.copilotExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotExtensionVersion) : null;
+			case ExtensionsFilter.CompletionsVersionInCopilotChat:
+				return this.copilotCompletionsVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotCompletionsVersion) : null;
+			case ExtensionsFilter.CopilotChatExtensionVersion:
+				return this.copilotChatExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotChatExtensionVersion) : null;
+			case ExtensionsFilter.CopilotSku:
+				return this.copilotSku ?? null;
+			case ExtensionsFilter.MicrosoftInternalOrg:
+				return this.copilotInternalOrg ?? null;
+			case ExtensionsFilter.CopilotTrackingId:
+				return this.copilotTrackingId ?? null;
+			case ExtensionsFilter.CopilotIsSn:
+				return this.copilotIsSn ?? null;
+			case ExtensionsFilter.CopilotIsFcv1:
+				return this.copilotIsFcv1 ?? null;
+			default:
+				return null;
+		}
 	}
+
+	getFilters(): Map<string, string | null> {
+		const filters = new Map<string, string | null>();
+		const filterValues = Object.values(ExtensionsFilter);
+		for (const value of filterValues) {
+			filters.set(value, this.getFilterValue(value));
+		}
 
 		return filters;
-}
+	}
 }
