@@ -1,4 +1,4 @@
-name: Build Windows Script
+- name: Build Windows Script
 on:
   workflow_dispatch:
 jobs:
@@ -79,10 +79,13 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
 
+      - name: Move build output into workspace
+        run: Move-Item -Path "..\Loophole-win32-x64" -Destination "$env:GITHUB_WORKSPACE\Loophole-win32-x64"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: loophole-windows
           path: |
-            ../Loophole-win32-x64/
+            Loophole-win32-x64/
             .build/win32-x64/
