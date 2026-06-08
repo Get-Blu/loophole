@@ -49,14 +49,10 @@ enum StorageVersionKeys {
 }
 
 export class CopilotAssignmentFilterProvider extends Disposable implements IExperimentationFilterProvider {
-	private copilotChatExtensionVersion: string | undefined;
-	private copilotExtensionVersion: string | undefined;
 	// TODO@benibenj remove this when completions have been ported to chat
 	private copilotCompletionsVersion: string | undefined;
 
 	private copilotInternalOrg: string | undefined;
-	private copilotSku: string | undefined;
-	private copilotTrackingId: string | undefined;
 	private copilotIsSn: string | undefined;
 	private copilotIsFcv1: string | undefined;
 
@@ -71,12 +67,8 @@ export class CopilotAssignmentFilterProvider extends Disposable implements IExpe
 	) {
 		super();
 
-		this.copilotExtensionVersion = this._storageService.get(StorageVersionKeys.CopilotExtensionVersion, StorageScope.PROFILE);
-		this.copilotChatExtensionVersion = this._storageService.get(StorageVersionKeys.CopilotChatExtensionVersion, StorageScope.PROFILE);
 		this.copilotCompletionsVersion = this._storageService.get(StorageVersionKeys.CompletionsVersion, StorageScope.PROFILE);
-		this.copilotSku = this._storageService.get(StorageVersionKeys.CopilotSku, StorageScope.PROFILE);
 		this.copilotInternalOrg = this._storageService.get(StorageVersionKeys.CopilotInternalOrg, StorageScope.PROFILE);
-		this.copilotTrackingId = this._storageService.get(StorageVersionKeys.CopilotTrackingId, StorageScope.PROFILE);
 		this.copilotIsSn = this._storageService.get(StorageVersionKeys.CopilotIsSn, StorageScope.PROFILE);
 		this.copilotIsFcv1 = this._storageService.get(StorageVersionKeys.CopilotIsFcv1, StorageScope.PROFILE);
 
