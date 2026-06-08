@@ -1,4 +1,4 @@
-- name: Build Windows Script
+name: Build Windows Script
 on:
   workflow_dispatch:
 jobs:
