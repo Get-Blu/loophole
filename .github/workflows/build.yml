@@ -84,5 +84,5 @@ jobs:
         with:
           name: loophole-windows
           path: |
-            Loophole-win32-x64/
-            .build/
+            ../VSCode-win32-x64/
+            .build/win32-x64/
