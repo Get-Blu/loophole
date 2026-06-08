@@ -6,10 +6,8 @@
 import type { IExperimentationFilterProvider } from 'tas-client';
 import { Emitter } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { getInternalOrg } from '../../../../platform/assignment/common/assignment.js';
 import { IDefaultAccountService } from '../../../../platform/defaultAccount/common/defaultAccount.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
-import { ILogService } from '../../../../platform/log/common/log.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IChatEntitlementService } from '../../chat/common/chatEntitlementService.js';
 import { IExtensionService } from '../../extensions/common/extensions.js';
@@ -67,7 +65,6 @@ export class CopilotAssignmentFilterProvider extends Disposable implements IExpe
 
 	constructor(
 		@IExtensionService private readonly _extensionService: IExtensionService,
-		@ILogService private readonly _logService: ILogService,
 		@IStorageService private readonly _storageService: IStorageService,
 		@IChatEntitlementService private readonly _chatEntitlementService: IChatEntitlementService,
 		@IDefaultAccountService private readonly _defaultAccountService: IDefaultAccountService,
@@ -147,18 +144,10 @@ export class CopilotAssignmentFilterProvider extends Disposable implements IExpe
 
 	getFilterValue(filter: string): string | null {
 		switch (filter) {
-			case ExtensionsFilter.CopilotExtensionVersion:
-				return this.copilotExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotExtensionVersion) : null;
 			case ExtensionsFilter.CompletionsVersionInCopilotChat:
 				return this.copilotCompletionsVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotCompletionsVersion) : null;
-			case ExtensionsFilter.CopilotChatExtensionVersion:
-				return this.copilotChatExtensionVersion ? CopilotAssignmentFilterProvider.trimVersionSuffix(this.copilotChatExtensionVersion) : null;
-			case ExtensionsFilter.CopilotSku:
-				return this.copilotSku ?? null;
 			case ExtensionsFilter.MicrosoftInternalOrg:
 				return this.copilotInternalOrg ?? null;
-			case ExtensionsFilter.CopilotTrackingId:
-				return this.copilotTrackingId ?? null;
 			case ExtensionsFilter.CopilotIsSn:
 				return this.copilotIsSn ?? null;
 			case ExtensionsFilter.CopilotIsFcv1:

@@ -672,8 +672,6 @@ export const terminalChatAgentToolsConfiguration: IStringDictionary<IConfigurati
 for (const id of [
 	TerminalChatAgentToolsSettingId.DeprecatedAutoApprove1,
 	TerminalChatAgentToolsSettingId.DeprecatedAutoApprove2,
-	TerminalChatAgentToolsSettingId.DeprecatedAutoApprove3,
-	TerminalChatAgentToolsSettingId.DeprecatedAutoApprove4,
 	TerminalChatAgentToolsSettingId.DeprecatedAutoApproveCompatible,
 ]) {
 	terminalChatAgentToolsConfiguration[id] = {

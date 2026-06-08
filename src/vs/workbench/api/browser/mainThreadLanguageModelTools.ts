@@ -8,9 +8,7 @@ import { Disposable, DisposableMap, DisposableStore } from '../../../base/common
 import { revive } from '../../../base/common/marshalling.js';
 import { ThemeIcon } from '../../../base/common/themables.js';
 import { isUriComponents, URI, UriComponents } from '../../../base/common/uri.js';
-import { ExtensionIdentifier } from '../../../platform/extensions/common/extensions.js';
 import { ILogService } from '../../../platform/log/common/log.js';
-import { IProductService } from '../../../platform/product/common/productService.js';
 import { toToolSetKey } from '../../contrib/chat/common/tools/languageModelToolsContribution.js';
 import { CountTokensCallback, ILanguageModelToolsService, IToolData, IToolInvocation, IToolProgressStep, IToolResult, ToolDataSource, ToolProgress, toolResultHasBuffers, ToolSet } from '../../contrib/chat/common/tools/languageModelToolsService.js';
 import { extHostNamedCustomer, IExtHostContext } from '../../services/extensions/common/extHostCustomers.js';
@@ -31,7 +29,6 @@ export class MainThreadLanguageModelTools extends Disposable implements MainThre
 		extHostContext: IExtHostContext,
 		@ILanguageModelToolsService private readonly _languageModelToolsService: ILanguageModelToolsService,
 		@ILogService private readonly _logService: ILogService,
-		@IProductService private readonly _productService: IProductService,
 	) {
 		super();
 		this._proxy = extHostContext.getProxy(ExtHostContext.ExtHostLanguageModelTools);
