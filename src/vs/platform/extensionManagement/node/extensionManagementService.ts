@@ -242,12 +242,26 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 	}
 
 	async cleanUp(): Promise<void> {
-		this.logService.trace('ExtensionManagementService#cleanUp');
-		try {
-			await this.extensionsScanner.cleanUp();
-		} catch (error) {
-			this.logService.error(error);
-		}
+        this.logService.trace('ExtensionManagementService#cleanUp');
+        try {
+            await this.extensionsScanner.cleanUp();
+        } catch (error) {
+            this.logService.error(error);
+        }
+        const blockList: string[] = (this.productService as any).extensionBlockList ?? [];
+        if (blockList.length) {
+            const installed = await this.getInstalled();
+            for (const ext of installed) {
+                if (blockList.some(b => b.toLowerCase() === ext.identifier.id.toLowerCase())) {
+                    this.logService.info('Removing blocked extension', ext.identifier.id);
+                    try {
+                        await this.uninstall(ext);
+                    } catch (e) {
+                        this.logService.error('Failed to remove blocked extension', ext.identifier.id, e);
+                    }
+                }
+            }
+        }
 	}
 
 	async download(extension: IGalleryExtension, operation: InstallOperation, donotVerifySignature: boolean): Promise<URI> {
