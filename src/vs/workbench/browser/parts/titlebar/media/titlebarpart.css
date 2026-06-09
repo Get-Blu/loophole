@@ -299,7 +299,7 @@
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon:not(.codicon) {
-	background-image: url('../../../../../../void_icons/loophole_titlebar.png');
+	background-image: url('../../../../../../../void_icons/loophole_titlebar.png');
 	background-repeat: no-repeat;
 	background-position: center center;
 	background-size: 20px;
