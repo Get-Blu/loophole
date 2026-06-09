@@ -38,7 +38,7 @@ export class AllowedExtensionsService extends Disposable implements IAllowedExte
 	readonly onDidChangeAllowedExtensionsConfigValue = this._onDidChangeAllowedExtensions.event;
 
 	constructor(
-		@IProductService productService: IProductService,
+        @IProductService private readonly productService: IProductService,
 		@IConfigurationService protected readonly configurationService: IConfigurationService
 	) {
 		super();
