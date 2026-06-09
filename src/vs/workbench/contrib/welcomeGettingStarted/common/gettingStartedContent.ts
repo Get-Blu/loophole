@@ -122,6 +122,46 @@ export const startEntries: GettingStartedStartEntryContent = [
 		}
 	},
 	{
+		id: 'topLevelOpenChat',
+		title: localize('gettingStarted.openChat.title', "Open Chat"),
+		description: localize('gettingStarted.openChat.description', "Start a conversation with AI to help you code"),
+		icon: Codicon.commentDiscussion,
+		content: {
+			type: 'startEntry',
+			command: 'command:workbench.action.chat.open',
+		}
+	},
+	{
+		id: 'topLevelShowCommands',
+		title: localize('gettingStarted.showCommands.title', "Show All Commands"),
+		description: localize('gettingStarted.showCommands.description', "Access all commands from the command palette"),
+		icon: Codicon.symbolEvent,
+		content: {
+			type: 'startEntry',
+			command: 'command:workbench.action.showCommands',
+		}
+	},
+	{
+		id: 'topLevelOpenSettings',
+		title: localize('gettingStarted.openSettings.title', "Open Settings"),
+		description: localize('gettingStarted.openSettings.description', "Customize your editor settings and preferences"),
+		icon: Codicon.gear,
+		content: {
+			type: 'startEntry',
+			command: 'command:workbench.action.openSettings',
+		}
+	},
+	{
+		id: 'topLevelInlineChat',
+		title: localize('gettingStarted.inlineChat.title', "Inline Chat"),
+		description: localize('gettingStarted.inlineChat.description', "Get AI assistance directly in your code"),
+		icon: Codicon.sparkle,
+		content: {
+			type: 'startEntry',
+			command: 'command:inlineChat.start',
+		}
+	},
+	{
 		id: 'topLevelOpenMac',
 		title: localize('gettingStarted.openMac.title', "Open..."),
 		description: localize('gettingStarted.openMac.description', "Open a file or folder to start working"),

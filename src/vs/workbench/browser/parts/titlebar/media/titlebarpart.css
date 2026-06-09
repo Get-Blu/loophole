@@ -167,31 +167,36 @@
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center {
 	display: flex;
-	align-items: stretch;
-	color: var(--vscode-commandCenter-foreground);
-	background-color: var(--vscode-commandCenter-background);
-	border: 1px solid var(--vscode-commandCenter-border);
+	align-items: center;
+	color: rgba(255, 255, 255, 0.6);
+	background-color: rgba(255, 255, 255, 0.05);
+	border: 1px solid rgba(255, 255, 255, 0.1);
 	overflow: hidden;
 	margin: 0 6px;
-	border-radius: var(--vscode-cornerRadius-medium);
-	height: 22px;
-	width: 38vw;
-	max-width: 600px;
+	border-radius: 6px;
+	height: 28px;
+	width: 50vw;
+	max-width: 700px;
+	padding: 0 12px;
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick {
 	display: flex;
-	justify-content: start;
+	justify-content: flex-start;
+	align-items: center;
 	overflow: hidden;
-	margin: auto;
-	max-width: 600px;
+	margin: 0;
+	max-width: 700px;
+	width: 100%;
+	gap: 8px;
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick .search-icon {
-	font-size: 14px;
-	opacity: .8;
-	margin: auto 3px;
-	color: var(--vscode-commandCenter-foreground);
+	font-size: 16px;
+	opacity: 0.6;
+	margin: 0;
+	color: rgba(255, 255, 255, 0.6);
+	flex-shrink: 0;
 }
 
 .monaco-workbench .part.titlebar.inactive > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick .search-icon {
@@ -201,6 +206,10 @@
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center .action-item.command-center-quick-pick .search-label {
 	overflow: hidden;
 	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 13px;
+	opacity: 0.7;
+	flex: 1;
 }
 
 /* Compact mode: left-aligned label, no icon, full width */
@@ -241,9 +250,9 @@
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-center > .window-title > .command-center .action-item.command-center-center:HOVER {
-	color: var(--vscode-commandCenter-activeForeground);
-	background-color: var(--vscode-commandCenter-activeBackground);
-	border-color: var(--vscode-commandCenter-activeBorder);
+	color: rgba(255, 255, 255, 0.8);
+	background-color: rgba(255, 255, 255, 0.08);
+	border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Menubar */
@@ -290,10 +299,10 @@
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon:not(.codicon) {
-	background-image: url('../../../media/code-icon.svg');
+	background-image: url('../../../../../../void_icons/loophole_titlebar.png');
 	background-repeat: no-repeat;
 	background-position: center center;
-	background-size: 16px;
+	background-size: 20px;
 }
 
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon.codicon {

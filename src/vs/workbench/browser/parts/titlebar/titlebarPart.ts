@@ -485,26 +485,26 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 		this.title = append(this.centerContent, $('div.window-title'));
 		this.createTitle();
 
-		// Center-Adjacent Toolbar (e.g., update indicator)
-		if (hasCustomTitlebar(this.configurationService, this.titleBarStyle)) {
-			const centerAdjacentToolBarElement = append(this.rightContent, $('div.center-adjacent-toolbar-container'));
-			this.centerAdjacentToolBarDisposable.add(this.instantiationService.createInstance(MenuWorkbenchToolBar, centerAdjacentToolBarElement, MenuId.TitleBarAdjacentCenter, {
-				contextMenu: MenuId.TitleBarContext,
-				hiddenItemStrategy: HiddenItemStrategy.NoHide,
-				toolbarOptions: {
-					primaryGroup: () => true,
-				},
-				actionViewItemProvider: (action, options) => createActionViewItem(this.instantiationService, action, options),
-				hoverDelegate: this.hoverDelegate
-			}));
-		}
+		// Center-Adjacent Toolbar (e.g., update indicator) - DISABLED FOR CLEAN UI
+		// if (hasCustomTitlebar(this.configurationService, this.titleBarStyle)) {
+		// 	const centerAdjacentToolBarElement = append(this.rightContent, $('div.center-adjacent-toolbar-container'));
+		// 	this.centerAdjacentToolBarDisposable.add(this.instantiationService.createInstance(MenuWorkbenchToolBar, centerAdjacentToolBarElement, MenuId.TitleBarAdjacentCenter, {
+		// 		contextMenu: MenuId.TitleBarContext,
+		// 		hiddenItemStrategy: HiddenItemStrategy.NoHide,
+		// 		toolbarOptions: {
+		// 			primaryGroup: () => true,
+		// 		},
+		// 		actionViewItemProvider: (action, options) => createActionViewItem(this.instantiationService, action, options),
+		// 		hoverDelegate: this.hoverDelegate
+		// 	}));
+		// }
 
-		// Create Toolbar Actions
-		if (hasCustomTitlebar(this.configurationService, this.titleBarStyle)) {
-			this.actionToolBarElement = append(this.rightContent, $('div.action-toolbar-container'));
-			this.createActionToolBar();
-			this.createActionToolBarMenus();
-		}
+		// Create Toolbar Actions - DISABLED FOR CLEAN UI
+		// if (hasCustomTitlebar(this.configurationService, this.titleBarStyle)) {
+		// 	this.actionToolBarElement = append(this.rightContent, $('div.action-toolbar-container'));
+		// 	this.createActionToolBar();
+		// 	this.createActionToolBarMenus();
+		// }
 
 		// Window Controls Container
 		if (!hasNativeTitlebar(this.configurationService, this.titleBarStyle)) {

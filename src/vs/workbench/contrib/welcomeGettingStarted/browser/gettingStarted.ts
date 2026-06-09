@@ -921,7 +921,7 @@ export class GettingStartedPage extends EditorPane {
 
 		// Loophole-style centered header with logo
 		const logoImg = $('img.welcome-logo', {
-			src: 'resources/win32/loophole.ico',
+			src: './void_icons/loophole_logo.png',
 			alt: 'Loophole'
 		});
 
