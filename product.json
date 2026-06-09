@@ -239,5 +239,11 @@
   		"GitHub.copilot-chat",
 		"GitHub.copilot-labs",
 		"GitHub.copilot-nightly"
-	]
+	],
+	"extensionRecommendations": {
+        "GitHub.copilot": false,
+        "GitHub.copilot-chat": false,
+        "GitHub.copilot-labs": false,
+        "GitHub.copilot-nightly": false
+	}
 }
