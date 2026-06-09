@@ -65,6 +65,15 @@ export class AllowedExtensionsService extends Disposable implements IAllowedExte
 	}
 
 	isAllowed(extension: IGalleryExtension | IExtension | { id: string; publisherDisplayName: string | undefined; version?: string; prerelease?: boolean; targetPlatform?: TargetPlatform }): true | IMarkdownString {
+		const blockList: string[] = (this.productService as any).extensionBlockList ?? [];
+	    if (blockList.length) {
+		    const rawId = isGalleryExtension(extension) ? extension.identifier.id
+					    : isIExtension(extension)        ? extension.identifier.id
+					    :                                  extension.id;
+		    if (blockList.some(b => b.toLowerCase() === rawId.toLowerCase())) {
+			    return new MarkdownString(nls.localize('extensionBlocked', "This extension is blocked in Loophole."));
+		    }
+	    }
 		if (!this._allowedExtensionsConfigValue) {
 			return true;
 		}
