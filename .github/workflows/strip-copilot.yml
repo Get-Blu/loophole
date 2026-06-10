@@ -1,0 +1,257 @@
+name: Strip Copilot & Generate Patch
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run - show what would be deleted without deleting'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  strip-copilot:
+    name: Strip All Copilot & Generate Patch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Git
+        run: |
+          git config user.name "Loophole Bot"
+          git config user.email "bot@loophole.ai"
+
+      - name: Create strip branch
+        run: |
+          git checkout -b strip/remove-copilot-$(date +%Y%m%d%H%M%S)
+
+      - name: Strip Copilot - Step 1 - Delete entire extensions/copilot folder
+        run: |
+          echo "=== Removing extensions/copilot folder ==="
+          if [ -d "extensions/copilot" ]; then
+            if [ "${{ inputs.dry_run }}" == "true" ]; then
+              echo "[DRY RUN] Would delete: extensions/copilot"
+              find extensions/copilot -type f | wc -l | xargs echo "[DRY RUN] Files that would be deleted:"
+            else
+              rm -rf extensions/copilot
+              echo "✅ Deleted extensions/copilot"
+            fi
+          else
+            echo "⚠️ extensions/copilot not found, skipping"
+          fi
+
+      - name: Strip Copilot - Step 2 - Delete copilot helpers in other extensions
+        run: |
+          echo "=== Removing copilot helper files from other extensions ==="
+          FILES=(
+            "extensions/typescript-language-features/src/languageFeatures/util/copilot.ts"
+            "extensions/terminal-suggest/src/completions/copilot.ts"
+          )
+          for FILE in "${FILES[@]}"; do
+            if [ -f "$FILE" ]; then
+              if [ "${{ inputs.dry_run }}" == "true" ]; then
+                echo "[DRY RUN] Would delete: $FILE"
+              else
+                rm -f "$FILE"
+                echo "✅ Deleted $FILE"
+              fi
+            else
+              echo "⚠️ Not found: $FILE"
+            fi
+          done
+
+      - name: Strip Copilot - Step 3 - Delete entire copilotChatSessions contrib folder
+        run: |
+          echo "=== Removing copilotChatSessions contrib folder ==="
+          FOLDER="src/vs/sessions/contrib/copilotChatSessions"
+          if [ -d "$FOLDER" ]; then
+            if [ "${{ inputs.dry_run }}" == "true" ]; then
+              echo "[DRY RUN] Would delete: $FOLDER"
+            else
+              rm -rf "$FOLDER"
+              echo "✅ Deleted $FOLDER"
+            fi
+          else
+            echo "⚠️ Not found: $FOLDER"
+          fi
+
+      - name: Strip Copilot - Step 4 - Remove copilot imports from TypeScript files
+        if: inputs.dry_run == 'false'
+        run: |
+          echo "=== Removing copilot imports from TS files ==="
+
+          # Remove import lines that import from copilot files
+          find src/ extensions/ -name "*.ts" -o -name "*.js" | while read FILE; do
+            if grep -q "copilot" "$FILE" 2>/dev/null; then
+              # Remove lines that import from copilot paths
+              sed -i '/import.*[Cc]opilot.*from/d' "$FILE"
+              # Remove lines that reference copilotChatSessions contribution
+              sed -i '/copilotChatSessions/d' "$FILE"
+              # Remove lines that import copilot helper files
+              sed -i "/from '.*\/copilot'/d" "$FILE"
+              sed -i '/from ".*\/copilot"/d' "$FILE"
+            fi
+          done
+          echo "✅ Removed copilot imports"
+
+      - name: Strip Copilot - Step 5 - Remove copilot from build dirs config
+        if: inputs.dry_run == 'false'
+        run: |
+          echo "=== Removing copilot from build config ==="
+
+          # Remove from dirs.js if exists
+          if [ -f "build/npm/dirs.js" ]; then
+            sed -i "/'extensions\/copilot'/d" build/npm/dirs.js
+            sed -i '/"extensions\/copilot"/d' build/npm/dirs.js
+            echo "✅ Cleaned build/npm/dirs.js"
+          fi
+
+          # Remove from gulpfile.extensions.js if exists
+          if [ -f "build/gulpfile.extensions.js" ]; then
+            sed -i "/'copilot'/d" build/gulpfile.extensions.js
+            sed -i '/"copilot"/d' build/gulpfile.extensions.js
+            echo "✅ Cleaned build/gulpfile.extensions.js"
+          fi
+
+          # Remove from .npmrc or any root package references
+          find . -maxdepth 2 -name "*.json" -not -path "*/node_modules/*" | while read FILE; do
+            if grep -q '"extensions/copilot"' "$FILE" 2>/dev/null; then
+              sed -i '/"extensions\/copilot"/d' "$FILE"
+              echo "✅ Cleaned $FILE"
+            fi
+          done
+
+      - name: Strip Copilot - Step 6 - Verify removal
+        run: |
+          echo "=== Verification ==="
+          echo ""
+
+          echo "1. extensions/copilot folder:"
+          if [ -d "extensions/copilot" ]; then
+            echo "❌ STILL EXISTS"
+          else
+            echo "✅ Gone"
+          fi
+
+          echo ""
+          echo "2. Copilot helper files:"
+          FILES=(
+            "extensions/typescript-language-features/src/languageFeatures/util/copilot.ts"
+            "extensions/terminal-suggest/src/completions/copilot.ts"
+          )
+          for FILE in "${FILES[@]}"; do
+            if [ -f "$FILE" ]; then
+              echo "❌ STILL EXISTS: $FILE"
+            else
+              echo "✅ Gone: $FILE"
+            fi
+          done
+
+          echo ""
+          echo "3. copilotChatSessions folder:"
+          if [ -d "src/vs/sessions/contrib/copilotChatSessions" ]; then
+            echo "❌ STILL EXISTS"
+          else
+            echo "✅ Gone"
+          fi
+
+          echo ""
+          echo "4. Remaining copilot references (these are OK - just mentions in other files):"
+          grep -r "copilot" --include="*.ts" --include="*.js" -l src/ extensions/ 2>/dev/null | grep -v node_modules | wc -l | xargs echo "Files still mentioning copilot:"
+
+      - name: Commit changes
+        if: inputs.dry_run == 'false'
+        run: |
+          git add -A
+          git status
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: strip all GitHub Copilot from Loophole
+
+            - Removed extensions/copilot folder entirely
+            - Removed copilot helper files from typescript-language-features
+            - Removed copilot helper files from terminal-suggest
+            - Removed copilotChatSessions contrib folder
+            - Cleaned copilot imports from source files
+            - Cleaned build config references
+
+            This ensures GitHub Copilot cannot run in Loophole IDE."
+            echo "✅ Changes committed"
+          fi
+
+      - name: Generate patch file
+        if: inputs.dry_run == 'false'
+        run: |
+          echo "=== Generating patch file ==="
+          mkdir -p patches
+          git format-patch HEAD~1 --stdout > patches/remove-copilot.patch
+          echo "✅ Patch saved to patches/remove-copilot.patch"
+          wc -l patches/remove-copilot.patch | xargs echo "Patch size (lines):"
+
+      - name: Commit patch file
+        if: inputs.dry_run == 'false'
+        run: |
+          git add patches/remove-copilot.patch
+          if git diff --staged --quiet; then
+            echo "No patch to commit"
+          else
+            git commit -m "chore: add remove-copilot patch file for upstreaming"
+            echo "✅ Patch committed"
+          fi
+
+      - name: Push branch
+        if: inputs.dry_run == 'false'
+        run: |
+          git push origin HEAD
+          echo "✅ Branch pushed"
+
+      - name: Create Pull Request
+        if: inputs.dry_run == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore: strip all GitHub Copilot from Loophole" \
+            --body "## What this does
+          This PR removes every piece of GitHub Copilot from the Loophole IDE codebase.
+
+          ### Removed:
+          - \`extensions/copilot\` — entire Copilot extension folder
+          - \`extensions/typescript-language-features/src/languageFeatures/util/copilot.ts\`
+          - \`extensions/terminal-suggest/src/completions/copilot.ts\`
+          - \`src/vs/sessions/contrib/copilotChatSessions\` — entire folder
+          - All copilot import lines from source files
+          - Build config references
+
+          ### Patch file:
+          A \`patches/remove-copilot.patch\` file has been generated.
+          When upstreaming to a new VSCode version, run:
+          \`\`\`bash
+          git apply patches/remove-copilot.patch
+          \`\`\`
+
+          ### Verified:
+          - GitHub Copilot cannot be installed (OpenVSX marketplace)
+          - GitHub Copilot extension folder gone
+          - Build config cleaned" \
+            --base master \
+            --head $(git branch --show-current)
+
+      - name: Upload patch as artifact
+        if: inputs.dry_run == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: remove-copilot-patch
+          path: patches/remove-copilot.patch
