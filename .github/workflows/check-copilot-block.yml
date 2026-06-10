@@ -1,0 +1,100 @@
+name: Check Copilot Block
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch: # allows manual trigger
+
+jobs:
+  check-copilot-block:
+    name: Verify Copilot is Blocked
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Copy check script
+        run: |
+          cat << 'EOF' > check-copilot-block.mjs
+          import { readFileSync } from 'fs';
+          import { resolve } from 'path';
+
+          const PRODUCT_JSON_PATH = resolve('./product.json');
+
+          const COPILOT_IDS = [
+            'github.copilot',
+            'github.copilot-chat',
+            'github.copilot-labs',
+            'github.copilot-nightly',
+          ];
+
+          let failed = false;
+
+          try {
+            const raw = readFileSync(PRODUCT_JSON_PATH, 'utf-8');
+            const product = JSON.parse(raw);
+
+            console.log('\n==== Loophole Copilot Block Checker ====\n');
+
+            // Check extensionBlockList
+            const blockList = (product.extensionBlockList ?? []).map(e => e.toLowerCase());
+            console.log('1. extensionBlockList:');
+            for (const id of COPILOT_IDS) {
+              const blocked = blockList.includes(id);
+              if (!blocked) failed = true;
+              console.log(`   ${blocked ? '✅ BLOCKED' : '❌ NOT BLOCKED — FAIL'} — ${id}`);
+            }
+
+            // Check builtInExtensions
+            const builtIn = (product.builtInExtensions ?? []).map(e => e.name.toLowerCase());
+            console.log('\n2. builtInExtensions (must NOT contain Copilot):');
+            for (const id of COPILOT_IDS) {
+              const found = builtIn.includes(id);
+              if (found) failed = true;
+              console.log(`   ${found ? '❌ FOUND — REMOVE IT!' : '✅ Not present'} — ${id}`);
+            }
+
+            // Check extensionRecommendations
+            const recs = product.extensionRecommendations ?? {};
+            console.log('\n3. extensionRecommendations:');
+            for (const id of COPILOT_IDS) {
+              const key = Object.keys(recs).find(k => k.toLowerCase() === id);
+              const val = key ? recs[key] : undefined;
+              const blocked = val === false;
+              if (!blocked) failed = true;
+              console.log(`   ${blocked ? '✅ BLOCKED' : '❌ NOT SET — FAIL'} — ${id}`);
+            }
+
+            console.log('\n========================================');
+
+            if (failed) {
+              console.log('\n🚨 FAILED — Copilot is not fully blocked!\n');
+              process.exit(1);
+            } else {
+              console.log('\n🎉 PASSED — Copilot is fully blocked!\n');
+              process.exit(0);
+            }
+
+          } catch (e) {
+            console.error('❌ Error reading product.json:', e.message);
+            process.exit(1);
+          }
+          EOF
+
+      - name: Run Copilot block check
+        run: node check-copilot-block.mjs
+
+      - name: Upload check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-block-check-results
+          path: check-copilot-block.mjs
