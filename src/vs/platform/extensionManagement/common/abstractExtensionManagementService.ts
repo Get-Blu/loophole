@@ -73,18 +73,20 @@ export abstract class CommontExtensionManagementService extends Disposable imple
 	}
 
 	async canInstall(extension: IGalleryExtension): Promise<true | IMarkdownString> {
-		const allowedToInstall = this.allowedExtensionsService.isAllowed({ id: extension.identifier.id, publisherDisplayName: extension.publisherDisplayName });
-		if (allowedToInstall !== true) {
-			return new MarkdownString(nls.localize('not allowed to install', "This extension cannot be installed because {0}", allowedToInstall.value));
-		}
-
-		if (!(await this.isExtensionPlatformCompatible(extension))) {
-			const learnLink = isWeb ? 'https://aka.ms/vscode-web-extensions-guide' : 'https://aka.ms/vscode-platform-specific-extensions';
-			return new MarkdownString(`${nls.localize('incompatible platform', "The '{0}' extension is not available in {1} for the {2} platform.",
-				extension.displayName ?? extension.identifier.id, this.productService.nameLong, TargetPlatformToString(await this.getTargetPlatform()))} [${nls.localize('learn why', "Learn Why")}](${learnLink})`);
-		}
-
-		return true;
+        const blockList: string[] = (this.productService as any).extensionBlockList ?? [];
+        if (blockList.some(b => b.toLowerCase() === extension.identifier.id.toLowerCase())) {
+            return new MarkdownString(nls.localize('extensionBlocked', "This extension is blocked in Loophole."));
+        }
+        const allowedToInstall = this.allowedExtensionsService.isAllowed({ id: extension.identifier.id, publisherDisplayName: extension.publisherDisplayName });
+        if (allowedToInstall !== true) {
+            return new MarkdownString(nls.localize('not allowed to install', "This extension cannot be installed because {0}", allowedToInstall.value));
+        }
+        if (!(await this.isExtensionPlatformCompatible(extension))) {
+            const learnLink = isWeb ? 'https://aka.ms/vscode-web-extensions-guide' : 'https://aka.ms/vscode-platform-specific-extensions';
+            return new MarkdownString(`${nls.localize('incompatible platform', "The '{0}' extension is not available in {1} for the {2} platform.",
+                extension.displayName ?? extension.identifier.id, this.productService.nameLong, TargetPlatformToString(await this.getTargetPlatform()))} [${nls.localize('learn why', "Learn Why")}](${learnLink})`);
+        }
+        return true;
 	}
 
 	protected async isExtensionPlatformCompatible(extension: IGalleryExtension): Promise<boolean> {
