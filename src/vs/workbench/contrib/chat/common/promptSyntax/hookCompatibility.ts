@@ -7,7 +7,6 @@ import { URI } from '../../../../../base/common/uri.js';
 import { basename, dirname } from '../../../../../base/common/path.js';
 import { IHookCommand, toHookType } from './hookSchema.js';
 import { parseClaudeHooks, extractHookCommandsFromItem } from './hookClaudeCompat.js';
-import { resolveCopilotCliHookType } from './hookCopilotCliCompat.js';
 import { HookType } from './hookTypes.js';
 
 /**
