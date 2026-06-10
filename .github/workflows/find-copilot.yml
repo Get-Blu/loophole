@@ -1,0 +1,84 @@
+name: Find All Copilot References
+
+on:
+  workflow_dispatch: # manual trigger only
+
+jobs:
+  find-copilot:
+    name: Scan Codebase for Copilot
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Search for all Copilot references
+        run: |
+          echo "==== LOOPHOLE COPILOT SCANNER ====" > copilot-scan-results.txt
+          echo "Scanned at: $(date)" >> copilot-scan-results.txt
+          echo "" >> copilot-scan-results.txt
+
+          echo "==============================" >> copilot-scan-results.txt
+          echo "1. JSON files mentioning copilot" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          grep -r "copilot" --include="*.json" -l src/ 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "2. TS/JS files mentioning copilot" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          grep -r "copilot" --include="*.ts" --include="*.js" -l src/ 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "3. Folders with copilot in name" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          find src/ -type d -iname "*copilot*" 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "4. Files with copilot in name" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          find src/ -type f -iname "*copilot*" 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "5. GitHub.copilot extension ID references" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          grep -r "GitHub\.copilot\|github\.copilot\|github-copilot" -l src/ 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "6. defaultChatAgent / chat agent references" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          grep -r "defaultChatAgent\|copilotChat\|CopilotChat" -l src/ 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "7. workbench/contrib folders (chat related)" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          ls src/vs/workbench/contrib/ 2>/dev/null | grep -i "chat\|copilot\|inline\|ghost" >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "8. package.json contributes with copilot" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          grep -r "copilot" --include="package.json" -l . 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          echo "9. Extensions folder scan" >> copilot-scan-results.txt
+          echo "==============================" >> copilot-scan-results.txt
+          find extensions/ -iname "*copilot*" 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+          grep -r "copilot" extensions/ --include="*.json" -l 2>/dev/null >> copilot-scan-results.txt || echo "None found" >> copilot-scan-results.txt
+
+          echo "" >> copilot-scan-results.txt
+          echo "==== SCAN COMPLETE ====" >> copilot-scan-results.txt
+
+          cat copilot-scan-results.txt
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-scan-results
+          path: copilot-scan-results.txt
