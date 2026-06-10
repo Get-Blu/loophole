@@ -12,7 +12,6 @@ import { IInstantiationService } from '../../../../../platform/instantiation/com
 import { EditSourceData, IDocumentWithAnnotatedEdits, createDocWithJustReason } from '../helpers/documentWithAnnotatedEdits.js';
 import { IAiEditTelemetryService } from './aiEditTelemetry/aiEditTelemetryService.js';
 import type { ScmRepoAdapter } from './scmAdapter.js';
-import { forwardToChannelIf, isCopilotLikeExtension } from '../../../../../platform/dataChannel/browser/forwardingTelemetryService.js';
 import { ProviderId } from '../../../../../editor/common/languages.js';
 import { ArcTelemetryReporter } from './arcTelemetryReporter.js';
 import { IRandomService } from '../randomService.js';

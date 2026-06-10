@@ -13,7 +13,6 @@ import codeCompletionSpec from './completions/code';
 import codeInsidersCompletionSpec from './completions/code-insiders';
 import codeTunnelCompletionSpec from './completions/code-tunnel';
 import codeTunnelInsidersCompletionSpec from './completions/code-tunnel-insiders';
-import copilotSpec from './completions/copilot';
 import gitCompletionSpec from './completions/git';
 import ghCompletionSpec from './completions/gh';
 import npmCompletionSpec from './completions/npm';
