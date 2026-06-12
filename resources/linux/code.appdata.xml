@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+	<id>@@NAME@@.desktop</id>
+	<metadata_license>@@LICENSE@@</metadata_license>
+	<project_license>@@LICENSE@@</project_license>
+	<name>@@NAME_LONG@@</name>
+	<url type="homepage">https://loophole-ai.github.io/loophole-web</url>
+    <summary>Loophole Editor. Code editing. Redefined.</summary>
+    <description>
+        <p>Loophole — The AI IDE that thinks while you code.</p>
+    </description>
+	<screenshots>
+		<screenshot type="default">
+			<image>https://loophole-ai.github.io/loophole-web/img/loophole.png</image>
+			<caption>Editing C</caption>
+		</screenshot>
+	</screenshots>
+</component>
