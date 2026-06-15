@@ -194,6 +194,18 @@
   ],
   "onboardingThemes": [
     {
+			"id": "loophole-dark",
+			"label": "Loophole Dark",
+			"themeId": "Loophole Dark",
+			"type": "dark"
+		},
+		{
+			"id": "loophole-light",
+			"label": "Loophole Light",
+			"themeId": "Loophole Light",
+			"type": "light"
+		},
+    {
       "id": "dark-2026",
       "label": "Dark 2026",
       "themeId": "Dark 2026",
