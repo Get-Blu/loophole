@@ -1,0 +1,117 @@
+name: CI - Build - Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - code
+    paths-ignore:
+      - "**/*.md"
+  pull_request:
+    branches:
+      - "**"
+    paths-ignore:
+      - "**/*.md"
+
+env:
+  APP_NAME: Loophole
+  OS_NAME: windows
+  SHOULD_BUILD: yes
+  SHOULD_BUILD_REH: no
+  SHOULD_BUILD_REH_WEB: no
+  CI_BUILD: yes
+
+permissions: {}
+
+jobs:
+  compile:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    env:
+      VSCODE_ARCH: x64
+      NODE_OPTIONS: "--max-old-space-size=8192"
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Setup Python 3
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Build compile step
+        run: ./build.sh
+
+      - name: Compress vscode artifact
+        run: |
+          find vscode -type f -not -path "*/node_modules/*" -not -path "vscode/.build/node/*" -not -path "vscode/.git/*" > vscode.txt
+          echo "vscode/.build/extensions/node_modules" >> vscode.txt
+          echo "vscode/.git" >> vscode.txt
+          tar -czf vscode.tar.gz -T vscode.txt
+
+      - name: Upload vscode artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vscode
+          path: ./vscode.tar.gz
+          retention-days: 1
+
+  package:
+    needs: compile
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        vscode_arch:
+          - x64
+          - arm64
+    defaults:
+      run:
+        shell: bash
+    env:
+      VSCODE_ARCH: ${{ matrix.vscode_arch }}
+      NODE_OPTIONS: "--max-old-space-size=8192"
+      SHOULD_BUILD_REH: no
+      SHOULD_BUILD_REH_WEB: no
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Setup Python 3
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.11'
+
+      - name: Download vscode artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: vscode
+
+      - name: Build Windows package for ${{ matrix.vscode_arch }}
+        run: ./build/windows/package.sh
+
+      - name: Prepare assets
+        run: ./prepare_assets.sh
+
+      - name: Upload artifacts for ${{ matrix.vscode_arch }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: loophole-${{ matrix.vscode_arch }}
+          path: assets/
+          retention-days: 7
