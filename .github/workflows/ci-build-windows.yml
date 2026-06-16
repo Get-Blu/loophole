@@ -102,7 +102,7 @@ jobs:
 
       # ── Install & compile ──────────────────────────────────────────────────────
       - name: Install dependencies
-        run: npm ci
+        run: npm install
         env:
           npm_config_arch: x64
 
