@@ -16,7 +16,7 @@ on:
         required: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
   ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
 
