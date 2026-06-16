@@ -1,0 +1,214 @@
+name: Publish Build — Windows
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      release_id:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build and publish (e.g. 1.121.03429)'
+        required: true
+
+env:
+  NODE_VERSION: '20'
+  ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+  ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+
+jobs:
+  build-and-upload-windows-x64:
+    name: Build & Upload Windows x64
+    runs-on: windows-2022
+    environment: publish
+    env:
+      VERSION: ${{ inputs.version || github.event.inputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── Toolchain ─────────────────────────────────────────────────────────────
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup Rust (for CLI)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      # ── Caches ────────────────────────────────────────────────────────────────
+      - name: Cache Rust artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cli/target
+          key: publish-win-x64-cargo-${{ hashFiles('cli/Cargo.lock') }}
+          restore-keys: publish-win-x64-cargo-
+
+      - name: Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ELECTRON_CACHE }}
+            ${{ env.ELECTRON_BUILDER_CACHE }}
+          key: publish-win-x64-electron-${{ hashFiles('package-lock.json') }}
+          restore-keys: publish-win-x64-electron-
+
+      # ── Install & compile ──────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+        env:
+          npm_config_arch: x64
+
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Compile TypeScript
+        run: npm run compile
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Build CLI (Rust, x64)
+        working-directory: cli
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      # ── Package base app ───────────────────────────────────────────────────────
+      - name: Package Electron app
+        run: npm run gulp vscode-win32-x64
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Create dist directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+      # ── Build all artifact types ───────────────────────────────────────────────
+      - name: Build User Installer
+        run: npm run gulp vscode-win32-x64-user-setup
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — User Installer
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64/user-setup" -Filter "*.exe" | Select-Object -First 1
+          Copy-Item $src.FullName "dist/LoopholeUserSetup-x64-$env:VERSION.exe"
+
+      - name: Build System Installer
+        run: npm run gulp vscode-win32-x64-setup
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — System Installer
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64/setup" -Filter "*.exe" | Select-Object -First 1
+          Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe"
+
+      - name: Build ZIP
+        run: npm run gulp vscode-win32-x64-archive
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — ZIP
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build" -Filter "VSCode-win32-x64-*.zip" -Recurse | Select-Object -First 1
+          Copy-Item $src.FullName "dist/Loophole-win32-x64-$env:VERSION.zip"
+
+      - name: Build MSI (updates enabled)
+        run: npm run gulp vscode-win32-x64-msi
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — MSI (updates enabled)
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64" -Filter "*.msi" |
+                 Where-Object { $_.Name -notlike "*updates-disabled*" } |
+                 Select-Object -First 1
+          Copy-Item $src.FullName "dist/Loophole-x64-$env:VERSION.msi"
+
+      - name: Build MSI (updates disabled)
+        run: npm run gulp vscode-win32-x64-msi-updates-disabled
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — MSI (updates disabled)
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64" -Filter "*updates-disabled*.msi" | Select-Object -First 1
+          Copy-Item $src.FullName "dist/Loophole-x64-updates-disabled-$env:VERSION.msi"
+
+      - name: Build Remote Host
+        run: npm run gulp vscode-reh-win32-x64
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — Remote Host
+        shell: pwsh
+        run: |
+          if (Test-Path ".build/vscode-reh-win32-x64") {
+            tar -czf "dist/loophole-reh-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-win32-x64"
+          }
+
+      - name: Build Web Host
+        run: npm run gulp vscode-reh-web-win32-x64
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — Web Host
+        shell: pwsh
+        run: |
+          if (Test-Path ".build/vscode-reh-web-win32-x64") {
+            tar -czf "dist/loophole-reh-web-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-web-win32-x64"
+          }
+
+      - name: Stage — CLI tarball
+        shell: pwsh
+        run: |
+          $cliBin = "cli/target/x86_64-pc-windows-msvc/release/loophole.exe"
+          if (Test-Path $cliBin) {
+            New-Item -ItemType Directory -Force -Path .tmp-cli | Out-Null
+            Copy-Item $cliBin .tmp-cli/loophole.exe
+            tar -czf "dist/loophole-cli-win32-x64-$env:VERSION.tar.gz" -C ".tmp-cli" "loophole.exe"
+          }
+
+      # ── Upload all artifacts to the GitHub Release ─────────────────────────────
+      - name: Upload release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: |
+          $files = Get-ChildItem dist
+          foreach ($f in $files) {
+            Write-Host "Uploading $($f.Name)..."
+            gh release upload "$env:VERSION" "$($f.FullName)" --clobber
+          }

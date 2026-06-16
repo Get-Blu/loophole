@@ -1,0 +1,210 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'   # e.g. 1.121.03429
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.121.03429)'
+        required: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Step 1: Create the GitHub Release (draft) with the full formatted body.
+  # All platform build jobs upload into this release in parallel.
+  # ─────────────────────────────────────────────────────────────────────────────
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      release_id: ${{ steps.create.outputs.release_id }}
+      upload_url: ${{ steps.create.outputs.upload_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version & metadata
+        id: meta
+        run: |
+          if [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME}"
+          fi
+
+          # Commits since last tag (for release notes context)
+          PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p' || echo "")
+          if [[ -n "$PREV_TAG" ]]; then
+            COMMIT_COUNT=$(git rev-list ${PREV_TAG}..HEAD --count)
+          else
+            COMMIT_COUNT=$(git rev-list HEAD --count)
+          fi
+
+          echo "version=$VERSION"         >> "$GITHUB_OUTPUT"
+          echo "prev_tag=$PREV_TAG"       >> "$GITHUB_OUTPUT"
+          echo "commit_count=$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION, prev tag: $PREV_TAG"
+
+      - name: Build release body
+        id: body
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          PREV_TAG="${{ steps.meta.outputs.prev_tag }}"
+
+          cat > release_body.md << BODY
+          ## Loophole IDE v${VERSION}
+
+          > The AI IDE that thinks while you code.
+
+          ---
+
+          ### x86 64bits
+
+          #### Windows
+
+          | Type | File |
+          |------|------|
+          | User Installer | \`LoopholeUserSetup-x64-${VERSION}.exe\` |
+          | System Installer | \`LoopholeSetup-x64-${VERSION}.exe\` |
+          | .zip | \`Loophole-win32-x64-${VERSION}.zip\` |
+          | .msi — updates enabled | \`Loophole-x64-${VERSION}.msi\` |
+          | .msi — updates disabled | \`Loophole-x64-updates-disabled-${VERSION}.msi\` |
+          | Remote Host | \`loophole-reh-win32-x64-${VERSION}.tar.gz\` |
+          | Web Host | \`loophole-reh-web-win32-x64-${VERSION}.tar.gz\` |
+          | CLI | \`loophole-cli-win32-x64-${VERSION}.tar.gz\` |
+
+          #### macOS
+
+          | Type | File |
+          |------|------|
+          | .dmg (Intel x64) | \`Loophole.x64.${VERSION}.dmg\` |
+          | .zip (Intel x64) | \`Loophole-darwin-x64-${VERSION}.zip\` |
+          | .dmg (Apple Silicon arm64) | \`Loophole.arm64.${VERSION}.dmg\` |
+          | .zip (Apple Silicon arm64) | \`Loophole-darwin-arm64-${VERSION}.zip\` |
+          | Remote Host (x64) | \`loophole-reh-darwin-x64-${VERSION}.tar.gz\` |
+          | Web Host (x64) | \`loophole-reh-web-darwin-x64-${VERSION}.tar.gz\` |
+          | CLI (x64) | \`loophole-cli-darwin-x64-${VERSION}.tar.gz\` |
+          | Remote Host (arm64) | \`loophole-reh-darwin-arm64-${VERSION}.tar.gz\` |
+          | Web Host (arm64) | \`loophole-reh-web-darwin-arm64-${VERSION}.tar.gz\` |
+          | CLI (arm64) | \`loophole-cli-darwin-arm64-${VERSION}.tar.gz\` |
+
+          #### Linux
+
+          | Type | File |
+          |------|------|
+          | .deb (x64) | \`loophole_${VERSION}_amd64.deb\` |
+          | .rpm (x64) | \`loophole-${VERSION}-el8.x86_64.rpm\` |
+          | .tar.gz (x64) | \`Loophole-linux-x64-${VERSION}.tar.gz\` |
+          | AppImage (x64) | \`Loophole-${VERSION}.glibc2.30-x86_64.AppImage\` |
+          | AppImage zsync (x64) | \`Loophole-${VERSION}.glibc2.30-x86_64.AppImage.zsync\` |
+          | Snap (x64) | \`loophole_${VERSION}_amd64.snap\` |
+          | Remote Host (x64) | \`loophole-reh-linux-x64-${VERSION}.tar.gz\` |
+          | Web Host (x64) | \`loophole-reh-web-linux-x64-${VERSION}.tar.gz\` |
+          | CLI (x64) | \`loophole-cli-linux-x64-${VERSION}.tar.gz\` |
+          | .deb (arm64) | \`loophole_${VERSION}_arm64.deb\` |
+          | .rpm (arm64) | \`loophole-${VERSION}-el8.aarch64.rpm\` |
+          | .tar.gz (arm64) | \`Loophole-linux-arm64-${VERSION}.tar.gz\` |
+          | Remote Host (arm64) | \`loophole-reh-linux-arm64-${VERSION}.tar.gz\` |
+          | Web Host (arm64) | \`loophole-reh-web-linux-arm64-${VERSION}.tar.gz\` |
+          | CLI (arm64) | \`loophole-cli-linux-arm64-${VERSION}.tar.gz\` |
+
+          #### Alpine (musl libc)
+
+          | Type | File |
+          |------|------|
+          | Remote Host (x64) | \`loophole-reh-alpine-x64-${VERSION}.tar.gz\` |
+          | Web Host (x64) | \`loophole-reh-web-alpine-x64-${VERSION}.tar.gz\` |
+          | Remote Host (arm64) | \`loophole-reh-alpine-arm64-${VERSION}.tar.gz\` |
+          | Web Host (arm64) | \`loophole-reh-web-alpine-arm64-${VERSION}.tar.gz\` |
+
+          ---
+
+          **Full Changelog:** ${PREV_TAG}...${VERSION}
+          BODY
+
+          echo "Body written to release_body.md"
+          cat release_body.md
+
+      - name: Create GitHub Release (draft)
+        id: create
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+
+          # Create the release as a draft — it goes live once all builds finish
+          RELEASE_URL=$(gh release create "$VERSION" \
+            --title "Loophole IDE v${VERSION}" \
+            --notes-file release_body.md \
+            --draft \
+            --verify-tag 2>/dev/null || \
+          gh release create "$VERSION" \
+            --title "Loophole IDE v${VERSION}" \
+            --notes-file release_body.md \
+            --draft)
+
+          # Get the release ID for downstream jobs
+          RELEASE_ID=$(gh release view "$VERSION" --json id -q '.id')
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+          echo "upload_url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
+          echo "Created release: $RELEASE_URL (id=$RELEASE_ID)"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Step 2: Trigger all platform builds in parallel.
+  # Each builds its artifacts and uploads them straight into the release.
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows Builds
+    needs: create-release
+    uses: ./.github/workflows/publish-build-windows.yml
+    with:
+      version: ${{ needs.create-release.outputs.version }}
+      release_id: ${{ needs.create-release.outputs.release_id }}
+    secrets: inherit
+
+  build-macos:
+    name: macOS Builds
+    needs: create-release
+    uses: ./.github/workflows/publish-build-macos.yml
+    with:
+      version: ${{ needs.create-release.outputs.version }}
+      release_id: ${{ needs.create-release.outputs.release_id }}
+    secrets: inherit
+
+  build-linux:
+    name: Linux Builds
+    needs: create-release
+    uses: ./.github/workflows/publish-build-linux.yml
+    with:
+      version: ${{ needs.create-release.outputs.version }}
+      release_id: ${{ needs.create-release.outputs.release_id }}
+    secrets: inherit
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Step 3: Once every platform build has succeeded, publish the draft release.
+  # ─────────────────────────────────────────────────────────────────────────────
+  publish-release:
+    name: Publish Release
+    needs: [create-release, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    environment: publish
+
+    steps:
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.create-release.outputs.version }}
+        run: |
+          gh release edit "$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --latest
+
+          echo "Release v$VERSION is now live!"
+          gh release view "$VERSION" --repo "$GITHUB_REPOSITORY"

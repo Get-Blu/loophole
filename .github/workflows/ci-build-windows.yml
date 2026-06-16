@@ -1,117 +1,304 @@
-name: CI - Build - Windows
+name: CI Build — Windows
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - code
-    paths-ignore:
-      - "**/*.md"
+      - 'release/**'
   pull_request:
     branches:
-      - "**"
-    paths-ignore:
-      - "**/*.md"
+      - code
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (e.g. 1.121.03429) — defaults to package.json'
+        required: false
 
 env:
-  APP_NAME: Loophole
-  OS_NAME: windows
-  SHOULD_BUILD: yes
-  SHOULD_BUILD_REH: no
-  SHOULD_BUILD_REH_WEB: no
-  CI_BUILD: yes
-
-permissions: {}
+  NODE_VERSION: '20'
+  ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+  ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
 
 jobs:
-  compile:
-    runs-on: windows-2022
-    defaults:
-      run:
-        shell: bash
-    env:
-      VSCODE_ARCH: x64
-      NODE_OPTIONS: "--max-old-space-size=8192"
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Resolve version from package.json or manual override
+  # ─────────────────────────────────────────────────────────────────────────────
+  resolve-version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Setup Python 3
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: '3.11'
-
-      - name: Build compile step
-        run: ./build.sh
-
-      - name: Compress vscode artifact
+      - name: Determine version
+        id: version
         run: |
-          find vscode -type f -not -path "*/node_modules/*" -not -path "vscode/.build/node/*" -not -path "vscode/.git/*" > vscode.txt
-          echo "vscode/.build/extensions/node_modules" >> vscode.txt
-          echo "vscode/.git" >> vscode.txt
-          tar -czf vscode.tar.gz -T vscode.txt
+          if [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION"
 
-      - name: Upload vscode artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: vscode
-          path: ./vscode.tar.gz
-          retention-days: 1
-
-  package:
-    needs: compile
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Build all Windows x64 artifacts
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-windows-x64:
+    name: Build Windows x64
+    needs: resolve-version
     runs-on: windows-2022
-    strategy:
-      fail-fast: false
-      matrix:
-        vscode_arch:
-          - x64
-          - arm64
-    defaults:
-      run:
-        shell: bash
     env:
-      VSCODE_ARCH: ${{ matrix.vscode_arch }}
-      NODE_OPTIONS: "--max-old-space-size=8192"
-      SHOULD_BUILD_REH: no
-      SHOULD_BUILD_REH_WEB: no
+      VERSION: ${{ needs.resolve-version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # ── Checkout ──────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          fetch-depth: 0
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      # ── Toolchain ─────────────────────────────────────────────────────────────
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Setup Python 3
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Download vscode artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup Rust (for CLI)
+        uses: dtolnay/rust-toolchain@stable
         with:
-          name: vscode
+          targets: x86_64-pc-windows-msvc
 
-      - name: Build Windows package for ${{ matrix.vscode_arch }}
-        run: ./build/windows/package.sh
-
-      - name: Prepare assets
-        run: ./prepare_assets.sh
-
-      - name: Upload artifacts for ${{ matrix.vscode_arch }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      # ── Caches ────────────────────────────────────────────────────────────────
+      - name: Cache Rust artifacts
+        uses: actions/cache@v4
         with:
-          name: loophole-${{ matrix.vscode_arch }}
-          path: assets/
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cli/target
+          key: ${{ runner.os }}-cargo-x64-${{ hashFiles('cli/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-x64-
+
+      - name: Cache Electron
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ELECTRON_CACHE }}
+            ${{ env.ELECTRON_BUILDER_CACHE }}
+          key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-electron-
+
+      # ── Install & compile ──────────────────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+        env:
+          npm_config_arch: x64
+
+
+      - name: Compile TypeScript
+        run: npm run compile
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Build CLI (Rust, x64)
+        working-directory: cli
+        run: cargo build --release --target x86_64-pc-windows-msvc
+
+      # ── Package base app ───────────────────────────────────────────────────────
+      - name: Package Electron app
+        run: npm run gulp vscode-win32-x64-ci
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Create dist directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+      # ── 1. User Installer (.exe) ───────────────────────────────────────────────
+      - name: Build User Installer
+        run: npm run gulp vscode-win32-x64-user-setup
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — User Installer
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64/user-setup" -Filter "*.exe" | Select-Object -First 1
+          Copy-Item $src.FullName "dist/LoopholeUserSetup-x64-$env:VERSION.exe"
+
+      # ── 2. System Installer (.exe) ─────────────────────────────────────────────
+      - name: Build System Installer
+        run: npm run gulp vscode-win32-x64-setup
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — System Installer
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64/setup" -Filter "*.exe" | Select-Object -First 1
+          Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe"
+
+      # ── 3. ZIP archive ─────────────────────────────────────────────────────────
+      - name: Build ZIP
+        run: npm run gulp vscode-win32-x64-ci
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — ZIP
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build" -Filter "VSCode-win32-x64-*.zip" -Recurse | Select-Object -First 1
+          Copy-Item $src.FullName "dist/Loophole-win32-x64-$env:VERSION.zip"
+
+      # ── 4. MSI — updates enabled ───────────────────────────────────────────────
+      - name: Build MSI (updates enabled)
+        run: npm run gulp vscode-win32-x64-ci
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — MSI (updates enabled)
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64" -Filter "*.msi" |
+                 Where-Object { $_.Name -notlike "*updates-disabled*" } |
+                 Select-Object -First 1
+          Copy-Item $src.FullName "dist/Loophole-x64-$env:VERSION.msi"
+
+      # ── 5. MSI — updates disabled ──────────────────────────────────────────────
+      - name: Build MSI (updates disabled)
+        run: npm run gulp vscode-win32-x64-ci
+        env:
+          LOOPHOLE_QUALITY: stable
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — MSI (updates disabled)
+        shell: pwsh
+        run: |
+          $src = Get-ChildItem ".build/win32-x64" -Filter "*updates-disabled*.msi" | Select-Object -First 1
+          Copy-Item $src.FullName "dist/Loophole-x64-updates-disabled-$env:VERSION.msi"
+
+      # ── 6. Remote Host tarball ─────────────────────────────────────────────────
+      - name: Build Remote Host
+        run: npm run gulp vscode-reh-win32-x64-ci
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — Remote Host tarball
+        shell: pwsh
+        run: |
+          if (Test-Path ".build/vscode-reh-win32-x64") {
+            tar -czf "dist/loophole-reh-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-win32-x64"
+          } else {
+            Write-Warning "REH directory not found — skipping"
+          }
+
+      # ── 7. Web Host tarball ────────────────────────────────────────────────────
+      - name: Build Web Host
+        run: npm run gulp vscode-reh-web-win32-x64-ci
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Stage — Web Host tarball
+        shell: pwsh
+        run: |
+          if (Test-Path ".build/vscode-reh-web-win32-x64") {
+            tar -czf "dist/loophole-reh-web-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-web-win32-x64"
+          } else {
+            Write-Warning "REH-Web directory not found — skipping"
+          }
+
+      # ── 8. CLI binary ──────────────────────────────────────────────────────────
+      - name: Stage — CLI binary
+        shell: pwsh
+        run: |
+          $cliBin = "cli/target/x86_64-pc-windows-msvc/release/loophole.exe"
+          if (Test-Path $cliBin) {
+            Copy-Item $cliBin "dist/loophole-cli-win32-x64-$env:VERSION.exe"
+          } else {
+            Write-Warning "CLI binary not found — skipping"
+          }
+
+      # ── Summary ───────────────────────────────────────────────────────────────
+      - name: List built artifacts
+        shell: pwsh
+        run: |
+          Write-Host "`n=== dist/ artifacts ==="
+          Get-ChildItem dist | ForEach-Object {
+            $size = [math]::Round($_.Length / 1MB, 2)
+            Write-Host "  $($_.Name)  ($size MB)"
+          }
+
+      # ── Upload all artifacts ───────────────────────────────────────────────────
+      - name: Upload — User Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoopholeUserSetup-x64-${{ env.VERSION }}
+          path: dist/LoopholeUserSetup-x64-${{ env.VERSION }}.exe
           retention-days: 7
+
+      - name: Upload — System Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoopholeSetup-x64-${{ env.VERSION }}
+          path: dist/LoopholeSetup-x64-${{ env.VERSION }}.exe
+          retention-days: 7
+
+      - name: Upload — ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Loophole-win32-x64-${{ env.VERSION }}-zip
+          path: dist/Loophole-win32-x64-${{ env.VERSION }}.zip
+          retention-days: 7
+
+      - name: Upload — MSI (updates enabled)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Loophole-x64-${{ env.VERSION }}-msi
+          path: dist/Loophole-x64-${{ env.VERSION }}.msi
+          retention-days: 7
+
+      - name: Upload — MSI (updates disabled)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Loophole-x64-${{ env.VERSION }}-msi-updates-disabled
+          path: dist/Loophole-x64-updates-disabled-${{ env.VERSION }}.msi
+          retention-days: 7
+
+      - name: Upload — Remote Host
+        uses: actions/upload-artifact@v4
+        with:
+          name: loophole-reh-win32-x64-${{ env.VERSION }}
+          path: dist/loophole-reh-win32-x64-${{ env.VERSION }}.tar.gz
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload — Web Host
+        uses: actions/upload-artifact@v4
+        with:
+          name: loophole-reh-web-win32-x64-${{ env.VERSION }}
+          path: dist/loophole-reh-web-win32-x64-${{ env.VERSION }}.tar.gz
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload — CLI
+        uses: actions/upload-artifact@v4
+        with:
+          name: loophole-cli-win32-x64-${{ env.VERSION }}
+          path: dist/loophole-cli-win32-x64-${{ env.VERSION }}.exe
+          retention-days: 7
+          if-no-files-found: warn
