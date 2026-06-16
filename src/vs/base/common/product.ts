@@ -68,6 +68,8 @@ export interface IProductConfiguration {
 	readonly version: string;
 	readonly date?: string;
 	readonly quality?: string;
+	readonly loopholeVersion?: string;
+    readonly loopholeRelease?: string;
 	readonly commit?: string;
 
 	readonly nameShort: string;
