@@ -78,10 +78,6 @@ jobs:
         env:
           npm_config_arch: x64
 
-      - name: Build React UI
-        run: npm run buildreact
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Compile TypeScript
         run: npm run compile
@@ -93,7 +89,7 @@ jobs:
         run: cargo build --release --target x86_64-apple-darwin
 
       - name: Package Electron app (darwin x64)
-        run: npm run gulp vscode-darwin-x64
+        run: npm run gulp vscode-darwin-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -101,7 +97,7 @@ jobs:
         run: mkdir -p dist
 
       - name: Build DMG
-        run: npm run gulp vscode-darwin-x64-dmg
+        run: npm run gulp vscode-darwin-x64-ci
         env:
           LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -112,7 +108,7 @@ jobs:
           cp "$src" "dist/Loophole.x64.$VERSION.dmg"
 
       - name: Build ZIP
-        run: npm run gulp vscode-darwin-x64-archive
+        run: npm run gulp vscode-darwin-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -122,7 +118,7 @@ jobs:
           cp "$src" "dist/Loophole-darwin-x64-$VERSION.zip"
 
       - name: Build Remote Host
-        run: npm run gulp vscode-reh-darwin-x64
+        run: npm run gulp vscode-reh-darwin-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -133,7 +129,7 @@ jobs:
           fi
 
       - name: Build Web Host
-        run: npm run gulp vscode-reh-web-darwin-x64
+        run: npm run gulp vscode-reh-web-darwin-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -217,10 +213,6 @@ jobs:
         env:
           npm_config_arch: arm64
 
-      - name: Build React UI
-        run: npm run buildreact
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Compile TypeScript
         run: npm run compile
@@ -232,7 +224,7 @@ jobs:
         run: cargo build --release --target aarch64-apple-darwin
 
       - name: Package Electron app (darwin arm64)
-        run: npm run gulp vscode-darwin-arm64
+        run: npm run gulp vscode-darwin-arm64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -240,7 +232,7 @@ jobs:
         run: mkdir -p dist
 
       - name: Build DMG
-        run: npm run gulp vscode-darwin-arm64-dmg
+        run: npm run gulp vscode-darwin-arm64-ci
         env:
           LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -251,7 +243,7 @@ jobs:
           cp "$src" "dist/Loophole.arm64.$VERSION.dmg"
 
       - name: Build ZIP
-        run: npm run gulp vscode-darwin-arm64-archive
+        run: npm run gulp vscode-darwin-arm64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -261,7 +253,7 @@ jobs:
           cp "$src" "dist/Loophole-darwin-arm64-$VERSION.zip"
 
       - name: Build Remote Host
-        run: npm run gulp vscode-reh-darwin-arm64
+        run: npm run gulp vscode-reh-darwin-arm64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -272,7 +264,7 @@ jobs:
           fi
 
       - name: Build Web Host
-        run: npm run gulp vscode-reh-web-darwin-arm64
+        run: npm run gulp vscode-reh-web-darwin-arm64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 

@@ -80,10 +80,6 @@ jobs:
         env:
           npm_config_arch: x64
 
-      - name: Build React UI
-        run: npm run buildreact
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Compile TypeScript
         run: npm run compile
@@ -96,7 +92,7 @@ jobs:
 
       # ── Package base app ───────────────────────────────────────────────────────
       - name: Package Electron app
-        run: npm run gulp vscode-win32-x64
+        run: npm run gulp vscode-win32-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -130,7 +126,7 @@ jobs:
           Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe"
 
       - name: Build ZIP
-        run: npm run gulp vscode-win32-x64-archive
+        run: npm run gulp vscode-win32-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -141,7 +137,7 @@ jobs:
           Copy-Item $src.FullName "dist/Loophole-win32-x64-$env:VERSION.zip"
 
       - name: Build MSI (updates enabled)
-        run: npm run gulp vscode-win32-x64-msi
+        run: npm run gulp vscode-win32-x64-ci
         env:
           LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -155,7 +151,7 @@ jobs:
           Copy-Item $src.FullName "dist/Loophole-x64-$env:VERSION.msi"
 
       - name: Build MSI (updates disabled)
-        run: npm run gulp vscode-win32-x64-msi-updates-disabled
+        run: npm run gulp vscode-win32-x64-ci
         env:
           LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -167,7 +163,7 @@ jobs:
           Copy-Item $src.FullName "dist/Loophole-x64-updates-disabled-$env:VERSION.msi"
 
       - name: Build Remote Host
-        run: npm run gulp vscode-reh-win32-x64
+        run: npm run gulp vscode-reh-win32-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -179,7 +175,7 @@ jobs:
           }
 
       - name: Build Web Host
-        run: npm run gulp vscode-reh-web-win32-x64
+        run: npm run gulp vscode-reh-web-win32-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
