@@ -548,6 +548,18 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 	// anthropic-specific - max tokens
 	const maxTokens = getReservedOutputTokenSpace(providerName, modelName_, { isReasoningEnabled: !!reasoningInfo?.isReasoningEnabled, overridesOfModel })
 
+	const sanitizedMessages = (messages as AnthropicLLMChatMessage[]).map(msg => {
+        if (msg.role !== 'assistant' || typeof msg.content === 'string') {
+            return msg;
+        }
+        return {
+            ...msg,
+            content: msg.content.filter(
+                (block: any) => block.type !== 'thinking' && block.type !== 'redacted_thinking'
+            ),
+        };
+    });
+
 	// tools
 	const potentialTools = anthropicTools(chatMode, mcpTools)
 	const nativeToolsObj = potentialTools && specialToolFormat === 'anthropic-style' ?
