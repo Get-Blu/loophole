@@ -563,7 +563,7 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 
 	const stream = anthropic.messages.stream({
 		system: separateSystemMessage ?? undefined,
-		messages: messages as AnthropicLLMChatMessage[],
+		messages: sanitizedMessages as any,
 		model: modelName,
 		max_tokens: maxTokens ?? 4_096, // anthropic requires this
 		...includeInPayload,
