@@ -111,7 +111,7 @@ export function transpileTask(src: string, out: string, esbuild?: boolean): task
 	const task = () => {
 
 		const transpile = createCompile(src, { build: false, emitError: true, transpileOnly: { esbuild: !!esbuild }, preserveEnglish: false });
-		const srcPipe = gulp.src(`${src}/**`, { base: `${src}` });
+		const srcPipe = gulp.src([`${src}/**`, `!${src}/vs/workbench/contrib/void/browser/react/node_modules/**`], { base: `${src}` });
 
 		return srcPipe
 			.pipe(transpile())
@@ -131,7 +131,7 @@ export function compileTask(src: string, out: string, build: boolean, options: {
 		}
 
 		const compile = createCompile(src, { build, emitError: true, transpileOnly: false, preserveEnglish: !!options.preserveEnglish });
-		const srcPipe = gulp.src(`${src}/**`, { base: `${src}` });
+		const srcPipe = gulp.src([`${src}/**`, `!${src}/vs/workbench/contrib/void/browser/react/node_modules/**`], { base: `${src}` });
 		const generator = new MonacoGenerator(false);
 		if (src === 'src') {
 			generator.execute();
