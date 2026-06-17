@@ -1,13 +1,6 @@
 name: CI Build — Windows
 
 on:
-  push:
-    branches:
-      - code
-      - 'release/**'
-  pull_request:
-    branches:
-      - code
   workflow_dispatch:
     inputs:
       version:
@@ -125,7 +118,6 @@ jobs:
         run: node build.js
         working-directory: src/vs/workbench/contrib/void/browser/react
 
-
       - name: Compile TypeScript
         run: npm run compile
         env:
@@ -146,14 +138,13 @@ jobs:
         run: New-Item -ItemType Directory -Force -Path dist | Out-Null
 
       # ── 1. User Installer (.exe) ───────────────────────────────────────────────
-
       - name: Copy Inno Updater tools
         run: npm run gulp vscode-win32-x64-inno-updater
-  
+
       - name: Build User Installer
         run: npm run gulp vscode-win32-x64-user-setup
         env:
-          LOOPHOLE_QUALITY: stable
+          VSCODE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — User Installer
@@ -166,7 +157,7 @@ jobs:
       - name: Build System Installer
         run: npm run gulp vscode-win32-x64-system-setup
         env:
-          LOOPHOLE_QUALITY: stable
+          VSCODE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — System Installer
@@ -191,7 +182,7 @@ jobs:
       - name: Build MSI (updates enabled)
         run: npm run gulp vscode-win32-x64-ci
         env:
-          LOOPHOLE_QUALITY: stable
+          VSCODE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — MSI (updates enabled)
@@ -206,7 +197,7 @@ jobs:
       - name: Build MSI (updates disabled)
         run: npm run gulp vscode-win32-x64-ci
         env:
-          LOOPHOLE_QUALITY: stable
+          VSCODE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — MSI (updates disabled)
@@ -294,6 +285,7 @@ jobs:
           name: Loophole-x64-${{ env.VERSION }}-msi
           path: dist/Loophole-x64-${{ env.VERSION }}.msi
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — MSI (updates disabled)
         uses: actions/upload-artifact@v4
@@ -301,6 +293,7 @@ jobs:
           name: Loophole-x64-${{ env.VERSION }}-msi-updates-disabled
           path: dist/Loophole-x64-updates-disabled-${{ env.VERSION }}.msi
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — Remote Host
         uses: actions/upload-artifact@v4
