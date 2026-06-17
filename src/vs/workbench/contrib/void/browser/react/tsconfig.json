@@ -10,14 +10,18 @@
 		"moduleResolution": "NodeNext",
 		"module": "NodeNext",
 		"esModuleInterop": true,
-		"types": ["react"]
+		"types": ["react"],
+		"skipLibCheck": true
 	},
 	"include": [
 		"./src/**/*.ts",
-		"./src/**/*.tsx"
+		"./src/**/*.tsx",
+		"./src2/**/*.ts",
+		"./src2/**/*.tsx"
 	],
 	"exclude": [
-		"node_modules"
+		"node_modules",
+		"**/node_modules/**"
 	],
 	"plugins": [
       {

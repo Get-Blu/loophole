@@ -522,7 +522,7 @@ const anthropicTools = (chatMode: ChatMode | null, mcpTools: InternalToolInfo[] 
 	const allowedTools = availableTools(chatMode, mcpTools)
 	if (!allowedTools || Object.keys(allowedTools).length === 0) return null
 
-	const anthropicTools: Anthropic.Messages.ToolUnion[] = []
+	const anthropicTools: Anthropic.Messages.Tool[] = []
 	for (const t in allowedTools ?? {}) {
 		anthropicTools.push(toAnthropicTool(allowedTools[t]))
 	}
@@ -638,8 +638,8 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 
 	// on done - (or error/fail) - this is called AFTER last streamEvent
 	stream.on('finalMessage', (response) => {
-		const anthropicReasoning = response.content.filter(c => c.type === 'thinking' || c.type === 'redacted_thinking')
-		const tools = response.content.filter(c => c.type === 'tool_use')
+		const anthropicReasoning = response.content.filter((c: any) => c.type === 'thinking' || c.type === 'redacted_thinking')
+		const tools = response.content.filter((c: any) => c.type === 'tool_use')
 		// console.log('TOOLS!!!!!!', JSON.stringify(tools, null, 2))
 		// console.log('TOOLS!!!!!!', JSON.stringify(response, null, 2))
 		const toolCall = tools[0] && rawToolCallObjOfAnthropicParams(tools[0])

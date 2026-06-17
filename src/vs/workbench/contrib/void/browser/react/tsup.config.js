@@ -37,6 +37,8 @@ export default defineConfig({
 			.replaceAll('*', '.*'))
 	],
 	treeshake: true,
+	tsconfig: './tsconfig.json',
+	skipTypeCheck: true,
 	esbuildOptions(options) {
 		options.outbase = 'src2'  // tries copying the folder hierarchy starting at src2
 	}

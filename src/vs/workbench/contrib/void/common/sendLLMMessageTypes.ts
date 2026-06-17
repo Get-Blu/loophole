@@ -89,7 +89,7 @@ export type RawToolCallObj = {
 	isDone: boolean;
 };
 
-export type AnthropicReasoning = ({ type: 'thinking'; thinking: any; signature: string; } | { type: 'redacted_thinking', data: any })
+export type AnthropicReasoning = ({ type: 'thinking'; thinking: any; signature: string; source?: any; } | { type: 'redacted_thinking', data: any; source?: any; })
 
 // Token usage information from LLM responses
 export type TokenUsageInfo = {
