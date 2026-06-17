@@ -137,7 +137,7 @@ jobs:
 
       # ── Package base app ───────────────────────────────────────────────────────
       - name: Package Electron app
-        run: npm run gulp vscode-win32-x64-ci
+        run: npm run gulp vscode-win32-x64
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
