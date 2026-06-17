@@ -34,9 +34,8 @@
 		"./vscode-dts/vscode.d.ts"
 	],
 	"exclude": [
-		"vs/workbench/contrib/webview/browser/pre/service-worker.js",
+        "vs/workbench/contrib/webview/browser/pre/service-worker.js",
         "vs/workbench/contrib/void/browser/react/node_modules/**",
-        "vs/workbench/contrib/void/browser/react/**",
-        "**/node_modules/**"
+        "vs/workbench/contrib/void/browser/react/**"
 	]
 }
