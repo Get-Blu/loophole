@@ -1,10 +1,6 @@
 name: CI Build — macOS
 
 on:
-  push:
-    branches:
-      - code
-      - 'release/**'
   pull_request:
     branches:
       - code
