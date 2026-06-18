@@ -1,10 +1,6 @@
 name: CI Build — Linux
 
 on:
-  push:
-    branches:
-      - code
-      - 'release/**'
   pull_request:
     branches:
       - code
