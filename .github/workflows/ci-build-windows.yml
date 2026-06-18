@@ -73,17 +73,6 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Install OpenSSL (for Rust CLI)
-        run: choco install openssl -y
-        shell: pwsh
-
-      - name: Set OpenSSL environment variables
-        run: |
-          echo "OPENSSL_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-          echo "OPENSSL_LIB_DIR=C:\Program Files\OpenSSL-Win64\lib" >> $env:GITHUB_ENV
-          echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-        shell: pwsh
-
       # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
         uses: actions/cache@v4
@@ -152,8 +141,10 @@ jobs:
         run: |
           if (Test-Path ".build/win32-x64/user-setup") {
             $src = Get-ChildItem ".build/win32-x64/user-setup" -Filter "*.exe" | Select-Object -First 1
-            if ($src) { Copy-Item $src.FullName "dist/LoopholeUserSetup-x64-$env:VERSION.exe" }
-            else { Write-Warning "No .exe found — skipping" }
+            if ($src) {
+              Copy-Item $src.FullName "dist/LoopholeUserSetup-x64-$env:VERSION.exe"
+              Write-Host "Staged: $($src.Name)"
+            } else { Write-Warning "No .exe found in user-setup — skipping" }
           } else { Write-Warning "user-setup folder not found — skipping" }
 
       # ── 2. System Installer (.exe) ─────────────────────────────────────────────
@@ -166,99 +157,53 @@ jobs:
       - name: Stage — System Installer
         shell: pwsh
         run: |
-          if (Test-Path ".build/win32-x64/setup") {
-            $src = Get-ChildItem ".build/win32-x64/setup" -Filter "*.exe" | Select-Object -First 1
-            if ($src) { Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe" }
-            else { Write-Warning "No .exe found — skipping" }
-          } else { Write-Warning "setup folder not found — skipping" }
-          
-      # ── 3. ZIP archive ─────────────────────────────────────────────────────────
-      - name: Build ZIP
-        run: npm run gulp vscode-win32-x64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          if (Test-Path ".build/win32-x64/system-setup") {
+            $src = Get-ChildItem ".build/win32-x64/system-setup" -Filter "*.exe" | Select-Object -First 1
+            if ($src) {
+              Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe"
+              Write-Host "Staged: $($src.Name)"
+            } else { Write-Warning "No .exe found in system-setup — skipping" }
+          } else { Write-Warning "system-setup folder not found — skipping" }
 
-      - name: Stage — ZIP
-        shell: pwsh
-        run: |
-          $src = Get-ChildItem ".build" -Filter "VSCode-win32-x64-*.zip" -Recurse | Select-Object -First 1
-          if ($src) { Copy-Item $src.FullName "dist/Loophole-win32-x64-$env:VERSION.zip" }
-          else { Write-Warning "ZIP not found — skipping" }
-          
-      # ── 4. MSI — updates enabled ───────────────────────────────────────────────
-      - name: Build MSI (updates enabled)
-        run: npm run gulp vscode-win32-x64-ci
-        env:
-          VSCODE_QUALITY: stable
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
-      - name: Stage — MSI (updates enabled)
-        shell: pwsh
-        run: |
-          if (Test-Path ".build/win32-x64") {
-            $src = Get-ChildItem ".build/win32-x64" -Filter "*.msi" |
-                   Where-Object { $_.Name -notlike "*updates-disabled*" } |
-                   Select-Object -First 1
-            if ($src) { Copy-Item $src.FullName "dist/Loophole-x64-$env:VERSION.msi" }
-            else { Write-Warning "MSI not found — skipping" }
-          } else { Write-Warning "win32-x64 folder not found — skipping" }
-
-      # ── 5. MSI — updates disabled ──────────────────────────────────────────────
-      - name: Build MSI (updates disabled)
-        run: npm run gulp vscode-win32-x64-ci
-        env:
-          VSCODE_QUALITY: stable
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
-      - name: Stage — MSI (updates disabled)
-        shell: pwsh
-        run: |
-          if (Test-Path ".build/win32-x64") {
-            $src = Get-ChildItem ".build/win32-x64" -Filter "*updates-disabled*.msi" | Select-Object -First 1
-            if ($src) { Copy-Item $src.FullName "dist/Loophole-x64-updates-disabled-$env:VERSION.msi" }
-            else { Write-Warning "MSI updates-disabled not found — skipping" }
-          } else { Write-Warning "win32-x64 folder not found — skipping" }
-          
-      # ── 6. Remote Host tarball ─────────────────────────────────────────────────
+      # ── 3. Remote Host tarball ─────────────────────────────────────────────────
       - name: Build Remote Host
         run: npm run gulp vscode-reh-win32-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+        continue-on-error: true
 
       - name: Stage — Remote Host tarball
         shell: pwsh
         run: |
           if (Test-Path ".build/vscode-reh-win32-x64") {
             tar -czf "dist/loophole-reh-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-win32-x64"
-          } else {
-            Write-Warning "REH directory not found — skipping"
-          }
+            Write-Host "Staged REH tarball"
+          } else { Write-Warning "REH directory not found — skipping" }
 
-      # ── 7. Web Host tarball ────────────────────────────────────────────────────
+      # ── 4. Web Host tarball ────────────────────────────────────────────────────
       - name: Build Web Host
         run: npm run gulp vscode-reh-web-win32-x64-ci
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+        continue-on-error: true
 
       - name: Stage — Web Host tarball
         shell: pwsh
         run: |
           if (Test-Path ".build/vscode-reh-web-win32-x64") {
             tar -czf "dist/loophole-reh-web-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-web-win32-x64"
-          } else {
-            Write-Warning "REH-Web directory not found — skipping"
-          }
+            Write-Host "Staged REH-Web tarball"
+          } else { Write-Warning "REH-Web directory not found — skipping" }
 
-      # ── 8. CLI binary ──────────────────────────────────────────────────────────
+      # ── 5. CLI binary ──────────────────────────────────────────────────────────
       - name: Stage — CLI binary
         shell: pwsh
         run: |
           $cliBin = "cli/target/x86_64-pc-windows-msvc/release/loophole.exe"
           if (Test-Path $cliBin) {
             Copy-Item $cliBin "dist/loophole-cli-win32-x64-$env:VERSION.exe"
-          } else {
-            Write-Warning "CLI binary not found — skipping"
-          }
+            Write-Host "Staged CLI binary"
+          } else { Write-Warning "CLI binary not found — skipping" }
 
       # ── Summary ───────────────────────────────────────────────────────────────
       - name: List built artifacts
@@ -277,34 +222,13 @@ jobs:
           name: LoopholeUserSetup-x64-${{ env.VERSION }}
           path: dist/LoopholeUserSetup-x64-${{ env.VERSION }}.exe
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — System Installer
         uses: actions/upload-artifact@v4
         with:
           name: LoopholeSetup-x64-${{ env.VERSION }}
           path: dist/LoopholeSetup-x64-${{ env.VERSION }}.exe
-          retention-days: 7
-
-      - name: Upload — ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: Loophole-win32-x64-${{ env.VERSION }}-zip
-          path: dist/Loophole-win32-x64-${{ env.VERSION }}.zip
-          retention-days: 7
-
-      - name: Upload — MSI (updates enabled)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Loophole-x64-${{ env.VERSION }}-msi
-          path: dist/Loophole-x64-${{ env.VERSION }}.msi
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Upload — MSI (updates disabled)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Loophole-x64-${{ env.VERSION }}-msi-updates-disabled
-          path: dist/Loophole-x64-updates-disabled-${{ env.VERSION }}.msi
           retention-days: 7
           if-no-files-found: warn
 
