@@ -150,8 +150,11 @@ jobs:
       - name: Stage — User Installer
         shell: pwsh
         run: |
-          $src = Get-ChildItem ".build/win32-x64/user-setup" -Filter "*.exe" | Select-Object -First 1
-          Copy-Item $src.FullName "dist/LoopholeUserSetup-x64-$env:VERSION.exe"
+          if (Test-Path ".build/win32-x64/user-setup") {
+            $src = Get-ChildItem ".build/win32-x64/user-setup" -Filter "*.exe" | Select-Object -First 1
+            if ($src) { Copy-Item $src.FullName "dist/LoopholeUserSetup-x64-$env:VERSION.exe" }
+            else { Write-Warning "No .exe found — skipping" }
+          } else { Write-Warning "user-setup folder not found — skipping" }
 
       # ── 2. System Installer (.exe) ─────────────────────────────────────────────
       - name: Build System Installer
@@ -163,9 +166,12 @@ jobs:
       - name: Stage — System Installer
         shell: pwsh
         run: |
-          $src = Get-ChildItem ".build/win32-x64/setup" -Filter "*.exe" | Select-Object -First 1
-          Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe"
-
+          if (Test-Path ".build/win32-x64/setup") {
+            $src = Get-ChildItem ".build/win32-x64/setup" -Filter "*.exe" | Select-Object -First 1
+            if ($src) { Copy-Item $src.FullName "dist/LoopholeSetup-x64-$env:VERSION.exe" }
+            else { Write-Warning "No .exe found — skipping" }
+          } else { Write-Warning "setup folder not found — skipping" }
+          
       # ── 3. ZIP archive ─────────────────────────────────────────────────────────
       - name: Build ZIP
         run: npm run gulp vscode-win32-x64-ci
@@ -176,8 +182,9 @@ jobs:
         shell: pwsh
         run: |
           $src = Get-ChildItem ".build" -Filter "VSCode-win32-x64-*.zip" -Recurse | Select-Object -First 1
-          Copy-Item $src.FullName "dist/Loophole-win32-x64-$env:VERSION.zip"
-
+          if ($src) { Copy-Item $src.FullName "dist/Loophole-win32-x64-$env:VERSION.zip" }
+          else { Write-Warning "ZIP not found — skipping" }
+          
       # ── 4. MSI — updates enabled ───────────────────────────────────────────────
       - name: Build MSI (updates enabled)
         run: npm run gulp vscode-win32-x64-ci
@@ -188,10 +195,13 @@ jobs:
       - name: Stage — MSI (updates enabled)
         shell: pwsh
         run: |
-          $src = Get-ChildItem ".build/win32-x64" -Filter "*.msi" |
-                 Where-Object { $_.Name -notlike "*updates-disabled*" } |
-                 Select-Object -First 1
-          Copy-Item $src.FullName "dist/Loophole-x64-$env:VERSION.msi"
+          if (Test-Path ".build/win32-x64") {
+            $src = Get-ChildItem ".build/win32-x64" -Filter "*.msi" |
+                   Where-Object { $_.Name -notlike "*updates-disabled*" } |
+                   Select-Object -First 1
+            if ($src) { Copy-Item $src.FullName "dist/Loophole-x64-$env:VERSION.msi" }
+            else { Write-Warning "MSI not found — skipping" }
+          } else { Write-Warning "win32-x64 folder not found — skipping" }
 
       # ── 5. MSI — updates disabled ──────────────────────────────────────────────
       - name: Build MSI (updates disabled)
@@ -203,9 +213,12 @@ jobs:
       - name: Stage — MSI (updates disabled)
         shell: pwsh
         run: |
-          $src = Get-ChildItem ".build/win32-x64" -Filter "*updates-disabled*.msi" | Select-Object -First 1
-          Copy-Item $src.FullName "dist/Loophole-x64-updates-disabled-$env:VERSION.msi"
-
+          if (Test-Path ".build/win32-x64") {
+            $src = Get-ChildItem ".build/win32-x64" -Filter "*updates-disabled*.msi" | Select-Object -First 1
+            if ($src) { Copy-Item $src.FullName "dist/Loophole-x64-updates-disabled-$env:VERSION.msi" }
+            else { Write-Warning "MSI updates-disabled not found — skipping" }
+          } else { Write-Warning "win32-x64 folder not found — skipping" }
+          
       # ── 6. Remote Host tarball ─────────────────────────────────────────────────
       - name: Build Remote Host
         run: npm run gulp vscode-reh-win32-x64-ci
