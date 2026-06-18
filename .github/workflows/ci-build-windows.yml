@@ -165,37 +165,7 @@ jobs:
             } else { Write-Warning "No .exe found in system-setup — skipping" }
           } else { Write-Warning "system-setup folder not found — skipping" }
 
-      # ── 3. Remote Host tarball ─────────────────────────────────────────────────
-      - name: Build Remote Host
-        run: npm run gulp vscode-reh-win32-x64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
-        continue-on-error: true
-
-      - name: Stage — Remote Host tarball
-        shell: pwsh
-        run: |
-          if (Test-Path ".build/vscode-reh-win32-x64") {
-            tar -czf "dist/loophole-reh-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-win32-x64"
-            Write-Host "Staged REH tarball"
-          } else { Write-Warning "REH directory not found — skipping" }
-
-      # ── 4. Web Host tarball ────────────────────────────────────────────────────
-      - name: Build Web Host
-        run: npm run gulp vscode-reh-web-win32-x64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
-        continue-on-error: true
-
-      - name: Stage — Web Host tarball
-        shell: pwsh
-        run: |
-          if (Test-Path ".build/vscode-reh-web-win32-x64") {
-            tar -czf "dist/loophole-reh-web-win32-x64-$env:VERSION.tar.gz" -C ".build" "vscode-reh-web-win32-x64"
-            Write-Host "Staged REH-Web tarball"
-          } else { Write-Warning "REH-Web directory not found — skipping" }
-
-      # ── 5. CLI binary ──────────────────────────────────────────────────────────
+      # ── 3. CLI binary ──────────────────────────────────────────────────────────
       - name: Stage — CLI binary
         shell: pwsh
         run: |
@@ -229,22 +199,6 @@ jobs:
         with:
           name: LoopholeSetup-x64-${{ env.VERSION }}
           path: dist/LoopholeSetup-x64-${{ env.VERSION }}.exe
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
-        with:
-          name: loophole-reh-win32-x64-${{ env.VERSION }}
-          path: dist/loophole-reh-win32-x64-${{ env.VERSION }}.tar.gz
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
-        with:
-          name: loophole-reh-web-win32-x64-${{ env.VERSION }}
-          path: dist/loophole-reh-web-win32-x64-${{ env.VERSION }}.tar.gz
           retention-days: 7
           if-no-files-found: warn
 
