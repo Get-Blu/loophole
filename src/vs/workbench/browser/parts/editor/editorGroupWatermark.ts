@@ -40,21 +40,28 @@ const findInFiles: WatermarkEntry = { text: localize('watermark.findInFiles', "F
 const toggleTerminal: WatermarkEntry = { text: localize({ key: 'watermark.toggleTerminal', comment: ['toggle is a verb here'] }, "Toggle Terminal"), id: 'workbench.action.terminal.toggleTerminal', when: { web: ContextKeyExpr.equals('terminalProcessSupported', true) } };
 const startDebugging: WatermarkEntry = { text: localize('watermark.startDebugging', "Start Debugging"), id: 'workbench.action.debug.start', when: { web: ContextKeyExpr.equals('terminalProcessSupported', true) } };
 const openSettings: WatermarkEntry = { text: localize('watermark.openSettings', "Open Settings"), id: 'workbench.action.openSettings' };
+const openAgent: WatermarkEntry = { text: localize('watermark.openAgent', "Open Agent"), id: 'lohole.ctrlLAction' };
+const inlineEdit: WatermarkEntry = { text: localize('watermark.inlineEdit', "Inline Edit"), id: 'inlineChat.start' };
 
 const baseEntries: WatermarkEntry[] = [
 	openChat,
 	showCommands,
 ];
 
-const emptyWindowEntries: WatermarkEntry[] = coalesce([
+const emptyWindowEntries: WatermarkEntry[] = [
 	...baseEntries,
-	openRecent,
-	...(isMacintosh && !isWeb ? [openFileOrFolder] : [openFile, openFolder]),
-	isMacintosh && !isWeb ? newUntitledFile : undefined, // fill in one more on macOS to get to 5 entries
-]);
+	openAgent,
+	inlineEdit,
+	startDebugging,
+	toggleTerminal,
+];
 
 const workspaceEntries: WatermarkEntry[] = [
 	...baseEntries,
+	openAgent,
+	inlineEdit,
+	startDebugging,
+	toggleTerminal,
 ];
 
 const otherEntries: WatermarkEntry[] = [
