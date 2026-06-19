@@ -9,8 +9,7 @@ name = "cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "loophole"
-path = "src/bin/code/main.rs"
+name = "code"
 
 [dependencies]
 futures = "0.3.28"
