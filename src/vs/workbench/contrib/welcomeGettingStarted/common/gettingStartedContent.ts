@@ -221,6 +221,62 @@ export const walkthroughs: GettingStartedWalkthroughContent = [
 					title: localize('gettingStarted.videoTutorial.title', "Watch video tutorials"),
 					description: localize('gettingStarted.videoTutorial.description.interpolated', "Watch the first in a series of short & practical video tutorials for Loophole's key features.\n{0}", Button(localize('watch', "Watch Tutorial"), 'https://aka.ms/vscode-getting-started-video')),
 					media: { type: 'svg', altText: 'Loophole Settings', path: 'learn.svg' },
+				},
+				{
+					id: 'configureAIProviders',
+					title: localize('gettingStarted.configureAIProviders.title', "Configure AI Providers"),
+					description: localize('gettingStarted.configureAIProviders.description.interpolated', "Set up your AI provider API keys to enable Loophole's AI capabilities. Choose from OpenAI, Anthropic, Google, and more.\n{0}", Button(localize('openSettings', "Open AI Settings"), 'command:toSide:workbench.action.openSettings')),
+					// TODO: Add image showing AI provider settings panel
+					media: { type: 'svg', altText: 'AI Provider Settings', path: 'ai-providers.svg' },
+				},
+				{
+					id: 'startChatting',
+					title: localize('gettingStarted.startChatting.title', "Start Chatting with AI"),
+					description: localize('gettingStarted.startChatting.description.interpolated', "Open the AI chat sidebar and start asking questions. Get help with coding, debugging, explanations, and more.\n{0}", Button(localize('openChat', "Open Chat"), 'command:workbench.action.chat.open')),
+					// TODO: Add image showing chat sidebar with a conversation
+					media: { type: 'svg', altText: 'AI Chat Sidebar', path: 'chat-sidebar.svg' },
+				},
+				{
+					id: 'addFileContext',
+					title: localize('gettingStarted.addFileContext.title', "Add Files to Context"),
+					description: localize('gettingStarted.addFileContext.description.interpolated', "Use the paperclip button to add files to your chat context. This helps the AI understand your codebase and provide better assistance.\n{0}", Button(localize('openChat', "Open Chat"), 'command:workbench.action.chat.open')),
+					// TODO: Add image showing paperclip button and selected files
+					media: { type: 'svg', altText: 'Adding Files to Context', path: 'file-context.svg' },
+				},
+				{
+					id: 'codeEditing',
+					title: localize('gettingStarted.codeEditing.title', "Edit Code with AI"),
+					description: localize('gettingStarted.codeEditing.description.interpolated', "Let AI edit your code directly. Accept or reject changes, and see diffs before applying them.\n{0}", Button(localize('openChat', "Open Chat"), 'command:workbench.action.chat.open')),
+					// TODO: Add image showing AI code editing with diff view
+					media: { type: 'svg', altText: 'AI Code Editing', path: 'code-editing.svg' },
+				},
+				{
+					id: 'chatModes',
+					title: localize('gettingStarted.chatModes.title', "Explore Chat Modes"),
+					description: localize('gettingStarted.chatModes.description.interpolated', "Switch between Chat (normal), Gather (read-only), Agent (full editing), and Plan (creates .md plans) modes for different workflows.\n{0}", Button(localize('openChat', "Open Chat"), 'command:workbench.action.chat.open')),
+					// TODO: Add image showing chat mode dropdown
+					media: { type: 'svg', altText: 'Chat Modes', path: 'chat-modes.svg' },
+				},
+				{
+					id: 'voiceInput',
+					title: localize('gettingStarted.voiceInput.title', "Use Voice Input"),
+					description: localize('gettingStarted.voiceInput.description.interpolated', "Use voice-to-text to dictate your prompts hands-free. Click the microphone button to start recording.\n{0}", Button(localize('openChat', "Open Chat"), 'command:workbench.action.chat.open')),
+					// TODO: Add image showing microphone button in chat
+					media: { type: 'svg', altText: 'Voice Input', path: 'voice-input.svg' },
+				},
+				{
+					id: 'tokenUsage',
+					title: localize('gettingStarted.tokenUsage.title', "Monitor Token Usage"),
+					description: localize('gettingStarted.tokenUsage.description.interpolated', "Keep track of your token usage and estimated costs in the chat header. Reset the counter when needed.\n{0}", Button(localize('openChat', "Open Chat"), 'command:workbench.action.chat.open')),
+					// TODO: Add image showing token usage counter
+					media: { type: 'svg', altText: 'Token Usage Counter', path: 'token-usage.svg' },
+				},
+				{
+					id: 'customizeSettings',
+					title: localize('gettingStarted.customizeSettings.title', "Customize AI Settings"),
+					description: localize('gettingStarted.customizeSettings.description.interpolated', "Configure models, enable reasoning/thinking modes, adjust context windows, and customize other AI preferences.\n{0}", Button(localize('openSettings', "Open AI Settings"), 'command:toSide:workbench.action.openSettings')),
+					// TODO: Add image showing AI settings panel with model selection
+					media: { type: 'svg', altText: 'AI Settings Panel', path: 'ai-settings.svg' },
 				}
 			]
 		}
