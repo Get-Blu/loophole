@@ -440,52 +440,31 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 		<div
 			ref={divRef}
 			className={`
-				flex flex-col relative text-left shrink-0
-				rounded-lg
-				bg-[#1e1e1e]
+				gap-x-1
+                flex flex-col p-2 relative input text-left shrink-0
+                rounded-md
+                bg-loophole-bg-1
 				transition-all duration-200
+				border border-loophole-border-3 focus-within:border-loophole-border-1 hover:border-loophole-border-1
 				max-h-[80vh] overflow-y-auto
-				pb-[6px] pl-[6px] pr-[6px]
-				${className}
+                ${className}
             `}
 			onClick={(e) => {
 				onClickAnywhere?.()
 			}}
 		>
-			{/* Top row: + button + file chips */}
+			{/* Selections section */}
 			{showSelections && selections && setSelections && (
-				<div className='flex items-center pt-1 pl-1' style={{ gap: '2px' }}>
-					{/* + button */}
-					<button
-						type="button"
-						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#181818]"
-						onClick={handleAddFile}
-						title="Add file to context"
-					>
-						<span className="text-sm leading-none select-none">+</span>
-					</button>
-
-					{/* @ Mentions button */}
-					<button
-						type="button"
-						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors bg-[#181818] text-xs font-medium"
-						title="Mention a file or symbol"
-					>
-						<span className="leading-none select-none">@</span>
-					</button>
-
-					{/* File chips inline */}
-					<SelectedFiles
-						type='staging'
-						selections={selections}
-						setSelections={setSelections}
-						showProspectiveSelections={showProspectiveSelections}
-					/>
-				</div>
+				<SelectedFiles
+					type='staging'
+					selections={selections}
+					setSelections={setSelections}
+					showProspectiveSelections={showProspectiveSelections}
+				/>
 			)}
 
 			{/* Input section */}
-			<div className="relative w-full px-3 pt-2 pb-1">
+			<div className="relative w-full">
 				{children}
 
 				{/* Close button (X) if onClose is provided */}
@@ -500,30 +479,39 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 				)}
 			</div>
 
-			{/* Bottom row - Cleaner design */}
-			<div className='flex flex-row justify-between items-center gap-2 px-3 pb-1 pt-1'>
+			{/* Bottom row */}
+			<div className='flex flex-row justify-between items-end gap-1'>
 				{showModelDropdown && (
-					<div className='flex items-center gap-2 text-nowrap'>
-						<div className='flex items-center gap-0.5'>
-							<ChevronRight size={11} className='text-loophole-fg-3 rotate-90 flex-shrink-0' />
-							<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 hover:text-loophole-fg-1 transition-colors' />
+					<div className='flex flex-col gap-y-1'>
+						<ReasoningOptionSlider featureName={featureName} />
+
+						<div className='flex items-center flex-wrap gap-x-2 gap-y-1 text-nowrap '>
+							{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 bg-loophole-bg-1 border border-loophole-border-2 rounded py-0.5 px-1' />}
+							<ModelDropdown featureName={featureName} className='text-xs text-loophole-fg-3 bg-loophole-bg-1 rounded' />
 						</div>
-						{featureName === 'Chat' && <ChatModeDropdown className='text-xs text-loophole-fg-3 hover:text-loophole-fg-1 transition-colors' />}
 					</div>
 				)}
 
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-2">
 
-
+					{/* Add file button */}
+					<button
+						type="button"
+						className="text-loophole-fg-3 hover:text-loophole-fg-1 w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors"
+						onClick={handleAddFile}
+						title="Add file to context"
+					>
+						<span className="text-sm leading-none select-none">+</span>
+					</button>
 
 					{/* Context Window Indicator */}
 					{/* TODO: calculate context window usage here — different models have different sizes (e.g. 200k, 246k tokens). Show a circular progress ring that fills as context is consumed. */}
 					<button
 						type="button"
-						className="p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-loophole-bg-2 text-loophole-fg-3 hover:text-loophole-fg-1"
+						className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors text-loophole-fg-3 hover:text-loophole-fg-1"
 						title="Context window usage"
 					>
-						<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
 							<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"
 								strokeDasharray="37.7"
@@ -538,7 +526,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 					{isSupported && (
 						<button
 							type="button"
-							className={`p-1.5 rounded-lg flex items-center justify-center cursor-pointer transition-colors hover:bg-loophole-bg-2 ${
+							className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors ${
 								recordingState === 'recording'
 									? 'text-red-500 animate-pulse'
 									: 'text-loophole-fg-3 hover:text-loophole-fg-1'
@@ -546,7 +534,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 							onClick={toggleRecording}
 							title={recordingState === 'recording' ? 'Stop recording' : 'Start voice recording'}
 						>
-							<Mic size={16} />
+							<Mic size={14} />
 						</button>
 					)}
 
