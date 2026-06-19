@@ -501,7 +501,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 						onClick={handleAddFile}
 						title="Add file to context"
 					>
-						<span className="text-sm leading-none select-none">+</span>
+						<Paperclip size={14} />
 					</button>
 
 					{/* Context Window Indicator */}
