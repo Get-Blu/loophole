@@ -3238,7 +3238,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[30px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight`}
+			className={`min-h-[40px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight`}
 			placeholder={`Ask anything — @ to mention`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
