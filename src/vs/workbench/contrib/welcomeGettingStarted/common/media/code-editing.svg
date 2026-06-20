@@ -1,0 +1,85 @@
+<svg width="300" height="220" viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+	<!-- ===== Light theme ===== -->
+	<g class="vscode-light">
+		<!-- outer frame -->
+		<rect x="20" y="20" width="260" height="168" rx="6" fill="none" stroke="#3C3C3C" stroke-opacity="0.3" stroke-width="1.5"/>
+
+		<!-- context line -->
+		<rect x="56" y="28" width="160" height="8" rx="3" fill="#3C3C3C" fill-opacity="0.35"/>
+
+		<!-- removed lines -->
+		<rect x="20" y="44" width="260" height="24" fill="#D85A30" fill-opacity="0.15"/>
+		<text x="34" y="60" font-family="monospace" font-size="14" fill="#D85A30" text-anchor="middle">-</text>
+		<rect x="56" y="52" width="190" height="8" rx="3" fill="#D85A30" fill-opacity="0.55"/>
+
+		<rect x="20" y="68" width="260" height="24" fill="#D85A30" fill-opacity="0.15"/>
+		<text x="34" y="84" font-family="monospace" font-size="14" fill="#D85A30" text-anchor="middle">-</text>
+		<rect x="56" y="76" width="130" height="8" rx="3" fill="#D85A30" fill-opacity="0.55"/>
+
+		<!-- added lines -->
+		<rect x="20" y="92" width="260" height="24" fill="#3B6D11" fill-opacity="0.15"/>
+		<text x="34" y="108" font-family="monospace" font-size="14" fill="#3B6D11" text-anchor="middle">+</text>
+		<rect x="56" y="100" width="200" height="8" rx="3" fill="#3B6D11" fill-opacity="0.55"/>
+
+		<rect x="20" y="116" width="260" height="24" fill="#3B6D11" fill-opacity="0.15"/>
+		<text x="34" y="132" font-family="monospace" font-size="14" fill="#3B6D11" text-anchor="middle">+</text>
+		<rect x="56" y="124" width="150" height="8" rx="3" fill="#3B6D11" fill-opacity="0.55"/>
+
+		<!-- context lines -->
+		<rect x="56" y="148" width="170" height="8" rx="3" fill="#3C3C3C" fill-opacity="0.35"/>
+		<rect x="56" y="172" width="110" height="8" rx="3" fill="#3C3C3C" fill-opacity="0.35"/>
+	</g>
+
+	<!-- ===== Dark theme ===== -->
+	<g class="vscode-dark">
+		<rect x="20" y="20" width="260" height="168" rx="6" fill="none" stroke="#CCCCCC" stroke-opacity="0.3" stroke-width="1.5"/>
+
+		<rect x="56" y="28" width="160" height="8" rx="3" fill="#CCCCCC" fill-opacity="0.4"/>
+
+		<rect x="20" y="44" width="260" height="24" fill="#F0997B" fill-opacity="0.18"/>
+		<text x="34" y="60" font-family="monospace" font-size="14" fill="#F0997B" text-anchor="middle">-</text>
+		<rect x="56" y="52" width="190" height="8" rx="3" fill="#F0997B" fill-opacity="0.7"/>
+
+		<rect x="20" y="68" width="260" height="24" fill="#F0997B" fill-opacity="0.18"/>
+		<text x="34" y="84" font-family="monospace" font-size="14" fill="#F0997B" text-anchor="middle">-</text>
+		<rect x="56" y="76" width="130" height="8" rx="3" fill="#F0997B" fill-opacity="0.7"/>
+
+		<rect x="20" y="92" width="260" height="24" fill="#97C459" fill-opacity="0.18"/>
+		<text x="34" y="108" font-family="monospace" font-size="14" fill="#97C459" text-anchor="middle">+</text>
+		<rect x="56" y="100" width="200" height="8" rx="3" fill="#97C459" fill-opacity="0.7"/>
+
+		<rect x="20" y="116" width="260" height="24" fill="#97C459" fill-opacity="0.18"/>
+		<text x="34" y="132" font-family="monospace" font-size="14" fill="#97C459" text-anchor="middle">+</text>
+		<rect x="56" y="124" width="150" height="8" rx="3" fill="#97C459" fill-opacity="0.7"/>
+
+		<rect x="56" y="148" width="170" height="8" rx="3" fill="#CCCCCC" fill-opacity="0.4"/>
+		<rect x="56" y="172" width="110" height="8" rx="3" fill="#CCCCCC" fill-opacity="0.4"/>
+	</g>
+
+	<!-- ===== High contrast theme ===== -->
+	<g class="vscode-high-contrast">
+		<rect x="20" y="20" width="260" height="168" rx="6" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+		<rect x="56" y="28" width="160" height="8" rx="3" fill="#FFFFFF"/>
+
+		<line x1="20" y1="44" x2="280" y2="44" stroke="#FFFFFF" stroke-width="1.5"/>
+		<text x="34" y="60" font-family="monospace" font-size="14" fill="#FFFFFF" text-anchor="middle">-</text>
+		<rect x="56" y="52" width="190" height="8" rx="3" fill="#FFFFFF"/>
+
+		<text x="34" y="84" font-family="monospace" font-size="14" fill="#FFFFFF" text-anchor="middle">-</text>
+		<rect x="56" y="76" width="130" height="8" rx="3" fill="#FFFFFF"/>
+		<line x1="20" y1="92" x2="280" y2="92" stroke="#FFFFFF" stroke-width="1.5"/>
+
+		<text x="34" y="108" font-family="monospace" font-size="14" fill="#FFFFFF" text-anchor="middle">+</text>
+		<rect x="56" y="100" width="200" height="8" rx="3" fill="#FFFFFF"/>
+
+		<text x="34" y="132" font-family="monospace" font-size="14" fill="#FFFFFF" text-anchor="middle">+</text>
+		<rect x="56" y="124" width="150" height="8" rx="3" fill="#FFFFFF"/>
+		<line x1="20" y1="140" x2="280" y2="140" stroke="#FFFFFF" stroke-width="1.5"/>
+
+		<rect x="56" y="148" width="170" height="8" rx="3" fill="#FFFFFF"/>
+		<rect x="56" y="172" width="110" height="8" rx="3" fill="#FFFFFF"/>
+	</g>
+
+</svg>

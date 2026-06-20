@@ -1,0 +1,69 @@
+<svg width="300" height="220" viewBox="0 0 300 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+	<!-- ===== Light theme ===== -->
+	<g class="vscode-light">
+		<!-- outer frame -->
+		<rect x="20" y="20" width="260" height="168" rx="6" fill="none" stroke="#3C3C3C" stroke-opacity="0.3" stroke-width="1.5"/>
+
+		<!-- AI bubble -->
+		<rect x="36" y="38" width="140" height="26" rx="13" fill="#0F6E56" fill-opacity="0.15" stroke="#0F6E56" stroke-opacity="0.5" stroke-width="1.5"/>
+		<rect x="48" y="46" width="100" height="4" rx="2" fill="#3C3C3C" fill-opacity="0.5"/>
+		<rect x="48" y="54" width="70" height="4" rx="2" fill="#3C3C3C" fill-opacity="0.5"/>
+
+		<!-- user bubble -->
+		<rect x="170" y="72" width="94" height="24" rx="12" fill="#3C3C3C" fill-opacity="0.12" stroke="#3C3C3C" stroke-opacity="0.4" stroke-width="1.5"/>
+		<rect x="182" y="80" width="70" height="4" rx="2" fill="#3C3C3C" fill-opacity="0.5"/>
+
+		<!-- AI bubble -->
+		<rect x="36" y="104" width="110" height="24" rx="12" fill="#0F6E56" fill-opacity="0.15" stroke="#0F6E56" stroke-opacity="0.5" stroke-width="1.5"/>
+		<rect x="48" y="112" width="80" height="4" rx="2" fill="#3C3C3C" fill-opacity="0.5"/>
+
+		<!-- input bar -->
+		<rect x="36" y="148" width="188" height="28" rx="8" fill="none" stroke="#3C3C3C" stroke-opacity="0.4" stroke-width="1.5"/>
+
+		<!-- send button -->
+		<circle cx="250" cy="162" r="14" fill="#0F6E56" fill-opacity="0.85"/>
+		<path d="M244 162 H256 M251 157 L256 162 L251 167" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+	</g>
+
+	<!-- ===== Dark theme ===== -->
+	<g class="vscode-dark">
+		<rect x="20" y="20" width="260" height="168" rx="6" fill="none" stroke="#CCCCCC" stroke-opacity="0.3" stroke-width="1.5"/>
+
+		<rect x="36" y="38" width="140" height="26" rx="13" fill="#5DCAA5" fill-opacity="0.2" stroke="#5DCAA5" stroke-opacity="0.6" stroke-width="1.5"/>
+		<rect x="48" y="46" width="100" height="4" rx="2" fill="#CCCCCC" fill-opacity="0.5"/>
+		<rect x="48" y="54" width="70" height="4" rx="2" fill="#CCCCCC" fill-opacity="0.5"/>
+
+		<rect x="170" y="72" width="94" height="24" rx="12" fill="#CCCCCC" fill-opacity="0.12" stroke="#CCCCCC" stroke-opacity="0.4" stroke-width="1.5"/>
+		<rect x="182" y="80" width="70" height="4" rx="2" fill="#CCCCCC" fill-opacity="0.5"/>
+
+		<rect x="36" y="104" width="110" height="24" rx="12" fill="#5DCAA5" fill-opacity="0.2" stroke="#5DCAA5" stroke-opacity="0.6" stroke-width="1.5"/>
+		<rect x="48" y="112" width="80" height="4" rx="2" fill="#CCCCCC" fill-opacity="0.5"/>
+
+		<rect x="36" y="148" width="188" height="28" rx="8" fill="none" stroke="#CCCCCC" stroke-opacity="0.4" stroke-width="1.5"/>
+
+		<circle cx="250" cy="162" r="14" fill="#5DCAA5" fill-opacity="0.9"/>
+		<path d="M244 162 H256 M251 157 L256 162 L251 167" stroke="#1E1E1E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+	</g>
+
+	<!-- ===== High contrast theme ===== -->
+	<g class="vscode-high-contrast">
+		<rect x="20" y="20" width="260" height="168" rx="6" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+		<rect x="36" y="38" width="140" height="26" rx="13" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+		<rect x="48" y="46" width="100" height="4" fill="#FFFFFF"/>
+		<rect x="48" y="54" width="70" height="4" fill="#FFFFFF"/>
+
+		<rect x="170" y="72" width="94" height="24" rx="12" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+		<rect x="182" y="80" width="70" height="4" fill="#FFFFFF"/>
+
+		<rect x="36" y="104" width="110" height="24" rx="12" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+		<rect x="48" y="112" width="80" height="4" fill="#FFFFFF"/>
+
+		<rect x="36" y="148" width="188" height="28" rx="8" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+
+		<circle cx="250" cy="162" r="14" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+		<path d="M244 162 H256 M251 157 L256 162 L251 167" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+	</g>
+
+</svg>
