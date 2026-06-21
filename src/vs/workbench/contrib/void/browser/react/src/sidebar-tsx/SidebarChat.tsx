@@ -200,6 +200,90 @@ export const TokenCounter = () => {
 	);
 };
 
+// Context Window Indicator - shows usage percentage of the model's context window
+const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) => {
+	const settingsState = useSettingsState();
+	const chatThreadsState = useChatThreadsState();
+	const accessor = useAccessor();
+	const voidModelService = accessor.get('ILoopholeModelService');
+
+	const currentThread = chatThreadsState.allThreads[chatThreadsState.currentThreadId];
+	const modelSelection = settingsState.modelSelectionOfFeature[featureName];
+
+	// Get model capabilities
+	const modelCapabilities = useMemo(() => {
+		if (!modelSelection) return null;
+		return voidModelService.getModelInfo(modelSelection.providerName, modelSelection.modelName);
+	}, [modelSelection, voidModelService]);
+
+	// Estimate token usage from current thread
+	const estimatedUsage = useMemo(() => {
+		if (!currentThread || !modelCapabilities) return 0;
+
+		// Rough estimation: ~4 characters per token
+		let totalChars = 0;
+		for (const message of currentThread.messages) {
+			if (message.role === 'user' && 'content' in message) {
+				totalChars += message.content.length;
+			} else if (message.role === 'assistant') {
+				if ('displayContent' in message) {
+					totalChars += message.displayContent.length;
+				}
+				if ('reasoning' in message && message.reasoning) {
+					totalChars += message.reasoning.length;
+				}
+			} else if (message.role === 'tool' && 'content' in message) {
+				totalChars += message.content.length;
+			}
+		}
+
+		// Add overhead for system prompts, tool definitions, etc. (rough estimate)
+		totalChars += 2000;
+
+		return Math.ceil(totalChars / 4); // Convert chars to estimated tokens
+	}, [currentThread, modelCapabilities]);
+
+	const contextWindow = modelCapabilities?.contextWindow || 128000;
+	const usagePercentage = Math.min((estimatedUsage / contextWindow) * 100, 100);
+	const circumference = 2 * Math.PI * 6; // r=6, so circumference = 37.7
+	const strokeDashoffset = circumference - (usagePercentage / 100) * circumference;
+
+	// Color based on usage
+	const getColor = () => {
+		if (usagePercentage < 50) return 'text-loophole-fg-3';
+		if (usagePercentage < 75) return 'text-yellow-500';
+		if (usagePercentage < 90) return 'text-orange-500';
+		return 'text-red-500';
+	};
+
+	const title = modelCapabilities
+		? `Context window: ${formatTokenCount(estimatedUsage)} / ${formatTokenCount(contextWindow)} (${usagePercentage.toFixed(1)}%)`
+		: 'Select a model to see context window usage';
+
+	return (
+		<button
+			type="button"
+			className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors ${getColor()} hover:text-loophole-fg-1`}
+			title={title}
+		>
+			<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
+				<circle
+					cx="8"
+					cy="8"
+					r="6"
+					stroke="currentColor"
+					strokeWidth="1.5"
+					strokeDasharray={circumference.toFixed(1)}
+					strokeDashoffset={strokeDashoffset.toFixed(1)}
+					strokeLinecap="round"
+					transform="rotate(-90 8 8)"
+				/>
+			</svg>
+		</button>
+	);
+};
+
 // SLIDER ONLY:
 const ReasoningOptionSlider = ({ featureName }: { featureName: FeatureName }) => {
 	const accessor = useAccessor()
@@ -505,22 +589,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 					</button>
 
 					{/* Context Window Indicator */}
-					{/* TODO: calculate context window usage here — different models have different sizes (e.g. 200k, 246k tokens). Show a circular progress ring that fills as context is consumed. */}
-					<button
-						type="button"
-						className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors text-loophole-fg-3 hover:text-loophole-fg-1"
-						title="Context window usage"
-					>
-						<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
-							<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"
-								strokeDasharray="37.7"
-								strokeDashoffset="28"
-								strokeLinecap="round"
-								transform="rotate(-90 8 8)"
-							/>
-						</svg>
-					</button>
+					<ContextWindowIndicator featureName={featureName} />
 
 					{/* Mic Button - Voice to Text */}
 					{isSupported && (
