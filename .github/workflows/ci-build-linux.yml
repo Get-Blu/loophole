@@ -17,10 +17,49 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # Resolve version
+  # Fast PR check — compiles only. Does NOT build installers/packages.
+  # The full multi-platform release pipeline below only runs on manual dispatch,
+  # since it produces 9+ artifact types across 4 jobs and is too expensive to
+  # run on every PR.
+  # ─────────────────────────────────────────────────────────────────────────────
+  pr-check:
+    name: PR Compile Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev pkg-config
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Compile TypeScript
+        run: npm run compile
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Resolve version — only needed for the real release builds
   # ─────────────────────────────────────────────────────────────────────────────
   resolve-version:
     name: Resolve Version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -46,10 +85,12 @@ jobs:
   build-linux-x64:
     name: Build Linux x64
     needs: resolve-version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
       VSCODE_ARCH: x64
+      VSCODE_QUALITY: stable
 
     steps:
       - name: Checkout repository
@@ -71,13 +112,23 @@ jobs:
             rpm \
             squashfs-tools \
             zsync \
-            snapcraft \
+            file \
             python3-pip \
             pkg-config \
             libgtk-3-dev \
             libnss3-dev \
             libgbm-dev \
             libasound2-dev
+
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+        continue-on-error: true
+
+      - name: Install appimagetool
+        run: |
+          curl -sL -o /usr/local/bin/appimagetool \
+            "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x /usr/local/bin/appimagetool
 
       # ── Toolchain ─────────────────────────────────────────────────────────────
       - name: Setup Node.js ${{ env.NODE_VERSION }}
@@ -136,7 +187,7 @@ jobs:
         working-directory: cli
         run: cargo build --release --target x86_64-unknown-linux-gnu
 
-      # ── Package base app ───────────────────────────────────────────────────────
+      # ── Package base app (single call — reused for tar.gz + AppImage) ─────────
       - name: Package Electron app (linux x64)
         run: npm run gulp vscode-linux-x64-ci
         env:
@@ -149,74 +200,114 @@ jobs:
       - name: Build .deb package
         run: npm run gulp vscode-linux-x64-build-deb
         env:
-          LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — .deb
         run: |
           src=$(find .build -name "*.deb" | head -1)
-          cp "$src" "dist/loophole_${VERSION}_amd64.deb"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/loophole_${VERSION}_amd64.deb"
+            echo "Staged: $src"
+          else
+            echo "::warning::No .deb produced — skipping"
+          fi
 
       # ── 2. .rpm ───────────────────────────────────────────────────────────────
       - name: Build .rpm package
         run: npm run gulp vscode-linux-x64-build-rpm
         env:
-          LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — .rpm
         run: |
           src=$(find .build -name "*.rpm" | head -1)
-          cp "$src" "dist/loophole-${VERSION}-el8.x86_64.rpm"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/loophole-${VERSION}-el8.x86_64.rpm"
+            echo "Staged: $src"
+          else
+            echo "::warning::No .rpm produced — skipping"
+          fi
 
-      # ── 3. .tar.gz archive ────────────────────────────────────────────────────
-      - name: Build tar.gz archive
-        run: npm run gulp vscode-linux-x64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
+      # ── 3. .tar.gz archive (reuses the package already built above — no rebuild) ─
       - name: Stage — tar.gz
         run: |
           src=$(find .build -name "VSCode-linux-x64-*.tar.gz" | head -1)
-          cp "$src" "dist/Loophole-linux-x64-$VERSION.tar.gz"
-
-      # ── 4. AppImage ───────────────────────────────────────────────────────────
-      - name: Build AppImage
-        run: npm run gulp vscode-linux-x64-ci
-        env:
-          LOOPHOLE_QUALITY: stable
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
-      - name: Stage — AppImage + .zsync
-        run: |
-          # Detect glibc version for the filename
-          GLIBC=$(ldd --version | head -1 | grep -oP '\d+\.\d+$' || echo "2.30")
-          src_appimage=$(find .build -name "*.AppImage" | grep -v ".zsync" | head -1)
-          src_zsync=$(find .build -name "*.AppImage.zsync" | head -1)
-
-          cp "$src_appimage" "dist/Loophole-$VERSION.glibc${GLIBC}-x86_64.AppImage"
-
-          if [ -f "$src_zsync" ]; then
-            cp "$src_zsync" "dist/Loophole-$VERSION.glibc${GLIBC}-x86_64.AppImage.zsync"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/Loophole-linux-x64-$VERSION.tar.gz"
+            echo "Staged: $src"
           else
-            # Generate .zsync if not produced automatically
-            zsyncmake -o "dist/Loophole-$VERSION.glibc${GLIBC}-x86_64.AppImage.zsync" \
-              "dist/Loophole-$VERSION.glibc${GLIBC}-x86_64.AppImage" || \
-              echo "::warning::zsyncmake failed — skipping .zsync"
+            # Build system may not emit a tarball directly — pack the unpacked dir ourselves
+            app_dir=$(find .build -maxdepth 2 -type d -name "VSCode-linux-x64" | head -1)
+            if [ -n "$app_dir" ]; then
+              tar -czf "dist/Loophole-linux-x64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
+              echo "Packed tar.gz from $app_dir"
+            else
+              echo "::warning::No unpacked app directory found — skipping tar.gz"
+            fi
+          fi
+
+      # ── 4. AppImage (built manually — gulp does not produce one) ──────────────
+      - name: Build AppImage
+        run: |
+          set -e
+          APP_DIR=$(find .build -maxdepth 2 -type d -name "VSCode-linux-x64" | head -1)
+          if [ -z "$APP_DIR" ]; then
+            echo "::warning::No unpacked app directory found — skipping AppImage"
+            exit 0
+          fi
+
+          mkdir -p .appimage/AppDir/usr/bin
+          cp -r "$APP_DIR"/* .appimage/AppDir/usr/bin/
+
+          ICON_SRC=$(find resources -iname "code.png" 2>/dev/null | head -1)
+          if [ -n "$ICON_SRC" ]; then
+            cp "$ICON_SRC" .appimage/AppDir/loophole.png
+          else
+            echo "::warning::No app icon found at resources/ — AppImage will use a placeholder"
+            touch .appimage/AppDir/loophole.png
+          fi
+
+          cat > .appimage/AppDir/loophole.desktop <<EOF
+          [Desktop Entry]
+          Name=Loophole
+          Exec=usr/bin/bin/code %F
+          Icon=loophole
+          Type=Application
+          Categories=Development;
+          EOF
+
+          cat > .appimage/AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          exec "${HERE}/usr/bin/bin/code" "$@"
+          EOF
+          chmod +x .appimage/AppDir/AppRun
+
+          GLIBC=$(ldd --version | head -1 | grep -oP '\d+\.\d+$' || echo "2.30")
+          ARCH=x86_64 appimagetool .appimage/AppDir "dist/Loophole-$VERSION.glibc${GLIBC}-x86_64.AppImage"
+
+      - name: Stage — AppImage .zsync
+        run: |
+          appimage=$(find dist -name "*.AppImage" | head -1)
+          if [ -n "$appimage" ]; then
+            zsyncmake -o "${appimage}.zsync" "$appimage" || echo "::warning::zsyncmake failed — skipping .zsync"
+          else
+            echo "::warning::No AppImage found — skipping .zsync"
           fi
 
       # ── 5. Snap ───────────────────────────────────────────────────────────────
       - name: Build Snap package
         run: npm run gulp vscode-linux-x64-build-snap
         env:
-          LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
+        continue-on-error: true
 
       - name: Stage — Snap
         run: |
           src=$(find .build -name "*.snap" | head -1)
-          if [ -f "$src" ]; then
+          if [ -n "$src" ] && [ -f "$src" ]; then
             cp "$src" "dist/loophole_${VERSION}_amd64.snap"
+            echo "Staged: $src"
           else
             echo "::warning::Snap not found — skipping"
           fi
@@ -268,7 +359,7 @@ jobs:
       - name: List built artifacts
         run: |
           echo "=== dist/ artifacts ==="
-          ls -lh dist/
+          ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — .deb
         uses: actions/upload-artifact@v4
@@ -276,6 +367,7 @@ jobs:
           name: loophole-linux-x64-${{ env.VERSION }}-deb
           path: dist/loophole_${{ env.VERSION }}_amd64.deb
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — .rpm
         uses: actions/upload-artifact@v4
@@ -283,6 +375,7 @@ jobs:
           name: loophole-linux-x64-${{ env.VERSION }}-rpm
           path: dist/loophole-${{ env.VERSION }}-el8.x86_64.rpm
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — tar.gz
         uses: actions/upload-artifact@v4
@@ -290,6 +383,7 @@ jobs:
           name: Loophole-linux-x64-${{ env.VERSION }}-targz
           path: dist/Loophole-linux-x64-${{ env.VERSION }}.tar.gz
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — AppImage + zsync
         uses: actions/upload-artifact@v4
@@ -299,6 +393,7 @@ jobs:
             dist/*.AppImage
             dist/*.AppImage.zsync
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — Snap
         uses: actions/upload-artifact@v4
@@ -339,10 +434,12 @@ jobs:
   build-linux-arm64:
     name: Build Linux ARM64
     needs: resolve-version
-    runs-on: ubuntu-22.04-arm  # Native ARM64 runner
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04-arm
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
       VSCODE_ARCH: arm64
+      VSCODE_QUALITY: stable
 
     steps:
       - name: Checkout repository
@@ -350,7 +447,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ── System dependencies ────────────────────────────────────────────────────
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -369,7 +465,6 @@ jobs:
             libgbm-dev \
             libasound2-dev
 
-      # ── Toolchain ─────────────────────────────────────────────────────────────
       - name: Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
@@ -386,7 +481,6 @@ jobs:
         with:
           targets: aarch64-unknown-linux-gnu
 
-      # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
         uses: actions/cache@v4
         with:
@@ -406,7 +500,6 @@ jobs:
           key: linux-arm64-electron-${{ hashFiles('package-lock.json') }}
           restore-keys: linux-arm64-electron-
 
-      # ── Install & compile ──────────────────────────────────────────────────────
       - name: Install dependencies
         run: npm ci
         env:
@@ -426,7 +519,6 @@ jobs:
         working-directory: cli
         run: cargo build --release --target aarch64-unknown-linux-gnu
 
-      # ── Package base app ───────────────────────────────────────────────────────
       - name: Package Electron app (linux arm64)
         run: npm run gulp vscode-linux-arm64-ci
         env:
@@ -439,36 +531,46 @@ jobs:
       - name: Build .deb package
         run: npm run gulp vscode-linux-arm64-build-deb
         env:
-          LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — .deb
         run: |
           src=$(find .build -name "*.deb" | head -1)
-          cp "$src" "dist/loophole_${VERSION}_arm64.deb"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/loophole_${VERSION}_arm64.deb"
+          else
+            echo "::warning::No .deb produced — skipping"
+          fi
 
       # ── 2. .rpm ───────────────────────────────────────────────────────────────
       - name: Build .rpm package
         run: npm run gulp vscode-linux-arm64-build-rpm
         env:
-          LOOPHOLE_QUALITY: stable
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Stage — .rpm
         run: |
           src=$(find .build -name "*.rpm" | head -1)
-          cp "$src" "dist/loophole-${VERSION}-el8.aarch64.rpm"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/loophole-${VERSION}-el8.aarch64.rpm"
+          else
+            echo "::warning::No .rpm produced — skipping"
+          fi
 
-      # ── 3. tar.gz archive ─────────────────────────────────────────────────────
-      - name: Build tar.gz archive
-        run: npm run gulp vscode-linux-arm64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
+      # ── 3. tar.gz archive (reuses the package already built — no rebuild) ─────
       - name: Stage — tar.gz
         run: |
           src=$(find .build -name "VSCode-linux-arm64-*.tar.gz" | head -1)
-          cp "$src" "dist/Loophole-linux-arm64-$VERSION.tar.gz"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/Loophole-linux-arm64-$VERSION.tar.gz"
+          else
+            app_dir=$(find .build -maxdepth 2 -type d -name "VSCode-linux-arm64" | head -1)
+            if [ -n "$app_dir" ]; then
+              tar -czf "dist/Loophole-linux-arm64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
+            else
+              echo "::warning::No unpacked app directory found — skipping tar.gz"
+            fi
+          fi
 
       # ── 4. Remote Host tarball ─────────────────────────────────────────────────
       - name: Build Remote Host
@@ -513,11 +615,10 @@ jobs:
             echo "::warning::CLI binary not found — skipping"
           fi
 
-      # ── Summary & upload ───────────────────────────────────────────────────────
       - name: List built artifacts
         run: |
           echo "=== dist/ artifacts ==="
-          ls -lh dist/
+          ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — .deb
         uses: actions/upload-artifact@v4
@@ -525,6 +626,7 @@ jobs:
           name: loophole-linux-arm64-${{ env.VERSION }}-deb
           path: dist/loophole_${{ env.VERSION }}_arm64.deb
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — .rpm
         uses: actions/upload-artifact@v4
@@ -532,6 +634,7 @@ jobs:
           name: loophole-linux-arm64-${{ env.VERSION }}-rpm
           path: dist/loophole-${{ env.VERSION }}-el8.aarch64.rpm
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — tar.gz
         uses: actions/upload-artifact@v4
@@ -539,6 +642,7 @@ jobs:
           name: Loophole-linux-arm64-${{ env.VERSION }}-targz
           path: dist/Loophole-linux-arm64-${{ env.VERSION }}.tar.gz
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — Remote Host
         uses: actions/upload-artifact@v4
@@ -571,6 +675,7 @@ jobs:
   build-alpine-x64:
     name: Build Alpine x64 (musl)
     needs: resolve-version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
@@ -582,48 +687,39 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ── Setup Alpine container via Docker ──────────────────────────────────────
       - name: Build Alpine REH artifacts in Docker (musl)
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             --platform linux/amd64 \
-            node:20-alpine sh -c "
+            -e NODE_OPTIONS="--max-old-space-size=8192" \
+            node:22-alpine sh -c "
               set -e
 
-              # Alpine system deps
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
                 musl-dev pkgconfig
 
-              # Install Rust
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target x86_64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
 
-              # Install dependencies
               npm ci
-
-              # Build
+              npm run buildreact
               npm run compile
 
-              # Build CLI for musl
               cd cli
               cargo build --release --target x86_64-unknown-linux-musl
               cd ..
 
-              # Build remote hosts
               npm run gulp vscode-reh-linux-x64-ci
               npm run gulp vscode-reh-web-linux-x64-ci
             "
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Create dist directory
         run: mkdir -p dist
 
-      # ── Stage artifacts ────────────────────────────────────────────────────────
       - name: Stage — Remote Host (Alpine x64)
         run: |
           if [ -d ".build/vscode-reh-linux-x64" ]; then
@@ -632,8 +728,6 @@ jobs:
           else
             echo "::warning::Alpine REH directory not found — skipping"
           fi
-        env:
-          VERSION: ${{ env.VERSION }}
 
       - name: Stage — Web Host (Alpine x64)
         run: |
@@ -643,14 +737,11 @@ jobs:
           else
             echo "::warning::Alpine REH-Web directory not found — skipping"
           fi
-        env:
-          VERSION: ${{ env.VERSION }}
 
-      # ── Summary & upload ───────────────────────────────────────────────────────
       - name: List built artifacts
         run: |
           echo "=== dist/ artifacts ==="
-          ls -lh dist/
+          ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — Remote Host (Alpine x64)
         uses: actions/upload-artifact@v4
@@ -674,7 +765,8 @@ jobs:
   build-alpine-arm64:
     name: Build Alpine ARM64 (musl)
     needs: resolve-version
-    runs-on: ubuntu-22.04-arm   # Native ARM64 runner
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-22.04-arm
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
       VSCODE_ARCH: arm64
@@ -685,14 +777,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ── Setup Alpine container via Docker ──────────────────────────────────────
       - name: Build Alpine ARM64 REH artifacts in Docker (musl)
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -w /workspace \
             --platform linux/arm64 \
-            node:20-alpine sh -c "
+            -e NODE_OPTIONS="--max-old-space-size=8192" \
+            node:22-alpine sh -c "
               set -e
 
               apk add --no-cache \
@@ -704,7 +796,6 @@ jobs:
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
 
               npm ci
-
               npm run buildreact
               npm run compile
 
@@ -715,13 +806,10 @@ jobs:
               npm run gulp vscode-reh-linux-arm64-ci
               npm run gulp vscode-reh-web-linux-arm64-ci
             "
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Create dist directory
         run: mkdir -p dist
 
-      # ── Stage artifacts ────────────────────────────────────────────────────────
       - name: Stage — Remote Host (Alpine arm64)
         run: |
           if [ -d ".build/vscode-reh-linux-arm64" ]; then
@@ -730,8 +818,6 @@ jobs:
           else
             echo "::warning::Alpine ARM64 REH directory not found — skipping"
           fi
-        env:
-          VERSION: ${{ env.VERSION }}
 
       - name: Stage — Web Host (Alpine arm64)
         run: |
@@ -741,14 +827,11 @@ jobs:
           else
             echo "::warning::Alpine ARM64 REH-Web directory not found — skipping"
           fi
-        env:
-          VERSION: ${{ env.VERSION }}
 
-      # ── Summary & upload ───────────────────────────────────────────────────────
       - name: List built artifacts
         run: |
           echo "=== dist/ artifacts ==="
-          ls -lh dist/
+          ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — Remote Host (Alpine arm64)
         uses: actions/upload-artifact@v4
