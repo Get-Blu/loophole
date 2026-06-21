@@ -296,6 +296,10 @@
 	background-size: 16px;
 }
 
+.monaco-workbench .part.titlebar.light > .titlebar-container > .titlebar-left > .window-appicon:not(.codicon) {
+	filter: invert(1);
+}
+
 .monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon.codicon {
 	line-height: 30px;
 }
