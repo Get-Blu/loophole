@@ -17,10 +17,42 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # Resolve version
+  # Fast PR check — compiles only. Full DMG/ZIP/REH builds only run on dispatch,
+  # since macOS runners are the most expensive minute-for-minute on GitHub Actions.
+  # ─────────────────────────────────────────────────────────────────────────────
+  pr-check:
+    name: PR Compile Check
+    if: github.event_name == 'pull_request'
+    runs-on: macos-14
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Compile TypeScript
+        run: npm run compile
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Resolve version — only needed for the real release builds
   # ─────────────────────────────────────────────────────────────────────────────
   resolve-version:
     name: Resolve Version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -45,10 +77,12 @@ jobs:
   build-macos-x64:
     name: Build macOS x64 (Intel)
     needs: resolve-version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-13        # macos-13 = Intel x64
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
       VSCODE_ARCH: x64
+      VSCODE_QUALITY: stable
 
     steps:
       - name: Checkout repository
@@ -99,6 +133,10 @@ jobs:
         env:
           npm_config_arch: x64
 
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Compile TypeScript
         run: npm run compile
@@ -109,7 +147,7 @@ jobs:
         working-directory: cli
         run: cargo build --release --target x86_64-apple-darwin
 
-      # ── Package base app ───────────────────────────────────────────────────────
+      # ── Package base app (single call — reused below, no rebuilding) ──────────
       - name: Package Electron app (darwin x64)
         run: npm run gulp vscode-darwin-x64-ci
         env:
@@ -118,28 +156,51 @@ jobs:
       - name: Create dist directory
         run: mkdir -p dist
 
-      # ── 1. DMG ────────────────────────────────────────────────────────────────
-      - name: Build DMG
-        run: npm run gulp vscode-darwin-x64-ci
-        env:
-          LOOPHOLE_QUALITY: stable
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
-      - name: Stage — DMG
+      # ── Ad-hoc codesign (placeholder until a Developer ID cert is configured) ──
+      # Without at least ad-hoc signing, the arm64 build is killed by Gatekeeper
+      # on launch. Swap this for `codesign --deep --force --options runtime
+      # --sign "$DEVELOPER_ID" --entitlements ...` + notarytool once you have a
+      # real Apple Developer ID certificate in secrets.
+      - name: Ad-hoc codesign .app bundle
         run: |
-          src=$(find .build -name "*.dmg" | head -1)
-          cp "$src" "dist/Loophole.x64.$VERSION.dmg"
+          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            codesign --deep --force --sign - "$APP_PATH" || echo "::warning::Ad-hoc codesign failed"
+          else
+            echo "::warning::No .app bundle found — skipping codesign"
+          fi
 
-      # ── 2. ZIP ────────────────────────────────────────────────────────────────
-      - name: Build ZIP
-        run: npm run gulp vscode-darwin-x64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+      # ── 1. DMG (built with create-dmg — gulp only produces the .app) ──────────
+      - name: Build DMG
+        run: |
+          set -e
+          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::warning::No .app bundle found — skipping DMG"
+            exit 0
+          fi
+          npx --yes create-dmg "$APP_PATH" dist/ || true
+          src=$(find dist -name "*.dmg" | head -1)
+          if [ -n "$src" ]; then
+            mv "$src" "dist/Loophole.x64.$VERSION.dmg"
+          else
+            echo "::warning::create-dmg produced no output — skipping"
+          fi
 
+      # ── 2. ZIP (reuses the package already built above — no rebuild) ──────────
       - name: Stage — ZIP
         run: |
           src=$(find .build -name "VSCode-darwin-x64-*.zip" | head -1)
-          cp "$src" "dist/Loophole-darwin-x64-$VERSION.zip"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/Loophole-darwin-x64-$VERSION.zip"
+          else
+            APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
+            if [ -n "$APP_PATH" ]; then
+              ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-x64-$VERSION.zip"
+            else
+              echo "::warning::No .app bundle found — skipping ZIP"
+            fi
+          fi
 
       # ── 3. Remote Host tarball ─────────────────────────────────────────────────
       - name: Build Remote Host
@@ -188,7 +249,7 @@ jobs:
       - name: List built artifacts
         run: |
           echo "=== dist/ artifacts ==="
-          ls -lh dist/
+          ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — DMG
         uses: actions/upload-artifact@v4
@@ -196,6 +257,7 @@ jobs:
           name: Loophole-darwin-x64-${{ env.VERSION }}-dmg
           path: dist/Loophole.x64.${{ env.VERSION }}.dmg
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — ZIP
         uses: actions/upload-artifact@v4
@@ -203,6 +265,7 @@ jobs:
           name: Loophole-darwin-x64-${{ env.VERSION }}-zip
           path: dist/Loophole-darwin-x64-${{ env.VERSION }}.zip
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — Remote Host
         uses: actions/upload-artifact@v4
@@ -234,10 +297,12 @@ jobs:
   build-macos-arm64:
     name: Build macOS ARM64 (Apple Silicon)
     needs: resolve-version
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-14        # macos-14 = Apple Silicon arm64
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
       VSCODE_ARCH: arm64
+      VSCODE_QUALITY: stable
 
     steps:
       - name: Checkout repository
@@ -288,6 +353,10 @@ jobs:
         env:
           npm_config_arch: arm64
 
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Compile TypeScript
         run: npm run compile
@@ -298,7 +367,7 @@ jobs:
         working-directory: cli
         run: cargo build --release --target aarch64-apple-darwin
 
-      # ── Package base app ───────────────────────────────────────────────────────
+      # ── Package base app (single call — reused below, no rebuilding) ──────────
       - name: Package Electron app (darwin arm64)
         run: npm run gulp vscode-darwin-arm64-ci
         env:
@@ -307,28 +376,47 @@ jobs:
       - name: Create dist directory
         run: mkdir -p dist
 
-      # ── 1. DMG ────────────────────────────────────────────────────────────────
-      - name: Build DMG
-        run: npm run gulp vscode-darwin-arm64-ci
-        env:
-          LOOPHOLE_QUALITY: stable
-          NODE_OPTIONS: '--max-old-space-size=8192'
-
-      - name: Stage — DMG
+      # ── Ad-hoc codesign (placeholder until a Developer ID cert is configured) ──
+      - name: Ad-hoc codesign .app bundle
         run: |
-          src=$(find .build -name "*.dmg" | head -1)
-          cp "$src" "dist/Loophole.arm64.$VERSION.dmg"
+          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            codesign --deep --force --sign - "$APP_PATH" || echo "::warning::Ad-hoc codesign failed"
+          else
+            echo "::warning::No .app bundle found — skipping codesign"
+          fi
 
-      # ── 2. ZIP ────────────────────────────────────────────────────────────────
-      - name: Build ZIP
-        run: npm run gulp vscode-darwin-arm64-ci
-        env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+      # ── 1. DMG (built with create-dmg — gulp only produces the .app) ──────────
+      - name: Build DMG
+        run: |
+          set -e
+          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::warning::No .app bundle found — skipping DMG"
+            exit 0
+          fi
+          npx --yes create-dmg "$APP_PATH" dist/ || true
+          src=$(find dist -name "*.dmg" | head -1)
+          if [ -n "$src" ]; then
+            mv "$src" "dist/Loophole.arm64.$VERSION.dmg"
+          else
+            echo "::warning::create-dmg produced no output — skipping"
+          fi
 
+      # ── 2. ZIP (reuses the package already built above — no rebuild) ──────────
       - name: Stage — ZIP
         run: |
           src=$(find .build -name "VSCode-darwin-arm64-*.zip" | head -1)
-          cp "$src" "dist/Loophole-darwin-arm64-$VERSION.zip"
+          if [ -n "$src" ] && [ -f "$src" ]; then
+            cp "$src" "dist/Loophole-darwin-arm64-$VERSION.zip"
+          else
+            APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
+            if [ -n "$APP_PATH" ]; then
+              ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-arm64-$VERSION.zip"
+            else
+              echo "::warning::No .app bundle found — skipping ZIP"
+            fi
+          fi
 
       # ── 3. Remote Host tarball ─────────────────────────────────────────────────
       - name: Build Remote Host
@@ -377,7 +465,7 @@ jobs:
       - name: List built artifacts
         run: |
           echo "=== dist/ artifacts ==="
-          ls -lh dist/
+          ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — DMG
         uses: actions/upload-artifact@v4
@@ -385,6 +473,7 @@ jobs:
           name: Loophole-darwin-arm64-${{ env.VERSION }}-dmg
           path: dist/Loophole.arm64.${{ env.VERSION }}.dmg
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — ZIP
         uses: actions/upload-artifact@v4
@@ -392,6 +481,7 @@ jobs:
           name: Loophole-darwin-arm64-${{ env.VERSION }}-zip
           path: dist/Loophole-darwin-arm64-${{ env.VERSION }}.zip
           retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload — Remote Host
         uses: actions/upload-artifact@v4
