@@ -616,7 +616,7 @@ export class CodeApplication extends Disposable {
 		this._register(appInstantiationService.createInstance(UserDataProfilesHandler));
 
 		// Init Channels
-		appInstantiationService.invokeFunction(accessor => this.initChannels(accessor, mainProcessElectronServer, sharedProcessClient));
+		await appInstantiationService.invokeFunction(accessor => this.initChannels(accessor, mainProcessElectronServer, sharedProcessClient));
 
 		// Setup Protocol URL Handlers
 		const initialProtocolUrls = await appInstantiationService.invokeFunction(accessor => this.setupProtocolUrlHandlers(accessor, mainProcessElectronServer));
@@ -1177,7 +1177,7 @@ export class CodeApplication extends Disposable {
 		return this.mainInstantiationService.createChild(services);
 	}
 
-	private initChannels(accessor: ServicesAccessor, mainProcessElectronServer: ElectronIPCServer, sharedProcessClient: Promise<MessagePortClient>): void {
+	private async initChannels(accessor: ServicesAccessor, mainProcessElectronServer: ElectronIPCServer, sharedProcessClient: Promise<MessagePortClient>): Promise<void> {
 
 		// Channels registered to node.js are exposed to second instances
 		// launching because that is the only way the second instance
@@ -1318,6 +1318,46 @@ export class CodeApplication extends Disposable {
 		// Utility Process Worker
 		const utilityProcessWorkerChannel = ProxyChannel.fromService(accessor.get(IUtilityProcessWorkerMainService), disposables);
 		mainProcessElectronServer.registerChannel(ipcUtilityProcessWorkerChannelName, utilityProcessWorkerChannel);
+
+		// Loophole Channels
+		// Metrics
+		const metricsMainService = new (await import('../../workbench/contrib/void/electron-main/metricsMainService.js')).MetricsMainService(
+			accessor.get(IProductService),
+			accessor.get(IEnvironmentMainService),
+			accessor.get(IApplicationStorageMainService)
+		);
+		const metricsChannel = ProxyChannel.fromService(metricsMainService, disposables);
+		mainProcessElectronServer.registerChannel('loophole-channel-metrics', metricsChannel);
+
+		// LLM Message
+		const { LLMMessageChannel } = await import('../../workbench/contrib/void/electron-main/sendLLMMessageChannel.js');
+		const llmMessageChannel = new LLMMessageChannel(metricsMainService);
+		mainProcessElectronServer.registerChannel('loophole-channel-llmMessage', llmMessageChannel);
+
+		// MCP
+		const { MCPChannel } = await import('../../workbench/contrib/void/electron-main/mcpChannel.js');
+		const mcpChannel = new MCPChannel();
+		mainProcessElectronServer.registerChannel('loophole-channel-mcp', mcpChannel);
+
+		// Update
+		const { LoopholeMainUpdateService } = await import('../../workbench/contrib/void/electron-main/voidUpdateMainService.js');
+		const loopholeUpdateService = new LoopholeMainUpdateService(
+			accessor.get(IProductService),
+			accessor.get(IEnvironmentMainService),
+			accessor.get(IUpdateService),
+			accessor.get(IRequestService),
+			accessor.get(IFileService),
+			accessor.get(ILogService),
+			accessor.get(ILifecycleMainService)
+		);
+		const loopholeUpdateChannel = ProxyChannel.fromService(loopholeUpdateService, disposables);
+		mainProcessElectronServer.registerChannel('loophole-channel-update', loopholeUpdateChannel);
+
+		// SCM
+		const { LoopholeSCMService } = await import('../../workbench/contrib/void/electron-main/voidSCMMainService.js');
+		const loopholeSCMService = new LoopholeSCMService();
+		const loopholeSCMChannel = ProxyChannel.fromService(loopholeSCMService, disposables);
+		mainProcessElectronServer.registerChannel('loophole-channel-scm', loopholeSCMChannel);
 	}
 
 	private async openFirstWindow(accessor: ServicesAccessor, initialProtocolUrls: IInitialProtocolUrls | undefined): Promise<ICodeWindow[]> {
