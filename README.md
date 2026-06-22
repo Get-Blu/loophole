@@ -1,4 +1,4 @@
-![Loophole — The AI IDE that thinks while you code](void_icons/20260327_123133.png)
+![Loophole — The AI IDE that thinks while you code](logo/20260327_123133.png)
 
 # Loophole
 
