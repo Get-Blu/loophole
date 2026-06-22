@@ -213,8 +213,8 @@ const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) =
 	// Get model capabilities
 	const modelCapabilities = useMemo(() => {
 		if (!modelSelection) return null;
-		return voidModelService.getModelInfo(modelSelection.providerName, modelSelection.modelName);
-	}, [modelSelection, voidModelService]);
+		return getModelCapabilities(modelSelection.providerName, modelSelection.modelName, settingsState.overridesOfModel);
+	}, [modelSelection, settingsState.overridesOfModel]);
 
 	// Estimate token usage from current thread
 	const estimatedUsage = useMemo(() => {
