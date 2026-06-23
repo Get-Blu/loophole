@@ -49,7 +49,7 @@ The open-source AI code editor that thinks while you code.
 </p>
 
 <p align="center">
-  <img src="logo/20260327_123133.png" width="85%" alt="Loophole Editor" />
+  <img src="logo/20260327_123134.png" width="85%" alt="Loophole Editor" />
 </p>
 
 ---
