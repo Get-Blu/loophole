@@ -1,71 +1,161 @@
-![Loophole — The AI IDE that thinks while you code](logo/20260327_123133.png)
+<p align="center">
+  <img src="logo/logo.png" width="80" alt="Loophole" />
+</p>
 
-# Loophole
+<h1 align="center">Loophole</h1>
 
-Loophole is an open-source AI code editor. It is a fork of the Void editor, which is a fork of VS Code.
+<p align="center">
+The open-source AI code editor that thinks while you code.
+</p>
 
-## Project Background
+<div align="center">
 
-Loophole is built on top of the Void editor. Void itself started as a fork of VS Code to integrate AI features directly into the core editor experience. Loophole continues this mission with a focus on privacy, flexibility, and a premium user experience.
+<img src="https://img.shields.io/github/license/loophole-ai/loophole-ide?style=for-the-badge" alt="License" />
+<img src="https://img.shields.io/github/stars/loophole-ai/loophole-ide?style=for-the-badge" alt="Stars" />
+<img src="https://img.shields.io/github/issues/loophole-ai/loophole-ide?style=for-the-badge" alt="Issues" />
 
-## Main Features
+</div>
 
-- AI Chat Sidebar: Chat with your entire codebase using advanced AI models.
-- Context Awareness: Loophole understands your code structure and relationships.
-- Multiple Providers: Connect to various AI providers or host your own.
-- Privacy First: AI requests are sent directly from your machine to the provider. No intermediate servers store your data.
+<div align="center">
+
+<div align="center">
+<table>
+<tbody>
+<td align="center">
+<a href="https://github.com/loophole-ai/loophole-ide" target="_blank"><strong>GitHub</strong></a>
+</td>
+<td align="center">
+<a href="./LOOPHOLE_CODEBASE_GUIDE.md" target="_blank"><strong>Documentation</strong></a>
+</td>
+<td align="center">
+<a href="./HOW_TO_CONTRIBUTE.md" target="_blank"><strong>Contributing</strong></a>
+</td>
+<td align="center">
+<a href="https://github.com/loophole-ai/loophole-ide/issues" target="_blank"><strong>Issues</strong></a>
+</td>
+<td align="center">
+<a href="https://github.com/loophole-ai/loophole-ide/discussions" target="_blank"><strong>Discussions</strong></a>
+</td>
+</tbody>
+</table>
+</div>
+
+</div>
+
+<br>
+
+<p align="center">
+  <img src="logo/banner.png" width="100%" alt="Loophole Banner" />
+</p>
+
+<p align="center">
+  <img src="logo/20260327_123133.png" width="85%" alt="Loophole Editor" />
+</p>
+
+---
+
+## Overview
+
+Loophole is an open-source AI code editor built on top of the Void editor (a fork of VS Code). It integrates AI features directly into the core editor experience with a focus on privacy, flexibility, and a premium user experience.
+
+## Features
+
+**AI Chat Sidebar** - Chat with your entire codebase using advanced AI models. Ask questions, get explanations, and receive code suggestions directly within the editor.
+
+**Context Awareness** - Loophole understands your code structure and relationships. It provides intelligent suggestions based on your project's architecture and dependencies.
+
+**Multiple AI Providers** - Connect to various AI providers or host your own. Loophole supports a wide range of models and services.
+
+**Privacy First** - AI requests are sent directly from your machine to the provider. No intermediate servers store your data. Your code stays private.
+
+**Built for Developers** - Forked from VS Code, Loophole maintains all the features you love while adding powerful AI capabilities.
+
+---
 
 ## Supported AI Providers
 
-Loophole supports a wide range of AI providers, including:
+| Provider | Models |
+|----------|--------|
+| Anthropic | Claude Opus, Sonnet, Haiku |
+| OpenAI | GPT-4, GPT-4 Turbo, GPT-3.5 |
+| Google | Gemini Pro, Gemini Ultra |
+| DeepSeek | DeepSeek Coder, DeepSeek Chat |
+| OpenRouter | 200+ models from any provider |
+| Local Models | Ollama, vLLM, LM Studio |
+| Other Providers | Groq, xAI, Mistral, Perplexity, and more |
 
-- Anthropic 
-- OpenAI 
-- Google Gemini 
-- DeepSeek
-- OpenRouter
-- Local Providers:
-  - Ollama
-  - vLLM
-  - LM Studio
-- Other compatible providers: Groq, xAI, Mistral, Perplexity, and more.
+---
 
-## Installation and Run
+## Installation
 
-To build and run Loophole from source:
+### Prerequisites
 
-1. System Requirements:
-   - Node.js version 22 or higher.
-   - Python (required for some build tools).
-   - C++ build tools (required for native modules).
+- Node.js version 22 or higher
+- Python (required for some build tools)
+- C++ build tools (required for native modules)
 
-2. Setup:
-   ```bash
-   npm install
-   ```
+### Build from Source
 
-3. Build UI Components:
-   ```bash
-   npm run buildreact
-   ```
+```bash
+# Clone the repository
+git clone https://github.com/loophole-ai/loophole-ide.git
+cd loophole-ide
 
-4. Compile and Run:
-   ```bash
-   npm run watch
-   # In another terminal:
-   npm run electron
-   ```
+# Install dependencies
+npm install
 
-## More Information
+# Build UI components
+npm run buildreact
 
-- [LOOPHOLE_CODEBASE_GUIDE.md](./LOOPHOLE_CODEBASE_GUIDE.md) - Technical overview of the project.
-- [HOW_TO_CONTRIBUTE.md](./HOW_TO_CONTRIBUTE.md) - How to help improve Loophole.
+# Compile and run (in separate terminals)
+npm run watch
+npm run electron
+```
+
+---
+
+## Project Structure
+
+Loophole maintains the VS Code architecture while adding AI-specific layers:
+
+- `src/vs/` - Main VS Code source code
+- `extensions/` - Built-in extensions
+- `build/` - Build scripts and configuration
+- `resources/` - Static resources
+
+For a detailed technical overview, see the [Loophole Codebase Guide](./LOOPHOLE_CODEBASE_GUIDE.md).
+
+---
+
+## Contributing
+
+We welcome contributions from the community. Please read our [Contributing Guide](./HOW_TO_CONTRIBUTE.md) to get started.
+
+---
+
+## Documentation
+
+- [Loophole Codebase Guide](./LOOPHOLE_CODEBASE_GUIDE.md) - Technical overview and architecture
+- [How to Contribute](./HOW_TO_CONTRIBUTE.md) - Contribution guidelines
+- [Security Policy](./SECURITY.md) - Security reporting and best practices
+- [License](./LICENSE.txt) - AGPL-3.0 license
+
+---
 
 ## License
 
 Loophole is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
-See LICENSE.txt for details.
 
-## Author
+This project incorporates code from:
+- [VS Code](https://github.com/microsoft/vscode) - MIT License
+- [Void Editor](https://github.com/voideditor/void) - Apache License 2.0
 
-Garv Agnihotri, Open Source
+See [LICENSE.txt](./LICENSE.txt) for the full license text.
+
+---
+
+<div align="center">
+
+**Garv Agnihotri** — Open Source • Privacy-First AI Editor
+
+</div>
