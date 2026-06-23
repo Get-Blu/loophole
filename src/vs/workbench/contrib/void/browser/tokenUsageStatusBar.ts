@@ -38,8 +38,7 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 				name: localize('tokenUsage', 'Token Usage & Cost'),
 				text: this.getTokenText(),
 				ariaLabel: localize('tokenUsageAria', 'Total tokens used: {0}, Estimated cost: {1}', formatTokenCount(this.tokenUsageService.getTotalTokensUsed()), formatDollarCount(this.tokenUsageService.getEstimatedCost())),
-				tooltip: localize('tokenUsageTooltip', 'Total tokens used & estimated cost. Click to reset.'),
-				command: 'loophole.resetTokenUsage',
+				tooltip: localize('tokenUsageTooltip', 'Total tokens used & estimated cost.'),
 			},
 			TOKEN_USAGE_STATUS_BAR_ID,
 			StatusbarAlignment.LEFT,
@@ -53,14 +52,11 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 					name: localize('tokenUsage', 'Token Usage & Cost'),
 					text: this.getTokenText(),
 					ariaLabel: localize('tokenUsageAria', 'Total tokens used: {0}, Estimated cost: {1}', formatTokenCount(this.tokenUsageService.getTotalTokensUsed()), formatDollarCount(this.tokenUsageService.getEstimatedCost())),
-					tooltip: localize('tokenUsageTooltip', 'Total tokens used & estimated cost. Click to reset.'),
-					command: 'loophole.resetTokenUsage',
+					tooltip: localize('tokenUsageTooltip', 'Total tokens used & estimated cost.'),
 				});
 			})
 		);
 
-		// Register reset command
-		this.registerResetCommand();
 	}
 
 	private getTokenText(): string {
@@ -70,10 +66,6 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 		return `$(graph) ${formatTokenCount(total)}${costText}`;
 	}
 
-	private registerResetCommand(): void {
-		// The command will be registered separately via the commands registry
-		// This is just a placeholder - actual registration happens in the contribution
-	}
 }
 
 registerSingleton(ITokenUsageStatusBarService, TokenUsageStatusBarService, InstantiationType.Eager);

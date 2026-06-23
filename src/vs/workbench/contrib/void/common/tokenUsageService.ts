@@ -131,8 +131,6 @@ export interface ITokenUsageService {
 	// Get formatted estimated cost
 	getFormattedEstimatedCost(): string;
 
-	// Reset total tokens (for testing/debugging)
-	resetTotalTokens(): void;
 }
 
 export class TokenUsageService implements ITokenUsageService {
@@ -196,23 +194,6 @@ export class TokenUsageService implements ITokenUsageService {
 		return formatDollarCount(this._estimatedCost);
 	}
 
-	resetTotalTokens(): void {
-		this._totalTokensUsed = 0;
-		this._estimatedCost = 0;
-		this.storageService.store(
-			TOTAL_TOKENS_STORAGE_KEY,
-			'0',
-			StorageScope.APPLICATION,
-			StorageTarget.USER
-		);
-		this.storageService.store(
-			ESTIMATED_COST_STORAGE_KEY,
-			'0',
-			StorageScope.APPLICATION,
-			StorageTarget.USER
-		);
-		this._onTokenUsageChanged.fire();
-	}
 }
 
 registerSingleton(ITokenUsageService, TokenUsageService, InstantiationType.Eager);
