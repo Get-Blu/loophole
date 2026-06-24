@@ -120,6 +120,14 @@ import { ILoggerMainService } from '../../platform/log/electron-main/loggerServi
 import { IInitialProtocolUrls, IProtocolUrl } from '../../platform/url/electron-main/url.js';
 import { IUtilityProcessWorkerMainService, UtilityProcessWorkerMainService } from '../../platform/utilityProcess/electron-main/utilityProcessWorkerMainService.js';
 import { ipcUtilityProcessWorkerChannelName } from '../../platform/utilityProcess/common/utilityProcessWorkerService.js';
+import { IMetricsService } from '../../workbench/contrib/void/common/metricsService.js';
+import { ILoopholeUpdateService } from '../../workbench/contrib/void/common/voidUpdateService.js';
+import { MetricsMainService } from '../../workbench/contrib/void/electron-main/metricsMainService.js';
+import { LoopholeMainUpdateService } from '../../workbench/contrib/void/electron-main/voidUpdateMainService.js';
+import { LLMMessageChannel } from '../../workbench/contrib/void/electron-main/sendLLMMessageChannel.js';
+import { LoopholeSCMService } from '../../workbench/contrib/void/electron-main/voidSCMMainService.js';
+import { ILoopholeSCMService } from '../../workbench/contrib/void/common/voidSCMTypes.js';
+import { MCPChannel } from '../../workbench/contrib/void/electron-main/mcpChannel.js';
 import { ILocalPtyService, LocalReconnectConstants, TerminalIpcChannels, TerminalSettingId } from '../../platform/terminal/common/terminal.js';
 import { ElectronPtyHostStarter } from '../../platform/terminal/electron-main/electronPtyHostStarter.js';
 import { PtyHostService } from '../../platform/terminal/node/ptyHostService.js';
@@ -1151,6 +1159,11 @@ export class CodeApplication extends Disposable {
 			services.set(ITelemetryService, NullTelemetryService);
 		}
 
+		// Loophole main process services (required for services with a channel for comm between browser and electron-main (node))
+		services.set(IMetricsService, new SyncDescriptor(MetricsMainService, undefined, false));
+		services.set(ILoopholeUpdateService, new SyncDescriptor(LoopholeMainUpdateService, undefined, false));
+		services.set(ILoopholeSCMService, new SyncDescriptor(LoopholeSCMService, undefined, false));
+
 		// Default Extensions Profile Init
 		services.set(IExtensionsProfileScannerService, new SyncDescriptor(ExtensionsProfileScannerService, undefined, true));
 		services.set(IExtensionsScannerService, new SyncDescriptor(ExtensionsScannerService, undefined, true));
@@ -1306,6 +1319,24 @@ export class CodeApplication extends Disposable {
 		const loggerChannel = new LoggerChannel(accessor.get(ILoggerMainService),);
 		mainProcessElectronServer.registerChannel('logger', loggerChannel);
 		sharedProcessClient.then(client => client.registerChannel('logger', loggerChannel));
+
+		// Loophole - AI chat / metrics / update / SCM / MCP channels
+		// NOTE: without these registrations the renderer's getChannel('loophole-channel-*') calls
+		// have no server-side handler, so any AI chat message just hangs forever waiting for a reply.
+		const metricsChannel = ProxyChannel.fromService(accessor.get(IMetricsService), disposables);
+		mainProcessElectronServer.registerChannel('loophole-channel-metrics', metricsChannel);
+
+		const loopholeUpdatesChannel = ProxyChannel.fromService(accessor.get(ILoopholeUpdateService), disposables);
+		mainProcessElectronServer.registerChannel('loophole-channel-update', loopholeUpdatesChannel);
+
+		const sendLLMMessageChannel = new LLMMessageChannel(accessor.get(IMetricsService));
+		mainProcessElectronServer.registerChannel('loophole-channel-llmMessage', sendLLMMessageChannel);
+
+		const loopholeSCMChannel = ProxyChannel.fromService(accessor.get(ILoopholeSCMService), disposables);
+		mainProcessElectronServer.registerChannel('loophole-channel-scm', loopholeSCMChannel);
+
+		const mcpChannel = new MCPChannel();
+		mainProcessElectronServer.registerChannel('loophole-channel-mcp', mcpChannel);
 
 		// Extension Host Debug Broadcasting
 		const electronExtensionHostDebugBroadcastChannel = new ElectronExtensionHostDebugBroadcastChannel(accessor.get(IWindowsMainService));
