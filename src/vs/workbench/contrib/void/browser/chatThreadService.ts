@@ -136,6 +136,9 @@ export type ThreadType = {
 			}
 		}
 
+		// Cumulative token count for the entire thread (updated when assistant messages complete)
+		cumulativeTokenCount: number;
+
 
 		mountedInfo?: {
 			whenMounted: Promise<WhenMounted>
@@ -221,6 +224,7 @@ const newThreadObject = () => {
 			stagingSelections: [],
 			focusedMessageIdx: undefined,
 			linksOfMessageIdx: {},
+			cumulativeTokenCount: 0,
 		},
 		filesWithUserChanges: new Set()
 	} satisfies ThreadType
@@ -336,9 +340,30 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 		const readThreads = this._readAllThreads() || {}
 
-		const allThreads = readThreads
+		// Migration: Add cumulativeTokenCount to existing threads
+		const migratedThreads: ChatThreads = {}
+		for (const [threadId, thread] of Object.entries(readThreads)) {
+			if (!thread) continue
+
+			// Calculate cumulative token count from assistant messages
+			let cumulativeCount = 0
+			for (const message of thread.messages) {
+				if (message.role === 'assistant' && message.tokenUsage) {
+					cumulativeCount += message.tokenUsage.totalTokens
+				}
+			}
+
+			migratedThreads[threadId] = {
+				...thread,
+				state: {
+					...thread.state,
+					cumulativeTokenCount: thread.state.cumulativeTokenCount ?? cumulativeCount
+				}
+			}
+		}
+
 		this.state = {
-			allThreads: allThreads,
+			allThreads: migratedThreads,
 			currentThreadId: null as unknown as string, // gets set in startNewThread()
 		}
 
@@ -907,6 +932,16 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				const { toolCall, info } = llmRes
 
 				this._addMessageToThread(threadId, { role: 'assistant', displayContent: info.fullText, reasoning: info.fullReasoning, anthropicReasoning: info.anthropicReasoning, tokenUsage: info.tokenUsage })
+
+				// Update cumulative token count for the thread
+				if (info.tokenUsage) {
+					const thread = this.state.allThreads[threadId];
+					if (thread) {
+						this._setThreadState(threadId, {
+							cumulativeTokenCount: (thread.state.cumulativeTokenCount || 0) + info.tokenUsage.totalTokens
+						});
+					}
+				}
 
 				this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' }) // just decorative for clarity
 

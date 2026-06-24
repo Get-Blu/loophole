@@ -216,11 +216,21 @@ const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) =
 		return getModelCapabilities(modelSelection.providerName, modelSelection.modelName, settingsState.overridesOfModel);
 	}, [modelSelection, settingsState.overridesOfModel]);
 
-	// Estimate token usage from current thread
+	// Calculate actual token usage from current thread
 	const estimatedUsage = useMemo(() => {
 		if (!currentThread || !modelCapabilities) return 0;
 
-		// Rough estimation: ~4 characters per token
+		// Use cumulative token count from thread state if available
+		const cumulativeCount = currentThread.state.cumulativeTokenCount || 0;
+
+		if (cumulativeCount > 0) {
+			// Add overhead for system prompts, tool definitions, etc.
+			// This is a rough estimate for the parts not tracked (user messages, tool results, etc.)
+			return cumulativeCount + 2000;
+		}
+
+		// Fallback: estimate from character count for threads without token counts
+		// This happens for older threads or when token usage wasn't tracked
 		let totalChars = 0;
 		for (const message of currentThread.messages) {
 			if (message.role === 'user' && 'content' in message) {
@@ -237,7 +247,7 @@ const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) =
 			}
 		}
 
-		// Add overhead for system prompts, tool definitions, etc. (rough estimate)
+		// Add overhead for system prompts, tool definitions, etc.
 		totalChars += 2000;
 
 		return Math.ceil(totalChars / 4); // Convert chars to estimated tokens
@@ -2671,7 +2681,7 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 	}, [isRunning, streamState])
 
 	return <div
-		className={`flex items-center justify-center px-2 `}
+		className={`flex items-center justify-center px-2 py-3 `}
 	>
 		<div
 			className={`
@@ -2681,7 +2691,6 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
                     ${isCheckpointGhost ? 'opacity-50' : 'opacity-100'}
 					${isDisabled ? 'cursor-default' : 'cursor-pointer'}
                 `}
-			style={{ position: 'relative', display: 'inline-block' }} // allow absolute icon
 			onClick={() => {
 				if (threadIsRunning) return
 				if (isDisabled) return
@@ -2697,7 +2706,7 @@ const Checkpoint = ({ message, threadId, messageIdx, isCheckpointGhost, threadIs
 				'data-tooltip-place': 'top',
 			} : {}}
 		>
-			Checkpoint
+			----- Checkpoint -----
 		</div>
 	</div>
 }
