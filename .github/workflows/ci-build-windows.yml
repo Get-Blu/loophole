@@ -218,6 +218,13 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      - name: Zip artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -Filter "*.exe" | ForEach-Object {
+            Compress-Archive -Path $_.FullName -DestinationPath "dist/$($_.BaseName).zip"
+          }
+
       # ── Upload to Gofile.io (optional) ────────────────────────────────────────
       - name: Upload to Gofile.io
         if: ${{ github.event.inputs.upload_to_gofile == 'true' }}
@@ -231,7 +238,7 @@ jobs:
           SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])")
           echo "Using server: $SERVER"
 
-          for FILE in dist/*.exe; do
+          for FILE in dist/*.zip; do
             FILENAME=$(basename "$FILE")
             echo ""
             echo "Uploading: $FILENAME"
