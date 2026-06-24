@@ -34,6 +34,7 @@
   "nodejsRepository": "https://nodejs.org",
   "urlProtocol": "loophole",
   "agentsTelemetryAppName": "agents",
+  "loopholeVersion": "2.0.0",
   "webviewContentExternalBaseUrlTemplate": "https://{{uuid}}.vscode-cdn.net/insider/ef65ac1ba57f57f2a3961bfe94aa20481caca4c6/out/vs/workbench/contrib/webview/browser/pre/",
   "builtInExtensions": [
     {
