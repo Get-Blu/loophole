@@ -92,6 +92,7 @@
     "@google/genai": "^0.10.0",
     "google-auth-library": "^9.15.1",
     "posthog-node": "^4.3.3", 
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@microsoft/1ds-core-js": "^3.2.13",
     "@microsoft/1ds-post-js": "^3.2.13",
     "@microsoft/dev-tunnels-connections": "^1.3.41",
