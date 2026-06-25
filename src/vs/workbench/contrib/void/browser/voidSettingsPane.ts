@@ -6,9 +6,10 @@
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import * as nls from '../../../../nls.js';
-import { EditorExtensions } from '../../../common/editor.js';
+import { EditorExtensions, IUntypedEditorInput } from '../../../common/editor.js';
 import { EditorPane } from '../../../browser/parts/editor/editorPane.js';
 import { IEditorGroup, IEditorGroupsService } from '../../../services/editor/common/editorGroupsService.js';
+
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
@@ -54,6 +55,10 @@ class LoopholeSettingsInput extends EditorInput {
 
 	override getIcon() {
 		return Codicon.checklist // symbol for the actual editor pane
+	}
+
+	override matches(otherInput: EditorInput | IUntypedEditorInput): boolean {
+		return otherInput instanceof LoopholeSettingsInput;
 	}
 
 }
@@ -153,7 +158,7 @@ registerAction2(class extends Action2 {
 			if (isCurrentlyOpen)
 				await editorService.closeEditors(openEditors)
 			else
-				await editorGroupService.activeGroup.openEditor(openEditor)
+				await editorService.openEditor(openEditor, { pinned: true })
 			return;
 		}
 
@@ -161,7 +166,7 @@ registerAction2(class extends Action2 {
 		// else open it
 		const input = instantiationService.createInstance(LoopholeSettingsInput);
 
-		await editorGroupService.activeGroup.openEditor(input);
+		await editorService.openEditor(input, { pinned: true });
 	}
 })
 
@@ -189,13 +194,9 @@ registerAction2(class extends Action2 {
 
 		// then, open one single editor
 		const input = instantiationService.createInstance(LoopholeSettingsInput);
-		await editorService.openEditor(input);
+		await editorService.openEditor(input, { pinned: true });
 	}
 })
-
-
-
-
 
 // add to settings gear on bottom left
 MenuRegistry.appendMenuItem(MenuId.GlobalActivity, {
