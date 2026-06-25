@@ -22,7 +22,6 @@ import { LOOPHOLE_CTRL_L_ACTION_ID } from './actionIDs.js';
 import { localize, localize2 } from '../../../../nls.js';
 import { IChatThreadService } from './chatThreadService.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
-import { ITokenUsageService } from '../common/tokenUsageService.js';
 import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { Codicon } from '../../../../base/common/codicons.js';
@@ -372,19 +371,3 @@ registerAction2(class extends Action2 {
 // 		this._register(this._editorService.onCodeEditorAdd(editor => { initializeEditor(editor) }))
 // 	}
 // }
-
-// Reset Token Usage command
-registerAction2(class extends Action2 {
-	constructor() {
-		super({
-			id: 'loophole.resetTokenUsage',
-			title: localize2('resetTokenUsage', 'Loophole: Reset Token Usage'),
-			f1: true,
-			category: { value: localize('loopholeCategory', 'Loophole'), original: 'Loophole' },
-		});
-	}
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const tokenUsageService = accessor.get(ITokenUsageService);
-		tokenUsageService.resetTotalTokens();
-	}
-});
