@@ -490,6 +490,8 @@ export type GlobalSettings = {
 	isOnboardingComplete: boolean;
 	disableSystemMessage: boolean;
 	autoAcceptLLMChanges: boolean;
+	transcriptionProvider: 'openai' | 'localWhisper';
+	localWhisperModelSize: 'tiny' | 'base' | 'small';
 }
 
 export const defaultGlobalSettings: GlobalSettings = {
@@ -506,6 +508,8 @@ export const defaultGlobalSettings: GlobalSettings = {
 	isOnboardingComplete: false,
 	disableSystemMessage: false,
 	autoAcceptLLMChanges: false,
+	transcriptionProvider: 'localWhisper',
+	localWhisperModelSize: 'tiny',
 }
 
 export type GlobalSettingName = keyof GlobalSettings

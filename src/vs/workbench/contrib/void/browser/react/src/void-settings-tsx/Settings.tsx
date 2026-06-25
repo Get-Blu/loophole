@@ -1276,6 +1276,41 @@ export const Settings = () => {
 											</div>
 										</ErrorBoundary>
 
+										{/* Voice Transcription */}
+										<ErrorBoundary>
+											<div className='my-4'>
+												<h4 className='text-loophole-fg-2 text-sm mb-1'>Voice Transcription</h4>
+
+												<div className='flex items-center gap-x-2 my-2'>
+													<LoopholeSwitch
+														size='xs'
+														value={settingsState.globalSettings.transcriptionProvider === 'openai'}
+														onChange={(useOpenAI) => voidSettingsService.setGlobalSetting('transcriptionProvider', useOpenAI ? 'openai' : 'localWhisper')}
+													/>
+													<span className='text-loophole-fg-3 text-xs pointer-events-none'>
+														{settingsState.globalSettings.transcriptionProvider === 'openai'
+															? 'OpenAI Whisper (uses your OpenAI key, costs ~$0.006/min)'
+															: 'Local Whisper (free, offline, runs on your machine)'}
+													</span>
+												</div>
+
+												{settingsState.globalSettings.transcriptionProvider === 'localWhisper' && (
+													<div className='my-2'>
+														<select
+															className='text-xs text-loophole-fg-3 bg-loophole-bg-1 border border-loophole-border-2 rounded p-1'
+															value={settingsState.globalSettings.localWhisperModelSize}
+															onChange={(e) => voidSettingsService.setGlobalSetting('localWhisperModelSize', e.target.value as 'tiny' | 'base' | 'small')}
+														>
+															<option value='tiny'>Tiny (~40MB, fastest)</option>
+															<option value='base'>Base (~80MB, balanced)</option>
+															<option value='small'>Small (~250MB, most accurate)</option>
+														</select>
+														<div className='text-loophole-fg-3 text-xs mt-1'>Downloads once on first use, then works fully offline.</div>
+													</div>
+												)}
+											</div>
+										</ErrorBoundary>
+
 										{/* Apply */}
 										<ErrorBoundary>
 

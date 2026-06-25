@@ -495,9 +495,10 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 	const accessor = useAccessor();
 	const fileDialogService = accessor.get('IFileDialogService');
 	const languageService = accessor.get('ILanguageService');
+	const llmMessageService = accessor.get('ILLMMessageService');
 
 	// Voice recording
-	const { state: recordingState, transcript: voiceTranscript, toggleRecording, isSupported } = useVoiceRecording();
+	const { state: recordingState, transcript: voiceTranscript, toggleRecording, isSupported } = useVoiceRecording(llmMessageService.transcribeAudio);
 
 	// Handle voice transcript
 	React.useEffect(() => {

@@ -211,6 +211,18 @@ export type MainModelListParams<modelResponse> = Omit<ModelListParams<modelRespo
 export type EventModelListOnSuccessParams<modelResponse> = Parameters<ModelListParams<modelResponse>['onSuccess']>[0] & { requestId: string }
 export type EventModelListOnErrorParams<modelResponse> = Parameters<ModelListParams<modelResponse>['onError']>[0] & { requestId: string }
 
+export type MainTranscribeAudioParams = {
+	requestId: string;
+	pcmBase64: string;
+	sampleRate: number;
+	transcriptionProvider: 'openai' | 'localWhisper';
+	localWhisperModelSize: 'tiny' | 'base' | 'small';
+	settingsOfProvider: SettingsOfProvider;
+};
 
+export type ServiceTranscribeAudioParams = {
+	pcmBase64: string;
+	sampleRate: number;
+};
 
 

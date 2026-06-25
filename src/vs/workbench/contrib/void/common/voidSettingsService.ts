@@ -14,7 +14,7 @@ import { IMetricsService } from './metricsService.js';
 import { defaultProviderSettings, getModelCapabilities, ModelOverrides } from './modelCapabilities.js';
 import { LOOPHOLE_SETTINGS_STORAGE_KEY } from './storageKeys.js';
 import { defaultSettingsOfProvider, FeatureName, ProviderName, ModelSelectionOfFeature, SettingsOfProvider, SettingName, providerNames, ModelSelection, modelSelectionsEqual, featureNames, LoopholeStatefulModelInfo, GlobalSettings, GlobalSettingName, defaultGlobalSettings, ModelSelectionOptions, ChatMode, OverridesOfModel, defaultOverridesOfModel, MCPUserStateOfName as MCPUserStateOfName, MCPUserState } from './voidSettingsTypes.js';
-import { LoopholeSettingsState, ModelOption} from './voidSettingsTypes.js';
+import { LoopholeSettingsState, ModelOption } from './voidSettingsTypes.js';
 export const ILoopholeSettingsService = createDecorator<ILoopholeSettingsService>('LoopholeSettingsService');
 
 
@@ -274,9 +274,13 @@ class LoopholeSettingsService extends Disposable implements ILoopholeSettingsSer
 			}
 			// add disableSystemMessage feature
 			if (readS.globalSettings.disableSystemMessage === undefined) readS.globalSettings.disableSystemMessage = false;
-			
+
 			// add autoAcceptLLMChanges feature
 			if (readS.globalSettings.autoAcceptLLMChanges === undefined) readS.globalSettings.autoAcceptLLMChanges = false;
+
+			// add transcription settings
+			if (readS.globalSettings.transcriptionProvider === undefined) readS.globalSettings.transcriptionProvider = 'localWhisper';
+			if (readS.globalSettings.localWhisperModelSize === undefined) readS.globalSettings.localWhisperModelSize = 'tiny';
 		}
 		catch (e) {
 			readS = defaultState()

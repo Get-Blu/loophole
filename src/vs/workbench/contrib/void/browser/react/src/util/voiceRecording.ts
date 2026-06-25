@@ -3,162 +3,89 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------*/
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-
-// Web Speech API type declarations
-declare global {
-	interface Window {
-		SpeechRecognition: any;
-		webkitSpeechRecognition: any;
-	}
-}
-
-interface SpeechRecognitionEvent {
-	resultIndex: number;
-	results: {
-		isFinal: boolean;
-		0: {
-			transcript: string;
-		};
-	}[];
-}
-
-interface SpeechRecognitionErrorEvent {
-	error: string;
-}
+import { useState, useCallback, useRef } from 'react';
 
 type RecordingState = 'idle' | 'recording' | 'processing' | 'error';
 
-interface VoiceRecordingState {
-	state: RecordingState;
-	transcript: string;
-	error: string | null;
-	isSupported: boolean;
-}
-
-interface VoiceRecordingActions {
-	startRecording: () => void;
-	stopRecording: () => void;
-	toggleRecording: () => void;
-	clearTranscript: () => void;
-}
-
-export function useVoiceRecording(): VoiceRecordingState & VoiceRecordingActions {
+export function useVoiceRecording(
+	transcribeAudio: (params: { pcmBase64: string; sampleRate: number }) => Promise<{ text: string } | { error: string }>
+) {
 	const [state, setState] = useState<RecordingState>('idle');
 	const [transcript, setTranscript] = useState('');
 	const [error, setError] = useState<string | null>(null);
-	const [isSupported, setIsSupported] = useState(true);
 
-	const recognitionRef = useRef<any>(null);
-	const finalTranscriptRef = useRef('');
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+	const chunksRef = useRef<Blob[]>([]);
+	const streamRef = useRef<MediaStream | null>(null);
 
-	useEffect(() => {
-		// Check if Web Speech API is supported
-		const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-		if (!SpeechRecognition) {
-			setIsSupported(false);
-			setError('Speech recognition not supported in this browser');
-			return;
-		}
+	const isSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
-		const recognition = new SpeechRecognition();
-		recognition.continuous = true;
-		recognition.interimResults = true;
-		recognition.lang = 'en-US';
+	const startRecording = useCallback(async () => {
+		if (!isSupported) { setError('Microphone not available'); return; }
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			streamRef.current = stream;
+			chunksRef.current = [];
 
-		recognition.onstart = () => {
+			const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+			const recorder = new MediaRecorder(stream, { mimeType });
+			mediaRecorderRef.current = recorder;
+
+			recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+
+			recorder.onstop = async () => {
+				setState('processing');
+				streamRef.current?.getTracks().forEach(t => t.stop());
+
+				const blob = new Blob(chunksRef.current, { type: mimeType });
+				const arrayBuffer = await blob.arrayBuffer();
+
+				// decode + resample to 16kHz mono — what Whisper expects
+				const audioCtx = new AudioContext({ sampleRate: 16000 });
+				const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+				const channelData = decoded.getChannelData(0); // Float32Array @ 16kHz
+
+				// base64-encode the raw float32 bytes for IPC transport (chunked to avoid stack issues)
+				const bytes = new Uint8Array(channelData.buffer);
+				let binary = '';
+				const chunkSize = 0x8000;
+				for (let i = 0; i < bytes.length; i += chunkSize) {
+					binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+				}
+				const pcmBase64 = btoa(binary);
+
+				const result = await transcribeAudio({ pcmBase64, sampleRate: decoded.sampleRate });
+				if ('error' in result) {
+					setError(result.error);
+					setState('error');
+				} else {
+					setTranscript(result.text);
+					setState('idle');
+				}
+			};
+
+			recorder.start();
 			setState('recording');
 			setError(null);
-			finalTranscriptRef.current = '';
-		};
-
-		recognition.onresult = (event: SpeechRecognitionEvent) => {
-			let interimTranscript = '';
-			let finalTranscript = finalTranscriptRef.current;
-
-			for (let i = event.resultIndex; i < event.results.length; i++) {
-				const transcript = event.results[i][0].transcript;
-				if (event.results[i].isFinal) {
-					finalTranscript += transcript;
-				} else {
-					interimTranscript += transcript;
-				}
-			}
-
-			finalTranscriptRef.current = finalTranscript;
-			setTranscript(finalTranscript + interimTranscript);
-		};
-
-		recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-			console.error('Speech recognition error:', event.error);
-			if (event.error === 'not-allowed') {
-				setError('Microphone permission denied');
-			} else if (event.error === 'no-speech') {
-				setError('No speech detected');
-			} else {
-				setError(`Error: ${event.error}`);
-			}
-			setState('error');
-		};
-
-		recognition.onend = () => {
-			setState('idle');
-		};
-
-		recognitionRef.current = recognition;
-
-		return () => {
-			if (recognitionRef.current) {
-				recognitionRef.current.stop();
-			}
-		};
-	}, []);
-
-	const startRecording = useCallback(() => {
-		if (!recognitionRef.current) {
-			setError('Speech recognition not available');
-			return;
-		}
-
-		try {
-			finalTranscriptRef.current = '';
-			setTranscript('');
-			setError(null);
-			recognitionRef.current.start();
 		} catch (err) {
 			console.error('Failed to start recording:', err);
-			setError('Failed to start recording');
+			setError('Microphone permission denied');
 			setState('error');
 		}
-	}, []);
+	}, [isSupported, transcribeAudio]);
 
 	const stopRecording = useCallback(() => {
-		if (recognitionRef.current && state === 'recording') {
-			recognitionRef.current.stop();
+		if (mediaRecorderRef.current && state === 'recording') {
+			mediaRecorderRef.current.stop();
 		}
 	}, [state]);
 
 	const toggleRecording = useCallback(() => {
-		if (state === 'recording') {
-			stopRecording();
-		} else {
-			startRecording();
-		}
+		if (state === 'recording') stopRecording();
+		else startRecording();
 	}, [state, startRecording, stopRecording]);
 
-	const clearTranscript = useCallback(() => {
-		setTranscript('');
-		finalTranscriptRef.current = '';
-	}, []);
+	const clearTranscript = useCallback(() => setTranscript(''), []);
 
-	return {
-		state,
-		transcript,
-		error,
-		isSupported,
-		startRecording,
-		stopRecording,
-		toggleRecording,
-		clearTranscript,
-	};
+	return { state, transcript, error, isSupported, startRecording, stopRecording, toggleRecording, clearTranscript };
 }
