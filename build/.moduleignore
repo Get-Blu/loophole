@@ -124,6 +124,7 @@ ssh2/SFTP.md
 
 node-pty/binding.gyp
 node-pty/build/**
+node-pty/prebuilds/**
 node-pty/src/**
 node-pty/lib/*.test.js
 node-pty/tools/**
