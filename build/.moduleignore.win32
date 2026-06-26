@@ -1,0 +1,2 @@
+# onnxruntime-node: re-include win32 native binaries (stripped by base .moduleignore)
+!onnxruntime-node/bin/napi-v*/win32/**

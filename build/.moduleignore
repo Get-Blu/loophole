@@ -242,6 +242,16 @@ zone.js/dist/**
 @github/copilot-sdk/node_modules/@github/copilot-win32-arm64/**
 @github/copilot-sdk/node_modules/@github/copilot-win32-x64/**
 
+# onnxruntime-node ships native .node binaries for every platform under
+# bin/napi-v<N>/<platform>/<arch>/. rcedit fails when it encounters non-PE
+# binaries during Windows packaging. Strip all platform binaries here;
+# platform-specific .moduleignore.<platform> files whitelist the needed ones.
+onnxruntime-node/bin/napi-v*/linux/**
+onnxruntime-node/bin/napi-v*/darwin/**
+onnxruntime-node/bin/napi-v*/win32/**
+onnxruntime-node/script/**
+onnxruntime-node/cmake/**
+
 # es5-ext is quarantined protestware (sonatype-2022-2248). It is only consumed
 # in websocket's browser.js inside a try/catch with a globalThis fallback,
 # so it is unnecessary in the browsers/runtimes VS Code supports.

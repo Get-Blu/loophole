@@ -52,6 +52,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
       - name: Build React UI
         run: npm run buildreact
         env:
@@ -180,6 +184,10 @@ jobs:
         run: npm ci
         env:
           npm_config_arch: x64
+
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
 
       - name: Build React UI
         run: npm run buildreact
@@ -538,6 +546,10 @@ jobs:
         env:
           npm_config_arch: arm64
 
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
       - name: Build React UI
         run: npm run buildreact
         env:
@@ -764,6 +776,7 @@ jobs:
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
 
               npm ci
+              cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
               npm run compile
 
@@ -879,6 +892,7 @@ jobs:
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
 
               npm ci
+              cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
               npm run compile
 

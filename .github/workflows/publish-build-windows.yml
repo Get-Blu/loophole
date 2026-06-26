@@ -81,6 +81,15 @@ jobs:
           npm_config_arch: x64
 
 
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Compile TypeScript
         run: npm run compile
         env:

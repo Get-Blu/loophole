@@ -86,6 +86,15 @@ jobs:
         env:
           npm_config_arch: x64
 
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Compile TypeScript
         run: npm run compile
         env:
@@ -262,6 +271,15 @@ jobs:
         env:
           npm_config_arch: arm64
 
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Build React UI
+        run: npm run buildreact
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Compile TypeScript
         run: npm run compile
         env:
@@ -377,6 +395,8 @@ jobs:
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target x86_64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
               npm ci
+              cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
+              npm run buildreact
               npm run compile
               cd cli && cargo build --release --target x86_64-unknown-linux-musl && cd ..
               npm run gulp vscode-reh-linux-x64-ci
@@ -436,6 +456,8 @@ jobs:
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target aarch64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
               npm ci
+              cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
+              npm run buildreact
               npm run compile
               cd cli && cargo build --release --target aarch64-unknown-linux-musl && cd ..
               npm run gulp vscode-reh-linux-arm64-ci

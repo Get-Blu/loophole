@@ -15,3 +15,6 @@
 @vscode/windows-registry/*.txt
 @vscode/windows-registry/package.json
 !@vscode/windows-registry/dist/index.d.ts
+
+# onnxruntime-node: re-include linux native binaries (stripped by base .moduleignore)
+!onnxruntime-node/bin/napi-v*/linux/**
