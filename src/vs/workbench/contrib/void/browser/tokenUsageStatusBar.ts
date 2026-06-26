@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------------------------
- *  Copyright 2026 Loophole-AI. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *  Copyright 2026 Garv Agnihotri, Inc. All rights reserved.
  *--------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
@@ -16,6 +15,8 @@ export const ITokenUsageStatusBarService = createDecorator<ITokenUsageStatusBarS
 export interface ITokenUsageStatusBarService {
 	readonly _serviceBrand: undefined;
 }
+
+export const OPEN_TOKEN_USAGE_DIALOG_COMMAND_ID = 'loophole.openTokenUsageDialog';
 
 
 
@@ -38,7 +39,8 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 				name: localize('tokenUsage', 'Token Usage & Cost'),
 				text: this.getTokenText(),
 				ariaLabel: localize('tokenUsageAria', 'Total tokens used: {0}, Estimated cost: {1}', formatTokenCount(this.tokenUsageService.getTotalTokensUsed()), formatDollarCount(this.tokenUsageService.getEstimatedCost())),
-				tooltip: localize('tokenUsageTooltip', 'Total tokens used & estimated cost.'),
+				tooltip: localize('tokenUsageTooltip', 'Click to view token usage graph'),
+				command: OPEN_TOKEN_USAGE_DIALOG_COMMAND_ID,
 			},
 			TOKEN_USAGE_STATUS_BAR_ID,
 			StatusbarAlignment.LEFT,
@@ -52,7 +54,8 @@ export class TokenUsageStatusBarService extends Disposable implements ITokenUsag
 					name: localize('tokenUsage', 'Token Usage & Cost'),
 					text: this.getTokenText(),
 					ariaLabel: localize('tokenUsageAria', 'Total tokens used: {0}, Estimated cost: {1}', formatTokenCount(this.tokenUsageService.getTotalTokensUsed()), formatDollarCount(this.tokenUsageService.getEstimatedCost())),
-					tooltip: localize('tokenUsageTooltip', 'Total tokens used & estimated cost.'),
+					tooltip: localize('tokenUsageTooltip', 'Click to view token usage graph'),
+					command: OPEN_TOKEN_USAGE_DIALOG_COMMAND_ID,
 				});
 			})
 		);
