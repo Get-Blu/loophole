@@ -60,3 +60,5 @@ import './fileService.js'
 import './voidSCMService.js'
 // register token usage status bar
 import './tokenUsageStatusBar.js'
+// register token usage dialog
+import './tokenUsageDialogService.js'
