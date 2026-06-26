@@ -185,7 +185,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 		} satisfies MainModelListParams<OpenaiCompatibleModelResponse>)
 	}
 
-	async transcribeAudio(params: ServiceTranscribeAudioParams) {
+	async transcribeAudio(params: ServiceTranscribeAudioParams): Promise<{ text: string } | { error: string }> {
 		const { settingsOfProvider, globalSettings } = this.voidSettingsService.state
 		const requestId = generateUuid();
 		return this.channel.call('transcribeAudio', {
@@ -194,7 +194,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 			settingsOfProvider,
 			transcriptionProvider: globalSettings.transcriptionProvider,
 			localWhisperModelSize: globalSettings.localWhisperModelSize,
-		} satisfies MainTranscribeAudioParams);
+		} satisfies MainTranscribeAudioParams) as Promise<{ text: string } | { error: string }>;
 	}
 
 	private _clearChannelHooks(requestId: string) {
