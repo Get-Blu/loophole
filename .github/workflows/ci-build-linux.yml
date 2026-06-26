@@ -9,6 +9,14 @@ on:
       version:
         description: 'Version override (e.g. 1.121.03429) — defaults to package.json'
         required: false
+      upload_to_gofile:
+        description: 'Upload artifacts to Gofile.io for faster download?'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 env:
   NODE_VERSION: '22'
@@ -427,6 +435,31 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      # ── Upload to Gofile.io (optional) ────────────────────────────────────────
+      - name: Upload to Gofile.io
+        if: ${{ github.event.inputs.upload_to_gofile == 'true' }}
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])")
+          echo "Using server: $SERVER"
+
+          for FILE in dist/*.{deb,rpm,tar.gz,AppImage,zsync,snap}; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              echo "Response: $RESPONSE"
+              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
+              echo " $FILENAME → $LINK"
+            fi
+          done
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Build: Linux ARM64
   # Produces: .deb, .rpm, .tar.gz, reh, reh-web, CLI
@@ -668,6 +701,31 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      # ── Upload to Gofile.io (optional) ────────────────────────────────────────
+      - name: Upload to Gofile.io
+        if: ${{ github.event.inputs.upload_to_gofile == 'true' }}
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])")
+          echo "Using server: $SERVER"
+
+          for FILE in dist/*.{deb,rpm,tar.gz,AppImage,zsync,snap}; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              echo "Response: $RESPONSE"
+              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
+              echo " $FILENAME → $LINK"
+            fi
+          done
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Build: Alpine x64 (musl libc) — REH + REH-Web only
   # Alpine doesn't support the full Electron app, only server/remote hosts
@@ -759,6 +817,31 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+      # ── Upload to Gofile.io (optional) ────────────────────────────────────────
+      - name: Upload to Gofile.io
+        if: ${{ github.event.inputs.upload_to_gofile == 'true' }}
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])")
+          echo "Using server: $SERVER"
+
+          for FILE in dist/*.{deb,rpm,tar.gz,AppImage,zsync,snap}; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              echo "Response: $RESPONSE"
+              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
+              echo " $FILENAME → $LINK"
+            fi
+          done
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Build: Alpine ARM64 (musl libc) — REH + REH-Web only
   # ─────────────────────────────────────────────────────────────────────────────
@@ -848,3 +931,28 @@ jobs:
           path: dist/loophole-reh-web-alpine-arm64-${{ env.VERSION }}.tar.gz
           retention-days: 7
           if-no-files-found: warn
+
+      # ── Upload to Gofile.io (optional) ────────────────────────────────────────
+      - name: Upload to Gofile.io
+        if: ${{ github.event.inputs.upload_to_gofile == 'true' }}
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])")
+          echo "Using server: $SERVER"
+
+          for FILE in dist/*.{deb,rpm,tar.gz,AppImage,zsync,snap}; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              echo "Response: $RESPONSE"
+              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
+              echo " $FILENAME → $LINK"
+            fi
+          done
