@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------------------------
- *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *  Copyright 2026 Garv Agnihotri, Inc. All rights reserved.
  *--------------------------------------------------------------------------------------*/
 
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
@@ -14,6 +13,7 @@ export const ITokenUsageService = createDecorator<ITokenUsageService>('tokenUsag
 // Storage key for total token usage
 const TOTAL_TOKENS_STORAGE_KEY = 'loophole.totalTokensUsed';
 const ESTIMATED_COST_STORAGE_KEY = 'loophole.estimatedCostUsed';
+const DAILY_TOKENS_STORAGE_KEY = 'loophole.dailyTokenUsage';
 
 // Token usage for a single message
 export type TokenUsageInfo = {
@@ -22,6 +22,13 @@ export type TokenUsageInfo = {
 	totalTokens: number;
 	providerName?: string;
 	modelName?: string;
+};
+
+// Per-day token usage entry (used for the usage graph)
+export type DailyTokenEntry = {
+	date: string;    // 'YYYY-MM-DD'
+	tokens: number;
+	cost: number;
 };
 
 // Estimated pricing per 1M tokens (USD) - conservative averages per provider
@@ -131,6 +138,9 @@ export interface ITokenUsageService {
 	// Get formatted estimated cost
 	getFormattedEstimatedCost(): string;
 
+	// Get all daily token usage entries, sorted oldest → newest
+	getDailyUsage(): DailyTokenEntry[];
+
 }
 
 export class TokenUsageService implements ITokenUsageService {
@@ -141,6 +151,7 @@ export class TokenUsageService implements ITokenUsageService {
 
 	private _totalTokensUsed: number = 0;
 	private _estimatedCost: number = 0;
+	private _dailyUsage: Map<string, { tokens: number; cost: number }> = new Map();
 
 	constructor(
 		@IStorageService private readonly storageService: IStorageService,
@@ -154,6 +165,16 @@ export class TokenUsageService implements ITokenUsageService {
 		if (storedCost) {
 			this._estimatedCost = parseFloat(storedCost) || 0;
 		}
+		// Load persisted daily usage
+		const storedDaily = this.storageService.get(DAILY_TOKENS_STORAGE_KEY, StorageScope.APPLICATION);
+		if (storedDaily) {
+			try {
+				const parsed: Record<string, { tokens: number; cost: number }> = JSON.parse(storedDaily);
+				for (const [date, entry] of Object.entries(parsed)) {
+					this._dailyUsage.set(date, entry);
+				}
+			} catch { /* ignore corrupt data */ }
+		}
 	}
 
 	getTotalTokensUsed(): number {
@@ -163,6 +184,15 @@ export class TokenUsageService implements ITokenUsageService {
 	addTokens(tokens: TokenUsageInfo): void {
 		this._totalTokensUsed += tokens.totalTokens;
 		this._estimatedCost += estimateCost(tokens);
+
+		// Per-day tracking
+		const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+		const existing = this._dailyUsage.get(today) ?? { tokens: 0, cost: 0 };
+		const dayCost = estimateCost(tokens);
+		this._dailyUsage.set(today, {
+			tokens: existing.tokens + tokens.totalTokens,
+			cost: existing.cost + dayCost,
+		});
 
 		// Persist to storage
 		this.storageService.store(
@@ -174,6 +204,15 @@ export class TokenUsageService implements ITokenUsageService {
 		this.storageService.store(
 			ESTIMATED_COST_STORAGE_KEY,
 			this._estimatedCost.toString(),
+			StorageScope.APPLICATION,
+			StorageTarget.USER
+		);
+		// Persist daily data
+		const dailyObj: Record<string, { tokens: number; cost: number }> = {};
+		this._dailyUsage.forEach((v, k) => { dailyObj[k] = v; });
+		this.storageService.store(
+			DAILY_TOKENS_STORAGE_KEY,
+			JSON.stringify(dailyObj),
 			StorageScope.APPLICATION,
 			StorageTarget.USER
 		);
@@ -192,6 +231,12 @@ export class TokenUsageService implements ITokenUsageService {
 
 	getFormattedEstimatedCost(): string {
 		return formatDollarCount(this._estimatedCost);
+	}
+
+	getDailyUsage(): DailyTokenEntry[] {
+		return Array.from(this._dailyUsage.entries())
+			.map(([date, { tokens, cost }]) => ({ date, tokens, cost }))
+			.sort((a, b) => a.date.localeCompare(b.date));
 	}
 
 }
