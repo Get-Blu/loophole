@@ -203,6 +203,12 @@ jobs:
         working-directory: cli
         run: cargo build --release --target x86_64-unknown-linux-gnu
 
+      # ── Bundle into out-vscode (required before the -ci packaging task) ────────
+      - name: Bundle VSCode (produces out-vscode/)
+        run: npm run gulp bundle-vscode
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       # ── Package base app (single call — reused for tar.gz + AppImage) ─────────
       - name: Package Electron app (linux x64)
         run: npm run gulp vscode-linux-x64-ci
@@ -564,6 +570,12 @@ jobs:
         working-directory: cli
         run: cargo build --release --target aarch64-unknown-linux-gnu
 
+      # ── Bundle into out-vscode (required before the -ci packaging task) ────────
+      - name: Bundle VSCode (produces out-vscode/)
+        run: npm run gulp bundle-vscode
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Package Electron app (linux arm64)
         run: npm run gulp vscode-linux-arm64-ci
         env:
@@ -770,7 +782,7 @@ jobs:
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
-                musl-dev pkgconfig
+                musl-dev pkgconfig patch
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target x86_64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
@@ -779,6 +791,8 @@ jobs:
               cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
               npm run compile
+              npm run gulp bundle-vscode
+
 
               cd cli
               cargo build --release --target x86_64-unknown-linux-musl
@@ -886,7 +900,7 @@ jobs:
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
-                musl-dev pkgconfig
+                musl-dev pkgconfig patch
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target aarch64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
@@ -895,6 +909,8 @@ jobs:
               cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
               npm run compile
+              npm run gulp bundle-vscode
+
 
               cd cli
               cargo build --release --target aarch64-unknown-linux-musl
