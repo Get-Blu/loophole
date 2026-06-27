@@ -220,6 +220,11 @@ jobs:
         run: mkdir -p dist
 
       # ── 1. .deb ───────────────────────────────────────────────────────────────
+      - name: Prepare .deb package
+        run: npm run gulp vscode-linux-x64-prepare-deb
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Build .deb package
         run: npm run gulp vscode-linux-x64-build-deb
         env:
@@ -236,6 +241,11 @@ jobs:
           fi
 
       # ── 2. .rpm ───────────────────────────────────────────────────────────────
+      - name: Prepare .rpm package
+        run: npm run gulp vscode-linux-x64-prepare-rpm
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Build .rpm package
         run: npm run gulp vscode-linux-x64-build-rpm
         env:
@@ -587,6 +597,11 @@ jobs:
         run: mkdir -p dist
 
       # ── 1. .deb ───────────────────────────────────────────────────────────────
+      - name: Prepare .deb package
+        run: npm run gulp vscode-linux-arm64-prepare-deb
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Build .deb package
         run: npm run gulp vscode-linux-arm64-build-deb
         env:
@@ -602,6 +617,11 @@ jobs:
           fi
 
       # ── 2. .rpm ───────────────────────────────────────────────────────────────
+      - name: Prepare .rpm package
+        run: npm run gulp vscode-linux-arm64-prepare-rpm
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
       - name: Build .rpm package
         run: npm run gulp vscode-linux-arm64-build-rpm
         env:
@@ -784,7 +804,7 @@ jobs:
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
-                musl-dev pkgconfig patch
+                musl-dev pkgconfig patch perl
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target x86_64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
@@ -904,7 +924,7 @@ jobs:
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
-                musl-dev pkgconfig patch
+                musl-dev pkgconfig patch perl
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target aarch64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
