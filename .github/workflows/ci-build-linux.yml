@@ -194,8 +194,9 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
-      - name: Compile TypeScript
-        run: npm run compile
+      # compile-build-without-mangling produces out-build/, which bundle-vscode reads from
+      - name: Compile build (produces out-build/)
+        run: npm run gulp compile-build-without-mangling
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -561,8 +562,9 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
-      - name: Compile TypeScript
-        run: npm run compile
+      # compile-build-without-mangling produces out-build/, which bundle-vscode reads from
+      - name: Compile build (produces out-build/)
+        run: npm run gulp compile-build-without-mangling
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -787,12 +789,14 @@ jobs:
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target x86_64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
 
+              # Docker runs as root; git 2.35.2+ rejects dirs owned by another user
+              git config --global safe.directory /workspace
+
               npm ci
               cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
-              npm run compile
+              npm run gulp compile-build-without-mangling
               npm run gulp bundle-vscode
-
 
               cd cli
               cargo build --release --target x86_64-unknown-linux-musl
@@ -905,12 +909,14 @@ jobs:
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target aarch64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
 
+              # Docker runs as root; git 2.35.2+ rejects dirs owned by another user
+              git config --global safe.directory /workspace
+
               npm ci
               cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
-              npm run compile
+              npm run gulp compile-build-without-mangling
               npm run gulp bundle-vscode
-
 
               cd cli
               cargo build --release --target aarch64-unknown-linux-musl
