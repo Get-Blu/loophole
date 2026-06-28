@@ -154,8 +154,15 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
-      - name: Compile TypeScript
-        run: npm run compile
+      # compile-build-without-mangling produces out-build/, which bundle-vscode reads from
+      - name: Compile build (produces out-build/)
+        run: npm run gulp compile-build-without-mangling
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      # ── Bundle into out-vscode (required before the -ci packaging task) ────────
+      - name: Bundle VSCode (produces out-vscode/)
+        run: npm run gulp bundle-vscode
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
@@ -403,8 +410,15 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
-      - name: Compile TypeScript
-        run: npm run compile
+      # compile-build-without-mangling produces out-build/, which bundle-vscode reads from
+      - name: Compile build (produces out-build/)
+        run: npm run gulp compile-build-without-mangling
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
+
+      # ── Bundle into out-vscode (required before the -ci packaging task) ────────
+      - name: Bundle VSCode (produces out-vscode/)
+        run: npm run gulp bundle-vscode
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
