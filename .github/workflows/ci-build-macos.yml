@@ -44,6 +44,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install React dependencies
         run: npm install
@@ -144,6 +146,9 @@ jobs:
         run: npm ci
         env:
           npm_config_arch: x64
+          # Authenticated so @vscode/ripgrep postinstall doesn't hit the 60/hr
+          # unauthenticated GitHub API rate limit on shared macOS runners
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install React dependencies
         run: npm install
@@ -400,6 +405,9 @@ jobs:
         run: npm ci
         env:
           npm_config_arch: arm64
+          # Authenticated so @vscode/ripgrep postinstall doesn't hit the 60/hr
+          # unauthenticated GitHub API rate limit on shared macOS runners
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install React dependencies
         run: npm install
