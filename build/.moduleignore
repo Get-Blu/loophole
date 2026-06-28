@@ -256,3 +256,8 @@ onnxruntime-node/cmake/**
 # in websocket's browser.js inside a try/catch with a globalThis fallback,
 # so it is unnecessary in the browsers/runtimes VS Code supports.
 es5-ext/**
+
+# sharp / @img optional native binaries - not needed for code editor features
+@img/**
+sharp/**
+

@@ -27,6 +27,7 @@ function calculatePackageDeps(binaryPath: string, arch: DebianArchString, chromi
 	} catch (e) {
 		// The package might not exist. Don't re-throw the error here.
 		console.error('Tried to stat ' + binaryPath + ' but failed.');
+		return new Set<string>();
 	}
 
 	// Get the Chromium dpkg-shlibdeps file.

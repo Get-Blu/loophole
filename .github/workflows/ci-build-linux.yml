@@ -804,7 +804,7 @@ jobs:
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
-                musl-dev pkgconfig patch perl
+                musl-dev pkgconfig patch perl zlib-dev zlib-static
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target x86_64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
@@ -924,7 +924,7 @@ jobs:
               apk add --no-cache \
                 bash curl git python3 py3-pip make gcc g++ \
                 libx11-dev libxkbfile-dev libsecret-dev krb5-dev \
-                musl-dev pkgconfig patch perl
+                musl-dev pkgconfig patch perl zlib-dev zlib-static
 
               curl https://sh.rustup.rs -sSf | sh -s -- -y --target aarch64-unknown-linux-musl
               export PATH=\"\$HOME/.cargo/bin:\$PATH\"
