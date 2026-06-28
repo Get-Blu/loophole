@@ -90,7 +90,7 @@ jobs:
     name: Build macOS x64 (Intel)
     needs: resolve-version
     if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-13        # macos-13 = Intel x64
+    runs-on: macos-14        # macos-14 runner (Apple Silicon host cross-compiling for x64)
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
       VSCODE_ARCH: x64
