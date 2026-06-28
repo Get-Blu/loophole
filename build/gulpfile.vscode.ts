@@ -347,6 +347,7 @@ function packageTask(platform: string, arch: string, sourceFolderName: string, d
 				'**/node-pty/lib/shared/conout.js',
 				'**/*.wasm',
 				'**/@vscodium/vsce-sign/bin/*',
+				'**/onnxruntime-node/bin/**',
 			], [
 				'**/*.mk',
 				'!node_modules/vsda/**' // stay compatible with extensions that depend on us shipping `vsda` into ASAR
