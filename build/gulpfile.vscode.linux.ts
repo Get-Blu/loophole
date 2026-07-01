@@ -197,6 +197,7 @@ function prepareRpmPackage(arch: string) {
 			.pipe(replace('@@NAME_LONG@@', product.nameLong))
 			.pipe(replace('@@ICON@@', product.linuxIconName))
 			.pipe(replace('@@VERSION@@', packageJson.version))
+			.pipe(replace('@@RELEASE@@', linuxPackageRevision.toString()))
 			.pipe(replace('@@ARCHITECTURE@@', rpmArch))
 			.pipe(replace('@@LICENSE@@', product.licenseName))
 			.pipe(replace('@@QUALITY@@', (product as typeof product & { quality?: string }).quality || '@@QUALITY@@'))
