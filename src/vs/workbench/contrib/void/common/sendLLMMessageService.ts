@@ -186,6 +186,7 @@ export class LLMMessageService extends Disposable implements ILLMMessageService 
 	}
 
 	async transcribeAudio(params: ServiceTranscribeAudioParams): Promise<{ text: string } | { error: string }> {
+		await this.voidSettingsService.waitForInitState;
 		const { settingsOfProvider, globalSettings } = this.voidSettingsService.state
 		const requestId = generateUuid();
 		return this.channel.call('transcribeAudio', {

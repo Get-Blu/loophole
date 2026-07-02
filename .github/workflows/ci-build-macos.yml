@@ -197,6 +197,18 @@ jobs:
       - name: Create dist directory
         run: mkdir -p dist
 
+      # ── Debug: Check what gulp actually produced ──────────────────────────────
+      - name: Debug — List parent directory contents
+        run: |
+          echo "=== Contents of parent directory (where gulp writes output) ==="
+          ls -la .. || echo "Cannot list parent directory"
+          echo ""
+          echo "=== Looking for any .app bundles ==="
+          find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null || echo "No .app bundles found"
+          echo ""
+          echo "=== Contents of .build/ ==="
+          ls -la .build/ 2>/dev/null || echo ".build/ does not exist"
+
       # ── Ad-hoc codesign (placeholder until a Developer ID cert is configured) ──
       # Without at least ad-hoc signing, the arm64 build is killed by Gatekeeper
       # on launch. Swap this for `codesign --deep --force --options runtime
@@ -205,7 +217,12 @@ jobs:
       - name: Ad-hoc codesign .app bundle
         run: |
           # gulp packageTask writes the .app to ../VSCode-darwin-x64 (one level above workspace root)
-          APP_PATH="../VSCode-darwin-x64/loophole.app"
+          APP_PATH=$(find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null | grep -i "darwin-x64" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            # Fallback to original path
+            APP_PATH="../VSCode-darwin-x64/loophole.app"
+          fi
+          echo "Looking for app bundle at: $APP_PATH"
           if [ -d "$APP_PATH" ]; then
             codesign --deep --force --sign - "$APP_PATH" || echo "::warning::Ad-hoc codesign failed"
           else
@@ -216,8 +233,12 @@ jobs:
       - name: Build DMG
         run: |
           set -e
-          # gulp packageTask writes the .app to ../VSCode-darwin-x64 (one level above workspace root)
-          APP_PATH="../VSCode-darwin-x64/loophole.app"
+          # Find the actual .app bundle (might be VSCode-darwin-x64 or similar)
+          APP_PATH=$(find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null | grep -i "darwin-x64" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH="../VSCode-darwin-x64/Visual Studio Code.app"  # VS Code default name
+          fi
+          echo "Looking for app bundle at: $APP_PATH"
           if [ ! -d "$APP_PATH" ]; then
             echo "::warning::No .app bundle found — skipping DMG"
             exit 0
@@ -233,8 +254,12 @@ jobs:
       # ── 2. ZIP (reuses the package already built above — no rebuild) ──────────
       - name: Stage — ZIP
         run: |
-          # gulp packageTask writes the .app to ../VSCode-darwin-x64 (one level above workspace root)
-          APP_PATH="../VSCode-darwin-x64/loophole.app"
+          # Find the actual .app bundle
+          APP_PATH=$(find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null | grep -i "darwin-x64" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH="../VSCode-darwin-x64/Visual Studio Code.app"
+          fi
+          echo "Looking for app bundle at: $APP_PATH"
           if [ -d "$APP_PATH" ]; then
             ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-x64-$VERSION.zip"
           else
@@ -462,11 +487,27 @@ jobs:
       - name: Create dist directory
         run: mkdir -p dist
 
+      # ── Debug: Check what gulp actually produced ──────────────────────────────
+      - name: Debug — List parent directory contents
+        run: |
+          echo "=== Contents of parent directory (where gulp writes output) ==="
+          ls -la .. || echo "Cannot list parent directory"
+          echo ""
+          echo "=== Looking for any .app bundles ==="
+          find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null || echo "No .app bundles found"
+          echo ""
+          echo "=== Contents of .build/ ==="
+          ls -la .build/ 2>/dev/null || echo ".build/ does not exist"
+
       # ── Ad-hoc codesign (placeholder until a Developer ID cert is configured) ──
       - name: Ad-hoc codesign .app bundle
         run: |
-          # gulp packageTask writes the .app to ../VSCode-darwin-arm64 (one level above workspace root)
-          APP_PATH="../VSCode-darwin-arm64/loophole.app"
+          # Find the actual .app bundle
+          APP_PATH=$(find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null | grep -i "darwin-arm64" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH="../VSCode-darwin-arm64/Visual Studio Code.app"
+          fi
+          echo "Looking for app bundle at: $APP_PATH"
           if [ -d "$APP_PATH" ]; then
             codesign --deep --force --sign - "$APP_PATH" || echo "::warning::Ad-hoc codesign failed"
           else
@@ -477,8 +518,12 @@ jobs:
       - name: Build DMG
         run: |
           set -e
-          # gulp packageTask writes the .app to ../VSCode-darwin-arm64 (one level above workspace root)
-          APP_PATH="../VSCode-darwin-arm64/loophole.app"
+          # Find the actual .app bundle
+          APP_PATH=$(find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null | grep -i "darwin-arm64" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH="../VSCode-darwin-arm64/Visual Studio Code.app"
+          fi
+          echo "Looking for app bundle at: $APP_PATH"
           if [ ! -d "$APP_PATH" ]; then
             echo "::warning::No .app bundle found — skipping DMG"
             exit 0
@@ -494,8 +539,12 @@ jobs:
       # ── 2. ZIP (reuses the package already built above — no rebuild) ──────────
       - name: Stage — ZIP
         run: |
-          # gulp packageTask writes the .app to ../VSCode-darwin-arm64 (one level above workspace root)
-          APP_PATH="../VSCode-darwin-arm64/loophole.app"
+          # Find the actual .app bundle
+          APP_PATH=$(find .. -maxdepth 2 -name "*.app" -type d 2>/dev/null | grep -i "darwin-arm64" | head -1)
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH="../VSCode-darwin-arm64/Visual Studio Code.app"
+          fi
+          echo "Looking for app bundle at: $APP_PATH"
           if [ -d "$APP_PATH" ]; then
             ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-arm64-$VERSION.zip"
           else

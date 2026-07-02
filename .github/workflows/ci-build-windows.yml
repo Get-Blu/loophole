@@ -111,9 +111,16 @@ jobs:
       # ── Install & compile ──────────────────────────────────────────────────────
       - name: Install node-gyp
         run: npm install -g node-gyp
-        
+
       - name: Install dependencies
         run: npm install
+        env:
+          npm_config_arch: x64
+
+      - name: Rebuild native modules for Electron
+        run: |
+          npm install -g @electron/rebuild
+          electron-rebuild -f -w node-pty
         env:
           npm_config_arch: x64
 

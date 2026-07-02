@@ -143,9 +143,13 @@ jobs:
 
       - name: Install appimagetool
         run: |
-          curl -sL -o /usr/local/bin/appimagetool \
+          curl -sL -o appimagetool.AppImage \
             "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage"
-          chmod +x /usr/local/bin/appimagetool
+          chmod +x appimagetool.AppImage
+          # Extract the AppImage to avoid FUSE requirement
+          ./appimagetool.AppImage --appimage-extract
+          sudo mv squashfs-root /opt/appimagetool
+          sudo ln -s /opt/appimagetool/AppRun /usr/local/bin/appimagetool
 
       # ── Toolchain ─────────────────────────────────────────────────────────────
       - name: Setup Node.js ${{ env.NODE_VERSION }}
@@ -229,6 +233,19 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      # ── Debug: Check what gulp actually produced ──────────────────────────────
+      - name: Debug — List parent directory and build outputs
+        run: |
+          echo "=== Contents of parent directory (where gulp writes output) ==="
+          ls -la .. || echo "Cannot list parent directory"
+          echo ""
+          echo "=== Looking for any VSCode-linux directories ==="
+          find .. -maxdepth 1 -type d -name "*linux*" 2>/dev/null || echo "No linux directories found"
+          echo ""
+          echo "=== Contents of .build/ ==="
+          ls -la .build/ 2>/dev/null || echo ".build/ does not exist"
+          find .build/ -name "*.deb" -o -name "*.rpm" 2>/dev/null || echo "No deb/rpm found"
+
       - name: Create dist directory
         run: mkdir -p dist
 
@@ -277,8 +294,12 @@ jobs:
       # ── 3. .tar.gz archive (reuses the package already built above — no rebuild) ─
       - name: Stage — tar.gz
         run: |
-          # gulp packageTask writes the unpacked app to ../VSCode-linux-x64 (one level above workspace root)
-          app_dir="../VSCode-linux-x64"
+          # Find the actual unpacked app directory (might be named VSCode-linux-x64 or similar)
+          app_dir=$(find .. -maxdepth 1 -type d -name "*linux-x64" 2>/dev/null | head -1)
+          if [ -z "$app_dir" ]; then
+            app_dir="../VSCode-linux-x64"  # Fallback to VS Code default
+          fi
+          echo "Looking for app directory at: $app_dir"
           if [ -d "$app_dir" ]; then
             tar -czf "dist/Loophole-linux-x64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
             echo "Packed tar.gz from $app_dir"
@@ -290,8 +311,12 @@ jobs:
       - name: Build AppImage
         run: |
           set -e
-          # gulp packageTask writes the unpacked app to ../VSCode-linux-x64 (one level above workspace root)
-          APP_DIR="../VSCode-linux-x64"
+          # Find the actual unpacked app directory
+          APP_DIR=$(find .. -maxdepth 1 -type d -name "*linux-x64" 2>/dev/null | head -1)
+          if [ -z "$APP_DIR" ]; then
+            APP_DIR="../VSCode-linux-x64"
+          fi
+          echo "Looking for app directory at: $APP_DIR"
           if [ ! -d "$APP_DIR" ]; then
             echo "::warning::No unpacked app directory found — skipping AppImage"
             exit 0
@@ -300,32 +325,39 @@ jobs:
           mkdir -p .appimage/AppDir/usr/bin
           cp -r "$APP_DIR"/* .appimage/AppDir/usr/bin/
 
-          ICON_SRC=$(find resources -iname "code.png" 2>/dev/null | head -1)
+          # Find the actual executable name (might be 'code', 'loophole', etc.)
+          EXEC_NAME=$(find .appimage/AppDir/usr/bin -maxdepth 1 -type f -executable | head -1 | xargs basename)
+          if [ -z "$EXEC_NAME" ]; then
+            EXEC_NAME="code"  # Fallback to VS Code default
+          fi
+          echo "Found executable: $EXEC_NAME"
+
+          ICON_SRC=$(find resources -iname "*.png" 2>/dev/null | head -1)
           if [ -n "$ICON_SRC" ]; then
             cp "$ICON_SRC" .appimage/AppDir/loophole.png
           else
-            echo "::warning::No app icon found at resources/ — AppImage will use a placeholder"
-            touch .appimage/AppDir/loophole.png
+            echo "::warning::No app icon found — AppImage will use a placeholder"
+            convert -size 256x256 xc:blue .appimage/AppDir/loophole.png 2>/dev/null || touch .appimage/AppDir/loophole.png
           fi
 
           cat > .appimage/AppDir/loophole.desktop <<EOF
           [Desktop Entry]
           Name=Loophole
-          Exec=usr/bin/bin/code %F
+          Exec=usr/bin/$EXEC_NAME %F
           Icon=loophole
           Type=Application
           Categories=Development;
           EOF
 
-          cat > .appimage/AppDir/AppRun <<'EOF'
+          cat > .appimage/AppDir/AppRun <<EOF
           #!/bin/sh
-          HERE="$(dirname "$(readlink -f "${0}")")"
-          exec "${HERE}/usr/bin/bin/code" "$@"
+          HERE="\$(dirname "\$(readlink -f "\${0}")")"
+          exec "\${HERE}/usr/bin/$EXEC_NAME" "\$@"
           EOF
           chmod +x .appimage/AppDir/AppRun
 
-          GLIBC=$(ldd --version | head -1 | grep -oP '\d+\.\d+$' || echo "2.30")
-          ARCH=x86_64 appimagetool .appimage/AppDir "dist/Loophole-$VERSION.glibc${GLIBC}-x86_64.AppImage"
+          GLIBC=\$(ldd --version | head -1 | grep -oP '\d+\.\d+\$' || echo "2.30")
+          ARCH=x86_64 appimagetool .appimage/AppDir "dist/Loophole-$VERSION.glibc\${GLIBC}-x86_64.AppImage"
 
       - name: Stage — AppImage .zsync
         run: |
@@ -609,6 +641,18 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      # ── Debug: Check what gulp actually produced ──────────────────────────────
+      - name: Debug — List parent directory and build outputs
+        run: |
+          echo "=== Contents of parent directory ==="
+          ls -la .. || echo "Cannot list parent directory"
+          echo ""
+          echo "=== Looking for any VSCode-linux directories ==="
+          find .. -maxdepth 1 -type d -name "*linux*" 2>/dev/null || echo "No linux directories found"
+          echo ""
+          echo "=== Contents of .build/ ==="
+          ls -la .build/ 2>/dev/null || echo ".build/ does not exist"
+
       - name: Create dist directory
         run: mkdir -p dist
 
@@ -655,8 +699,12 @@ jobs:
       # ── 3. tar.gz archive (reuses the package already built — no rebuild) ─────
       - name: Stage — tar.gz
         run: |
-          # gulp packageTask writes the unpacked app to ../VSCode-linux-arm64 (one level above workspace root)
-          app_dir="../VSCode-linux-arm64"
+          # Find the actual unpacked app directory
+          app_dir=$(find .. -maxdepth 1 -type d -name "*linux-arm64" 2>/dev/null | head -1)
+          if [ -z "$app_dir" ]; then
+            app_dir="../VSCode-linux-arm64"
+          fi
+          echo "Looking for app directory at: $app_dir"
           if [ -d "$app_dir" ]; then
             tar -czf "dist/Loophole-linux-arm64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
             echo "Packed tar.gz from $app_dir"
