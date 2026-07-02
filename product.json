@@ -7,7 +7,7 @@
   "win32MutexName": "loophole",
   "licenseName": "MIT",
   "licenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/master/LICENSE",
-  "serverLicenseUrl": "https://github.com/microsoft/vscode/blob/main/LICENSE.txt",
+  "serverLicenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE",
   "serverGreeting": [],
   "serverLicense": [],
   "serverLicensePrompt": "",
@@ -247,15 +247,15 @@
     "GitHub.copilot-chat"
   ],
   "sessionsWindowAllowedExtensions": [],
-  "checksumFailMoreInfoUrl": "https://go.microsoft.com/fwlink/?LinkId=828886",
-  "documentationUrl": "https://go.microsoft.com/fwlink/?LinkID=533484#vscode",
+  "checksumFailMoreInfoUrl": "https://github.com/loophole-ai/loophole-ide/wiki/checksum-fail",
+  "documentationUrl": "https://github.com/loophole-ai/loophole-ide/wiki",
   "extensionsGallery": {
     "serviceUrl": "https://open-vsx.org/vscode/gallery",
     "itemUrl": "https://open-vsx.org/vscode/item",
     "latestUrlTemplate": "https://open-vsx.org/vscode/gallery/{publisher}/{name}/latest",
     "controlUrl": "https://raw.githubusercontent.com/EclipseFdn/publish-extensions/refs/heads/master/extension-control/extensions.json"
   },
-  "introductoryVideosUrl": "https://go.microsoft.com/fwlink/?linkid=832146",
+  "introductoryVideosUrl": "https://github.com/loophole-ai/loophole-ide/wiki/videos",
   "keyboardShortcutsUrlLinux": "https://go.microsoft.com/fwlink/?linkid=832144",
   "keyboardShortcutsUrlMac": "https://go.microsoft.com/fwlink/?linkid=832143",
   "keyboardShortcutsUrlWin": "https://go.microsoft.com/fwlink/?linkid=832145",

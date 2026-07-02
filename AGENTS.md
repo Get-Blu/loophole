@@ -6,7 +6,8 @@ For detailed project overview, architecture, coding guidelines, and validation s
 
 ## Important Notes
 
-- This is a fork of VS Code with AI features integrated at the core
+- This is a fork of VS Code (via Void Editor) with AI features integrated at the core
+- This project is now Loophole IDE - https://github.com/loophole-ai/loophole-ide
 - Privacy-first approach: AI requests go directly from your machine to providers
 - Follow the coding guidelines in LOOPHOLE_CODEBASE_GUIDE.md
 - Always check compilation errors before running tests

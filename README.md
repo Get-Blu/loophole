@@ -147,8 +147,9 @@ We welcome contributions from the community. Please read our [Contributing Guide
 Loophole is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
 This project incorporates code from:
-- [VS Code](https://github.com/microsoft/vscode) - MIT License
+- [Loophole](https://github.com/loophole-ai/loophole-ide) - Loophole is a fork of Void Editor, which is a fork of VS Code
 - [Void Editor](https://github.com/voideditor/void) - Apache License 2.0
+- [VS Code](https://github.com/microsoft/vscode) - MIT License
 
 See [LICENSE.txt](./LICENSE.txt) for the full license text.
 
