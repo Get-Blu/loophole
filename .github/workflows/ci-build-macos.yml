@@ -74,6 +74,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Determine version
         id: version
         run: |
@@ -171,6 +176,14 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      - name: Verify out-vscode exists
+        run: |
+          if [ ! -d "out-vscode" ]; then
+            echo "::error::out-vscode/ directory not found after bundle-vscode — build-vscode step failed"
+            exit 1
+          fi
+          echo "out-vscode/ present"
+
       - name: Build CLI (Rust, x64)
         working-directory: cli
         run: cargo build --release --target x86_64-apple-darwin
@@ -191,8 +204,9 @@ jobs:
       # real Apple Developer ID certificate in secrets.
       - name: Ad-hoc codesign .app bundle
         run: |
-          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
-          if [ -n "$APP_PATH" ]; then
+          # gulp packageTask writes the .app to ../VSCode-darwin-x64 (one level above workspace root)
+          APP_PATH="../VSCode-darwin-x64/loophole.app"
+          if [ -d "$APP_PATH" ]; then
             codesign --deep --force --sign - "$APP_PATH" || echo "::warning::Ad-hoc codesign failed"
           else
             echo "::warning::No .app bundle found — skipping codesign"
@@ -202,8 +216,9 @@ jobs:
       - name: Build DMG
         run: |
           set -e
-          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
+          # gulp packageTask writes the .app to ../VSCode-darwin-x64 (one level above workspace root)
+          APP_PATH="../VSCode-darwin-x64/loophole.app"
+          if [ ! -d "$APP_PATH" ]; then
             echo "::warning::No .app bundle found — skipping DMG"
             exit 0
           fi
@@ -218,16 +233,12 @@ jobs:
       # ── 2. ZIP (reuses the package already built above — no rebuild) ──────────
       - name: Stage — ZIP
         run: |
-          src=$(find .build -name "VSCode-darwin-x64-*.zip" | head -1)
-          if [ -n "$src" ] && [ -f "$src" ]; then
-            cp "$src" "dist/Loophole-darwin-x64-$VERSION.zip"
+          # gulp packageTask writes the .app to ../VSCode-darwin-x64 (one level above workspace root)
+          APP_PATH="../VSCode-darwin-x64/loophole.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-x64-$VERSION.zip"
           else
-            APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
-            if [ -n "$APP_PATH" ]; then
-              ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-x64-$VERSION.zip"
-            else
-              echo "::warning::No .app bundle found — skipping ZIP"
-            fi
+            echo "::warning::No .app bundle found — skipping ZIP"
           fi
 
       # ── 3. Remote Host tarball ─────────────────────────────────────────────────
@@ -430,6 +441,14 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      - name: Verify out-vscode exists
+        run: |
+          if [ ! -d "out-vscode" ]; then
+            echo "::error::out-vscode/ directory not found after bundle-vscode — build-vscode step failed"
+            exit 1
+          fi
+          echo "out-vscode/ present"
+
       - name: Build CLI (Rust, arm64)
         working-directory: cli
         run: cargo build --release --target aarch64-apple-darwin
@@ -446,8 +465,9 @@ jobs:
       # ── Ad-hoc codesign (placeholder until a Developer ID cert is configured) ──
       - name: Ad-hoc codesign .app bundle
         run: |
-          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
-          if [ -n "$APP_PATH" ]; then
+          # gulp packageTask writes the .app to ../VSCode-darwin-arm64 (one level above workspace root)
+          APP_PATH="../VSCode-darwin-arm64/loophole.app"
+          if [ -d "$APP_PATH" ]; then
             codesign --deep --force --sign - "$APP_PATH" || echo "::warning::Ad-hoc codesign failed"
           else
             echo "::warning::No .app bundle found — skipping codesign"
@@ -457,8 +477,9 @@ jobs:
       - name: Build DMG
         run: |
           set -e
-          APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
-          if [ -z "$APP_PATH" ]; then
+          # gulp packageTask writes the .app to ../VSCode-darwin-arm64 (one level above workspace root)
+          APP_PATH="../VSCode-darwin-arm64/loophole.app"
+          if [ ! -d "$APP_PATH" ]; then
             echo "::warning::No .app bundle found — skipping DMG"
             exit 0
           fi
@@ -473,16 +494,12 @@ jobs:
       # ── 2. ZIP (reuses the package already built above — no rebuild) ──────────
       - name: Stage — ZIP
         run: |
-          src=$(find .build -name "VSCode-darwin-arm64-*.zip" | head -1)
-          if [ -n "$src" ] && [ -f "$src" ]; then
-            cp "$src" "dist/Loophole-darwin-arm64-$VERSION.zip"
+          # gulp packageTask writes the .app to ../VSCode-darwin-arm64 (one level above workspace root)
+          APP_PATH="../VSCode-darwin-arm64/loophole.app"
+          if [ -d "$APP_PATH" ]; then
+            ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-arm64-$VERSION.zip"
           else
-            APP_PATH=$(find .build -maxdepth 2 -name "*.app" -type d | head -1)
-            if [ -n "$APP_PATH" ]; then
-              ditto -c -k --keepParent "$APP_PATH" "dist/Loophole-darwin-arm64-$VERSION.zip"
-            else
-              echo "::warning::No .app bundle found — skipping ZIP"
-            fi
+            echo "::warning::No .app bundle found — skipping ZIP"
           fi
 
       # ── 3. Remote Host tarball ─────────────────────────────────────────────────

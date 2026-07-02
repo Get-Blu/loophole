@@ -79,6 +79,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
       - name: Determine version
         id: version
         run: |
@@ -210,6 +215,14 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      - name: Verify out-vscode exists
+        run: |
+          if [ ! -d "out-vscode" ]; then
+            echo "::error::out-vscode/ directory not found after bundle-vscode — build-vscode step failed"
+            exit 1
+          fi
+          echo "out-vscode/ present ($(find out-vscode -maxdepth 0 -printf '%s' 2>/dev/null || du -sh out-vscode | cut -f1) total)"
+
       # ── Package base app (single call — reused for tar.gz + AppImage) ─────────
       - name: Package Electron app (linux x64)
         run: npm run gulp vscode-linux-x64-ci
@@ -264,27 +277,22 @@ jobs:
       # ── 3. .tar.gz archive (reuses the package already built above — no rebuild) ─
       - name: Stage — tar.gz
         run: |
-          src=$(find .build -name "VSCode-linux-x64-*.tar.gz" | head -1)
-          if [ -n "$src" ] && [ -f "$src" ]; then
-            cp "$src" "dist/Loophole-linux-x64-$VERSION.tar.gz"
-            echo "Staged: $src"
+          # gulp packageTask writes the unpacked app to ../VSCode-linux-x64 (one level above workspace root)
+          app_dir="../VSCode-linux-x64"
+          if [ -d "$app_dir" ]; then
+            tar -czf "dist/Loophole-linux-x64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
+            echo "Packed tar.gz from $app_dir"
           else
-            # Build system may not emit a tarball directly — pack the unpacked dir ourselves
-            app_dir=$(find .build -maxdepth 2 -type d -name "VSCode-linux-x64" | head -1)
-            if [ -n "$app_dir" ]; then
-              tar -czf "dist/Loophole-linux-x64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
-              echo "Packed tar.gz from $app_dir"
-            else
-              echo "::warning::No unpacked app directory found — skipping tar.gz"
-            fi
+            echo "::warning::No unpacked app directory found — skipping tar.gz"
           fi
 
       # ── 4. AppImage (built manually — gulp does not produce one) ──────────────
       - name: Build AppImage
         run: |
           set -e
-          APP_DIR=$(find .build -maxdepth 2 -type d -name "VSCode-linux-x64" | head -1)
-          if [ -z "$APP_DIR" ]; then
+          # gulp packageTask writes the unpacked app to ../VSCode-linux-x64 (one level above workspace root)
+          APP_DIR="../VSCode-linux-x64"
+          if [ ! -d "$APP_DIR" ]; then
             echo "::warning::No unpacked app directory found — skipping AppImage"
             exit 0
           fi
@@ -588,6 +596,14 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      - name: Verify out-vscode exists
+        run: |
+          if [ ! -d "out-vscode" ]; then
+            echo "::error::out-vscode/ directory not found after bundle-vscode — build-vscode step failed"
+            exit 1
+          fi
+          echo "out-vscode/ present"
+
       - name: Package Electron app (linux arm64)
         run: npm run gulp vscode-linux-arm64-ci
         env:
@@ -639,16 +655,13 @@ jobs:
       # ── 3. tar.gz archive (reuses the package already built — no rebuild) ─────
       - name: Stage — tar.gz
         run: |
-          src=$(find .build -name "VSCode-linux-arm64-*.tar.gz" | head -1)
-          if [ -n "$src" ] && [ -f "$src" ]; then
-            cp "$src" "dist/Loophole-linux-arm64-$VERSION.tar.gz"
+          # gulp packageTask writes the unpacked app to ../VSCode-linux-arm64 (one level above workspace root)
+          app_dir="../VSCode-linux-arm64"
+          if [ -d "$app_dir" ]; then
+            tar -czf "dist/Loophole-linux-arm64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
+            echo "Packed tar.gz from $app_dir"
           else
-            app_dir=$(find .build -maxdepth 2 -type d -name "VSCode-linux-arm64" | head -1)
-            if [ -n "$app_dir" ]; then
-              tar -czf "dist/Loophole-linux-arm64-$VERSION.tar.gz" -C "$(dirname "$app_dir")" "$(basename "$app_dir")"
-            else
-              echo "::warning::No unpacked app directory found — skipping tar.gz"
-            fi
+            echo "::warning::No unpacked app directory found — skipping tar.gz"
           fi
 
       # ── 4. Remote Host tarball ─────────────────────────────────────────────────
