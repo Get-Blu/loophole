@@ -525,10 +525,19 @@ jobs:
               FILENAME=$(basename "$FILE")
               echo ""
               echo "Uploading: $FILENAME"
-              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/contents/uploadfile")
               echo "Response: $RESPONSE"
-              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
-              echo " $FILENAME → $LINK"
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys, json
+          try:
+              data = json.load(sys.stdin)
+              print(data['data']['downloadPage'])
+          except (json.JSONDecodeError, KeyError):
+              print('UPLOAD_FAILED')")
+              if [ "$LINK" = "UPLOAD_FAILED" ]; then
+                echo "::warning::Gofile upload failed for $FILENAME — response: $RESPONSE"
+              else
+                echo " $FILENAME → $LINK"
+              fi
             fi
           done
 
@@ -837,10 +846,19 @@ jobs:
               FILENAME=$(basename "$FILE")
               echo ""
               echo "Uploading: $FILENAME"
-              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/contents/uploadfile")
               echo "Response: $RESPONSE"
-              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
-              echo " $FILENAME → $LINK"
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys, json
+          try:
+              data = json.load(sys.stdin)
+              print(data['data']['downloadPage'])
+          except (json.JSONDecodeError, KeyError):
+              print('UPLOAD_FAILED')")
+              if [ "$LINK" = "UPLOAD_FAILED" ]; then
+                echo "::warning::Gofile upload failed for $FILENAME — response: $RESPONSE"
+              else
+                echo " $FILENAME → $LINK"
+              fi
             fi
           done
 
@@ -972,10 +990,19 @@ jobs:
               FILENAME=$(basename "$FILE")
               echo ""
               echo "Uploading: $FILENAME"
-              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/contents/uploadfile")
               echo "Response: $RESPONSE"
-              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
-              echo " $FILENAME → $LINK"
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys, json
+          try:
+              data = json.load(sys.stdin)
+              print(data['data']['downloadPage'])
+          except (json.JSONDecodeError, KeyError):
+              print('UPLOAD_FAILED')")
+              if [ "$LINK" = "UPLOAD_FAILED" ]; then
+                echo "::warning::Gofile upload failed for $FILENAME — response: $RESPONSE"
+              else
+                echo " $FILENAME → $LINK"
+              fi
             fi
           done
 
@@ -1103,9 +1130,18 @@ jobs:
               FILENAME=$(basename "$FILE")
               echo ""
               echo "Uploading: $FILENAME"
-              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/contents/uploadfile")
               echo "Response: $RESPONSE"
-              LINK=$(echo $RESPONSE | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['downloadPage'])")
-              echo " $FILENAME → $LINK"
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys, json
+          try:
+              data = json.load(sys.stdin)
+              print(data['data']['downloadPage'])
+          except (json.JSONDecodeError, KeyError):
+              print('UPLOAD_FAILED')")
+              if [ "$LINK" = "UPLOAD_FAILED" ]; then
+                echo "::warning::Gofile upload failed for $FILENAME — response: $RESPONSE"
+              else
+                echo " $FILENAME → $LINK"
+              fi
             fi
           done
