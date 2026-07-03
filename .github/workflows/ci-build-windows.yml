@@ -121,11 +121,27 @@ jobs:
         shell: pwsh
         run: |
           $src = "node_modules/node-pty/build/Release/conpty"
+
+          if (-not (Test-Path $src)) {
+            # This usually means the node_modules cache (see "Cache node_modules" step
+            # above) restored a stale copy from an earlier run where, for whatever
+            # reason, node-pty's own postinstall never produced this folder. Once that
+            # bad cache is saved, npm sees node-pty already present on future cache hits
+            # and skips re-running postinstall, so the folder never gets regenerated on
+            # its own. Self-heal by re-running node-pty's postinstall script directly —
+            # it's idempotent and just copies conpty.dll/OpenConsole.exe from the
+            # package's own bundled third_party/conpty folder, no network needed.
+            Write-Warning "conpty folder missing after npm install (likely a stale node_modules cache) — repairing by re-running node-pty's postinstall"
+            $env:npm_config_arch = "x64"
+            node node_modules/node-pty/scripts/post-install.js
+          }
+
           if (Test-Path $src) {
             Copy-Item $src -Destination "$env:RUNNER_TEMP/conpty-backup" -Recurse -Force
             Write-Host "Backed up conpty binaries from $src"
           } else {
-            Write-Warning "conpty folder not found after npm install — nothing to back up"
+            Write-Error "conpty folder still missing after repair attempt — node-pty's postinstall could not produce it. Check that node_modules/node-pty/third_party/conpty exists in the installed package."
+            exit 1
           }
 
       - name: Rebuild native modules for Electron
