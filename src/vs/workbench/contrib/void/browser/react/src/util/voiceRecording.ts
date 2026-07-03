@@ -7,8 +7,15 @@ import { useState, useCallback, useRef } from 'react';
 
 type RecordingState = 'idle' | 'recording' | 'processing' | 'error';
 
+export interface VoiceRecordingCallbacks {
+	onError?: (error: string) => void;
+	onDownloadStart?: () => void;
+	onDownloadComplete?: () => void;
+}
+
 export function useVoiceRecording(
-	transcribeAudio: (params: { pcmBase64: string; sampleRate: number }) => Promise<{ text: string } | { error: string }>
+	transcribeAudio: (params: { pcmBase64: string; sampleRate: number }) => Promise<{ text: string } | { error: string }>,
+	callbacks?: VoiceRecordingCallbacks
 ) {
 	const [state, setState] = useState<RecordingState>('idle');
 	const [transcript, setTranscript] = useState('');
@@ -21,7 +28,12 @@ export function useVoiceRecording(
 	const isSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
 	const startRecording = useCallback(async () => {
-		if (!isSupported) { setError('Microphone not available'); return; }
+		if (!isSupported) {
+			const errorMsg = 'Microphone not available';
+			setError(errorMsg);
+			callbacks?.onError?.(errorMsg);
+			return;
+		}
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 			streamRef.current = stream;
@@ -40,27 +52,41 @@ export function useVoiceRecording(
 				const blob = new Blob(chunksRef.current, { type: mimeType });
 				const arrayBuffer = await blob.arrayBuffer();
 
-				// decode + resample to 16kHz mono — what Whisper expects
-				const audioCtx = new AudioContext({ sampleRate: 16000 });
-				const decoded = await audioCtx.decodeAudioData(arrayBuffer);
-				const channelData = decoded.getChannelData(0); // Float32Array @ 16kHz
+				try {
+					// decode + resample to 16kHz mono — what Whisper expects
+					const audioCtx = new AudioContext({ sampleRate: 16000 });
+					const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+					const channelData = decoded.getChannelData(0); // Float32Array @ 16kHz
 
-				// base64-encode the raw float32 bytes for IPC transport (chunked to avoid stack issues)
-				const bytes = new Uint8Array(channelData.buffer);
-				let binary = '';
-				const chunkSize = 0x8000;
-				for (let i = 0; i < bytes.length; i += chunkSize) {
-					binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-				}
-				const pcmBase64 = btoa(binary);
+					// base64-encode the raw float32 bytes for IPC transport (chunked to avoid stack issues)
+					const bytes = new Uint8Array(channelData.buffer);
+					let binary = '';
+					const chunkSize = 0x8000;
+					for (let i = 0; i < bytes.length; i += chunkSize) {
+						binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+					}
+					const pcmBase64 = btoa(binary);
 
-				const result = await transcribeAudio({ pcmBase64, sampleRate: decoded.sampleRate });
-				if ('error' in result) {
-					setError(result.error);
+					// Notify if this might trigger a download (for local whisper)
+					callbacks?.onDownloadStart?.();
+
+					const result = await transcribeAudio({ pcmBase64, sampleRate: decoded.sampleRate });
+
+					callbacks?.onDownloadComplete?.();
+
+					if ('error' in result) {
+						setError(result.error);
+						setState('error');
+						callbacks?.onError?.(result.error);
+					} else {
+						setTranscript(result.text);
+						setState('idle');
+					}
+				} catch (processingErr) {
+					const errorMsg = `Failed to process audio: ${processingErr}`;
+					setError(errorMsg);
 					setState('error');
-				} else {
-					setTranscript(result.text);
-					setState('idle');
+					callbacks?.onError?.(errorMsg);
 				}
 			};
 
@@ -69,10 +95,12 @@ export function useVoiceRecording(
 			setError(null);
 		} catch (err) {
 			console.error('Failed to start recording:', err);
-			setError('Microphone permission denied');
+			const errorMsg = 'Microphone permission denied or not available';
+			setError(errorMsg);
 			setState('error');
+			callbacks?.onError?.(errorMsg);
 		}
-	}, [isSupported, transcribeAudio]);
+	}, [isSupported, transcribeAudio, callbacks]);
 
 	const stopRecording = useCallback(() => {
 		if (mediaRecorderRef.current && state === 'recording') {

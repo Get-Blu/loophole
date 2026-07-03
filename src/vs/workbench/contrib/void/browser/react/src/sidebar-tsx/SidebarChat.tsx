@@ -32,7 +32,8 @@ import { builtinToolNames, isABuiltinToolName, MAX_FILE_CHARS_PAGE, MAX_TERMINAL
 import { RawToolCallObj } from '../../../../common/sendLLMMessageTypes.js';
 import ErrorBoundary from './ErrorBoundary.js';
 import { ToolApprovalTypeSwitch } from '../void-settings-tsx/Settings.js';
-import { useVoiceRecording } from '../util/voiceRecording.js';
+import { useVoiceRecording, VoiceRecordingCallbacks } from '../util/voiceRecording.js';
+import { Severity } from '../../../../../../../platform/notification/common/notification.js';
 
 import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
@@ -496,20 +497,88 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 	const fileDialogService = accessor.get('IFileDialogService');
 	const languageService = accessor.get('ILanguageService');
 	const llmMessageService = accessor.get('ILLMMessageService');
+	const notificationService = accessor.get('INotificationService');
+	const commandService = accessor.get('ICommandService');
+	const settingsState = useSettingsState();
+
+	// Voice recording callbacks for handling errors and downloads
+	const voiceCallbacks = React.useMemo<VoiceRecordingCallbacks>(() => ({
+		onError: (error: string) => {
+			// Show VS Code-style error notification with actionable buttons
+			if (error.includes('No OpenAI API key')) {
+				// OpenAI API key is missing
+				notificationService.prompt(
+					Severity.Warning,
+					'Voice transcription failed: No OpenAI API key configured.',
+					[
+						{
+							label: 'Open Settings',
+							run: () => {
+								commandService.executeCommand(LOOPHOLE_OPEN_SETTINGS_ACTION_ID);
+							}
+						},
+						{
+							label: 'Switch to Local Whisper (Free)',
+							run: () => {
+								accessor.get('ILoopholeSettingsService').setGlobalSetting('transcriptionProvider', 'localWhisper');
+								notificationService.info('Switched to Local Whisper for voice transcription. Model will download on first use.');
+							}
+						}
+					],
+					{ sticky: true }
+				);
+			} else if (error.includes('permission')) {
+				// Microphone permission denied
+				notificationService.error('Microphone access denied. Please allow microphone access in your browser settings.');
+			} else {
+				// Generic error
+				notificationService.error(`Voice transcription failed: ${error}`);
+			}
+		},
+		onDownloadStart: () => {
+			const transcriptionProvider = settingsState.globalSettings.transcriptionProvider;
+			const modelSize = settingsState.globalSettings.localWhisperModelSize;
+
+			if (transcriptionProvider === 'localWhisper') {
+				// Notify user about the one-time model download
+				notificationService.prompt(
+					Severity.Info,
+					`Downloading Local Whisper model (${modelSize}). This is a one-time download (~${modelSize === 'tiny' ? '40MB' : modelSize === 'base' ? '80MB' : '250MB'}) and will be cached for future use.`,
+					[
+						{
+							label: 'OK',
+							run: () => { }
+						},
+						{
+							label: 'Change Model Size',
+							run: () => {
+								commandService.executeCommand(LOOPHOLE_OPEN_SETTINGS_ACTION_ID);
+							}
+						}
+					]
+				);
+			}
+		},
+		onDownloadComplete: () => {
+			// Optional: could show completion notification if desired
+		}
+	}), [notificationService, commandService, accessor, settingsState]);
 
 	// Voice recording - bind the method to preserve 'this' context
 	const transcribeAudio = React.useCallback(
 		(params: { pcmBase64: string; sampleRate: number }) => llmMessageService.transcribeAudio(params),
 		[llmMessageService]
 	);
-	const { state: recordingState, transcript: voiceTranscript, toggleRecording, isSupported } = useVoiceRecording(transcribeAudio);
+	const { state: recordingState, transcript: voiceTranscript, toggleRecording, isSupported, clearTranscript } = useVoiceRecording(transcribeAudio, voiceCallbacks);
 
 	// Handle voice transcript
 	React.useEffect(() => {
 		if (voiceTranscript && onVoiceTranscript) {
 			onVoiceTranscript(voiceTranscript);
+			// Clear the transcript after using it to prevent re-triggering
+			clearTranscript();
 		}
-	}, [voiceTranscript, onVoiceTranscript]);
+	}, [voiceTranscript, onVoiceTranscript, clearTranscript]);
 
 	const handleAddFile = async () => {
 		const uris = await fileDialogService.showOpenDialog({
@@ -3307,15 +3376,23 @@ export const SidebarChat = () => {
 				const end = textarea.selectionEnd || 0;
 				const currentValue = textarea.value || '';
 				const newValue = currentValue.substring(0, start) + transcript + currentValue.substring(end);
+
+				// Update the textarea value
 				textarea.value = newValue;
+
 				// Move cursor to after inserted text
 				const newCursorPos = start + transcript.length;
 				textarea.setSelectionRange(newCursorPos, newCursorPos);
-				// Trigger input event to update state
-				textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+				// Manually trigger React's onChange by calling onChangeText
+				onChangeText(newValue);
+
+				// Trigger native input event for any listeners
+				const event = new Event('input', { bubbles: true });
+				textarea.dispatchEvent(event);
+
+				// Focus the textarea
 				textarea.focus();
-				// Update instructions empty state
-				setInstructionsAreEmpty(!newValue.trim());
 			}
 		}}
 	>
