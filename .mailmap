@@ -1,3 +1,11 @@
+# Loophole IDE Contributors
+# This file maps contributor email addresses to canonical names
+# Format: Canonical Name <canonical@email.com> Alternate Name <alternate@email.com>
+
+# Loophole maintainers
+Garv Agnihotri <garvagnihotri22@gmail.com>
+
+# Historical VS Code contributors (from upstream fork)
 Raymond Zhao <raymondzhao@microsoft.com>
 Tyler Leonhardt <tyleonha@microsoft.com> Tyler Leonhardt <me@tylerleonhardt.com>
 João Moreno <joao.moreno@microsoft.com> João Moreno <mail@joaomoreno.com>

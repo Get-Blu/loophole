@@ -5,9 +5,9 @@
   "dataFolderName": ".loophole",
   "sharedDataFolderName": ".vscode-oss-shared",
   "win32MutexName": "loophole",
-  "licenseName": "MIT",
-  "licenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/master/LICENSE",
-  "serverLicenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE",
+  "licenseName": "AGPL-3.0",
+  "licenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE.txt",
+  "serverLicenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE.txt",
   "serverGreeting": [],
   "serverLicense": [],
   "serverLicensePrompt": "",
@@ -256,9 +256,9 @@
     "controlUrl": "https://raw.githubusercontent.com/EclipseFdn/publish-extensions/refs/heads/master/extension-control/extensions.json"
   },
   "introductoryVideosUrl": "https://github.com/loophole-ai/loophole-ide/wiki/videos",
-  "keyboardShortcutsUrlLinux": "https://go.microsoft.com/fwlink/?linkid=832144",
-  "keyboardShortcutsUrlMac": "https://go.microsoft.com/fwlink/?linkid=832143",
-  "keyboardShortcutsUrlWin": "https://go.microsoft.com/fwlink/?linkid=832145",
+  "keyboardShortcutsUrlLinux": "https://github.com/loophole-ai/loophole-ide/wiki/keyboard-shortcuts-linux",
+  "keyboardShortcutsUrlMac": "https://github.com/loophole-ai/loophole-ide/wiki/keyboard-shortcuts-macos",
+  "keyboardShortcutsUrlWin": "https://github.com/loophole-ai/loophole-ide/wiki/keyboard-shortcuts-windows",
   "linkProtectionTrustedDomains": [
     "https://open-vsx.org"
   ],

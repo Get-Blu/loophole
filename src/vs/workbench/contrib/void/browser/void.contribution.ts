@@ -62,3 +62,5 @@ import './voidSCMService.js'
 import './tokenUsageStatusBar.js'
 // register token usage dialog
 import './tokenUsageDialogService.js'
+// register report issue status bar
+import './reportIssueStatusBar.js'

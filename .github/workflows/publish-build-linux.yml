@@ -206,6 +206,65 @@ jobs:
             gh release upload "$VERSION" "$f" --clobber
           done
 
+      # ── Upload to Gofile.io and save links ─────────────────────────────────────
+      - name: Upload to Gofile.io
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])" 2>/dev/null)
+          if [ -z "$SERVER" ]; then
+            echo "::warning::Failed to get Gofile.io server — skipping upload"
+            echo "[]" > gofile-links-x64.json
+            exit 0
+          fi
+          echo "Using server: $SERVER"
+
+          # Create JSON array to store links
+          echo "[" > gofile-links-x64.json
+          FIRST=true
+
+          for FILE in dist/*; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+
+              # Validate response is valid JSON before parsing
+              if ! echo "$RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+                echo "::warning::Invalid response from Gofile.io for $FILENAME"
+                continue
+              fi
+
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('data', {}).get('downloadPage', 'N/A'))" 2>/dev/null)
+              if [ -n "$LINK" ] && [ "$LINK" != "N/A" ]; then
+                echo " $FILENAME → $LINK"
+
+                # Add to JSON (handle comma for valid JSON array)
+                if [ "$FIRST" = true ]; then
+                  FIRST=false
+                else
+                  echo "," >> gofile-links-x64.json
+                fi
+
+                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"linux-x64\"}" >> gofile-links-x64.json
+              fi
+            fi
+          done
+
+          echo "]" >> gofile-links-x64.json
+
+      - name: Upload Gofile links artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gofile-links-linux-x64
+          path: gofile-links-x64.json
+          retention-days: 7
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Linux ARM64
   # ─────────────────────────────────────────────────────────────────────────────
@@ -366,6 +425,65 @@ jobs:
             gh release upload "$VERSION" "$f" --clobber
           done
 
+      # ── Upload to Gofile.io and save links ─────────────────────────────────────
+      - name: Upload to Gofile.io
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])" 2>/dev/null)
+          if [ -z "$SERVER" ]; then
+            echo "::warning::Failed to get Gofile.io server — skipping upload"
+            echo "[]" > gofile-links-arm64.json
+            exit 0
+          fi
+          echo "Using server: $SERVER"
+
+          # Create JSON array to store links
+          echo "[" > gofile-links-arm64.json
+          FIRST=true
+
+          for FILE in dist/*; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+
+              # Validate response is valid JSON before parsing
+              if ! echo "$RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+                echo "::warning::Invalid response from Gofile.io for $FILENAME"
+                continue
+              fi
+
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('data', {}).get('downloadPage', 'N/A'))" 2>/dev/null)
+              if [ -n "$LINK" ] && [ "$LINK" != "N/A" ]; then
+                echo " $FILENAME → $LINK"
+
+                # Add to JSON (handle comma for valid JSON array)
+                if [ "$FIRST" = true ]; then
+                  FIRST=false
+                else
+                  echo "," >> gofile-links-arm64.json
+                fi
+
+                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"linux-arm64\"}" >> gofile-links-arm64.json
+              fi
+            fi
+          done
+
+          echo "]" >> gofile-links-arm64.json
+
+      - name: Upload Gofile links artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gofile-links-linux-arm64
+          path: gofile-links-arm64.json
+          retention-days: 7
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Alpine x64 (musl) — REH + REH-Web only
   # ─────────────────────────────────────────────────────────────────────────────
@@ -427,6 +545,65 @@ jobs:
             gh release upload "$VERSION" "$f" --clobber
           done
 
+      # ── Upload to Gofile.io and save links ─────────────────────────────────────
+      - name: Upload to Gofile.io
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])" 2>/dev/null)
+          if [ -z "$SERVER" ]; then
+            echo "::warning::Failed to get Gofile.io server — skipping upload"
+            echo "[]" > gofile-links-alpine-x64.json
+            exit 0
+          fi
+          echo "Using server: $SERVER"
+
+          # Create JSON array to store links
+          echo "[" > gofile-links-alpine-x64.json
+          FIRST=true
+
+          for FILE in dist/*; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+
+              # Validate response is valid JSON before parsing
+              if ! echo "$RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+                echo "::warning::Invalid response from Gofile.io for $FILENAME"
+                continue
+              fi
+
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('data', {}).get('downloadPage', 'N/A'))" 2>/dev/null)
+              if [ -n "$LINK" ] && [ "$LINK" != "N/A" ]; then
+                echo " $FILENAME → $LINK"
+
+                # Add to JSON (handle comma for valid JSON array)
+                if [ "$FIRST" = true ]; then
+                  FIRST=false
+                else
+                  echo "," >> gofile-links-alpine-x64.json
+                fi
+
+                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"alpine-x64\"}" >> gofile-links-alpine-x64.json
+              fi
+            fi
+          done
+
+          echo "]" >> gofile-links-alpine-x64.json
+
+      - name: Upload Gofile links artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gofile-links-alpine-x64
+          path: gofile-links-alpine-x64.json
+          retention-days: 7
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Alpine ARM64 (musl) — REH + REH-Web only
   # ─────────────────────────────────────────────────────────────────────────────
@@ -487,3 +664,62 @@ jobs:
             echo "Uploading $f..."
             gh release upload "$VERSION" "$f" --clobber
           done
+
+      # ── Upload to Gofile.io and save links ─────────────────────────────────────
+      - name: Upload to Gofile.io
+        shell: bash
+        run: |
+          echo "======================================"
+          echo "  Uploading artifacts to Gofile.io"
+          echo "======================================"
+
+          # Get best available server
+          SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])" 2>/dev/null)
+          if [ -z "$SERVER" ]; then
+            echo "::warning::Failed to get Gofile.io server — skipping upload"
+            echo "[]" > gofile-links-alpine-arm64.json
+            exit 0
+          fi
+          echo "Using server: $SERVER"
+
+          # Create JSON array to store links
+          echo "[" > gofile-links-alpine-arm64.json
+          FIRST=true
+
+          for FILE in dist/*; do
+            if [ -f "$FILE" ]; then
+              FILENAME=$(basename "$FILE")
+              echo ""
+              echo "Uploading: $FILENAME"
+              RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
+
+              # Validate response is valid JSON before parsing
+              if ! echo "$RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+                echo "::warning::Invalid response from Gofile.io for $FILENAME"
+                continue
+              fi
+
+              LINK=$(echo "$RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('data', {}).get('downloadPage', 'N/A'))" 2>/dev/null)
+              if [ -n "$LINK" ] && [ "$LINK" != "N/A" ]; then
+                echo " $FILENAME → $LINK"
+
+                # Add to JSON (handle comma for valid JSON array)
+                if [ "$FIRST" = true ]; then
+                  FIRST=false
+                else
+                  echo "," >> gofile-links-alpine-arm64.json
+                fi
+
+                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"alpine-arm64\"}" >> gofile-links-alpine-arm64.json
+              fi
+            fi
+          done
+
+          echo "]" >> gofile-links-alpine-arm64.json
+
+      - name: Upload Gofile links artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gofile-links-alpine-arm64
+          path: gofile-links-alpine-arm64.json
+          retention-days: 7

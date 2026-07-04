@@ -8,10 +8,10 @@
 AppId={#AppId}
 AppName={#NameLong}
 AppVerName={#NameVersion}
-AppPublisher=Microsoft Corporation
-AppPublisherURL=https://code.visualstudio.com/
-AppSupportURL=https://code.visualstudio.com/
-AppUpdatesURL=https://code.visualstudio.com/
+AppPublisher=Loophole AI
+AppPublisherURL=https://github.com/loophole-ai/loophole-ide
+AppSupportURL=https://github.com/loophole-ai/loophole-ide/issues
+AppUpdatesURL=https://github.com/loophole-ai/loophole-ide/releases
 DefaultGroupName={#NameLong}
 AllowNoIcons=yes
 OutputDir={#OutputDir}

@@ -196,6 +196,186 @@ jobs:
     environment: publish
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Download all Gofile link artifacts from platform builds
+      - name: Download Gofile links — Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-windows
+          path: gofile-links/
+        continue-on-error: true
+
+      - name: Download Gofile links — macOS x64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-macos-x64
+          path: gofile-links/
+        continue-on-error: true
+
+      - name: Download Gofile links — macOS ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-macos-arm64
+          path: gofile-links/
+        continue-on-error: true
+
+      - name: Download Gofile links — Linux x64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-linux-x64
+          path: gofile-links/
+        continue-on-error: true
+
+      - name: Download Gofile links — Linux ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-linux-arm64
+          path: gofile-links/
+        continue-on-error: true
+
+      - name: Download Gofile links — Alpine x64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-alpine-x64
+          path: gofile-links/
+        continue-on-error: true
+
+      - name: Download Gofile links — Alpine ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-alpine-arm64
+          path: gofile-links/
+        continue-on-error: true
+
+      # Generate markdown file with all Gofile download links
+      - name: Generate Gofile links markdown
+        run: |
+          VERSION="${{ needs.create-release.outputs.version }}"
+
+          cat > GOFILE_DOWNLOADS.md << 'HEADER'
+          # Alternative Download Links (Gofile.io)
+
+          If you experience slow downloads from GitHub, you can use these alternative Gofile.io links for faster downloads.
+
+          ---
+
+          HEADER
+
+          # Function to add links from a JSON file
+          add_links() {
+            local file=$1
+            local title=$2
+
+            if [ ! -f "$file" ]; then
+              return
+            fi
+
+            # Check if file has any links (not just empty array)
+            if [ "$(cat "$file" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data))")" -eq 0 ]; then
+              return
+            fi
+
+            echo "" >> GOFILE_DOWNLOADS.md
+            echo "## $title" >> GOFILE_DOWNLOADS.md
+            echo "" >> GOFILE_DOWNLOADS.md
+
+            cat "$file" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
+          import sys, json
+          data = json.load(sys.stdin)
+          for item in data:
+              filename = item.get('filename', 'Unknown')
+              link = item.get('link', '#')
+              print(f"- [{filename}]({link})")
+          PYEOF
+          }
+
+          # Add links by platform
+          add_links "gofile-links/gofile-links.json" "Windows"
+          add_links "gofile-links/gofile-links-x64.json" "macOS Intel (x64)"
+          add_links "gofile-links/gofile-links-arm64.json" "macOS Apple Silicon (ARM64)"
+
+          # Combine Linux links
+          echo "" >> GOFILE_DOWNLOADS.md
+          echo "## Linux" >> GOFILE_DOWNLOADS.md
+          echo "" >> GOFILE_DOWNLOADS.md
+
+          [ -f "gofile-links/gofile-links-x64.json" ] && cat "gofile-links/gofile-links-x64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
+          import sys, json
+          data = json.load(sys.stdin)
+          if data:
+              print("### x64 (AMD64)")
+              print("")
+              for item in data:
+                  filename = item.get('filename', 'Unknown')
+                  link = item.get('link', '#')
+                  print(f"- [{filename}]({link})")
+              print("")
+          PYEOF
+
+          [ -f "gofile-links/gofile-links-arm64.json" ] && cat "gofile-links/gofile-links-arm64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
+          import sys, json
+          data = json.load(sys.stdin)
+          if data:
+              print("### ARM64")
+              print("")
+              for item in data:
+                  filename = item.get('filename', 'Unknown')
+                  link = item.get('link', '#')
+                  print(f"- [{filename}]({link})")
+              print("")
+          PYEOF
+
+          [ -f "gofile-links/gofile-links-alpine-x64.json" ] && cat "gofile-links/gofile-links-alpine-x64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
+          import sys, json
+          data = json.load(sys.stdin)
+          if data:
+              print("### Alpine x64 (musl)")
+              print("")
+              for item in data:
+                  filename = item.get('filename', 'Unknown')
+                  link = item.get('link', '#')
+                  print(f"- [{filename}]({link})")
+              print("")
+          PYEOF
+
+          [ -f "gofile-links/gofile-links-alpine-arm64.json" ] && cat "gofile-links/gofile-links-alpine-arm64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
+          import sys, json
+          data = json.load(sys.stdin)
+          if data:
+              print("### Alpine ARM64 (musl)")
+              print("")
+              for item in data:
+                  filename = item.get('filename', 'Unknown')
+                  link = item.get('link', '#')
+                  print(f"- [{filename}]({link})")
+              print("")
+          PYEOF
+
+          cat >> GOFILE_DOWNLOADS.md << 'FOOTER'
+
+          ---
+
+          **Note:** Gofile.io links are provided for convenience and faster download speeds. For official releases, please use the GitHub release assets above.
+          FOOTER
+
+          echo "Generated GOFILE_DOWNLOADS.md:"
+          cat GOFILE_DOWNLOADS.md
+
+      # Upload the Gofile links markdown to the release
+      - name: Upload Gofile links to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.create-release.outputs.version }}
+        run: |
+          if [ -f "GOFILE_DOWNLOADS.md" ] && [ -s "GOFILE_DOWNLOADS.md" ]; then
+            gh release upload "$VERSION" GOFILE_DOWNLOADS.md --clobber --repo "$GITHUB_REPOSITORY"
+            echo "Uploaded GOFILE_DOWNLOADS.md to release"
+          else
+            echo "::warning::GOFILE_DOWNLOADS.md is empty or does not exist — skipping upload"
+          fi
+
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
