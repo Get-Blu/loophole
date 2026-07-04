@@ -378,10 +378,11 @@ jobs:
       # whether to exclude it from the Snap build or handle it another way.
       - name: Debug — scan for unresolvable ELF dependencies
         run: |
+          set +e
           echo "=== Scanning build output for CUDA/TensorRT/musl-linked binaries ==="
           find .build -type f -executable 2>/dev/null | while read -r f; do
             if file "$f" 2>/dev/null | grep -q ELF; then
-              deps=$(readelf -d "$f" 2>/dev/null | grep NEEDED)
+              deps=$(readelf -d "$f" 2>/dev/null | grep NEEDED || true)
               if echo "$deps" | grep -qiE "cublas|cudnn|nvinfer|nvonnxparser|cufft|curand|musl"; then
                 echo "=== $f ==="
                 echo "$deps"
@@ -389,6 +390,7 @@ jobs:
               fi
             fi
           done
+          echo "=== Scan complete ==="
 
       - name: Build Snap package
         run: npm run gulp vscode-linux-x64-build-snap
