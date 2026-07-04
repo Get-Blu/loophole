@@ -7,8 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 1.121.03429)'
+        description: 'Version to release (e.g. 1.0.0)'
         required: true
+
+permissions:
+  contents: write
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
