@@ -436,8 +436,17 @@ jobs:
       - name: Build Snap package
         if: steps.verify-snapcraft.outputs.snapcraft_ready == 'true'
         run: npm run gulp vscode-linux-x64-build-snap
+        continue-on-error: true
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Upload — Snapcraft debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapcraft-debug-log-x64
+          path: .build/logs/snapcraft-x64-failure.log
+          if-no-files-found: ignore
 
       - name: Stage — Snap
         run: |
