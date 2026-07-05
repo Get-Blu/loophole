@@ -137,12 +137,57 @@ jobs:
             libgbm-dev \
             libasound2-dev
 
+      # ── Snap environment setup ────────────────────────────────────────────────
+      # Snap building requires a properly initialized snapd environment with the
+      # core22 base snap. We validate the environment before attempting to build,
+      # and gracefully skip snap creation if the environment isn't ready.
+
       - name: Wait for snapd to be ready
         run: sudo snap wait system seed.loaded
 
-      - name: Install snapcraft
-        run: sudo snap install snapcraft --classic --channel=8.x/stable
+      - name: Validate snapd status
+        run: |
+          echo "=== Checking snapd service status ==="
+          sudo systemctl status snapd.service --no-pager || true
+          sudo systemctl status snapd.socket --no-pager || true
+          snap version || echo "::warning::snapd not available"
+          echo ""
+
+      - name: Install core22 snap (required for snap building)
+        run: |
+          echo "Installing core22 base snap..."
+          if sudo snap install core22 2>&1 | tee /tmp/core22-install.log; then
+            echo "✓ core22 installed successfully"
+            sudo snap list | grep core22
+          else
+            echo "::warning::core22 installation failed - snap builds may not work"
+            cat /tmp/core22-install.log || true
+          fi
         continue-on-error: true
+
+      - name: Install snapcraft
+        id: install-snapcraft
+        run: |
+          if sudo snap install snapcraft --classic --channel=8.x/stable; then
+            echo "✓ Snapcraft installed successfully"
+            echo "snapcraft_installed=true" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Snapcraft installation failed"
+            echo "snapcraft_installed=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Verify snapcraft environment
+        id: verify-snapcraft
+        run: |
+          if command -v snapcraft >/dev/null 2>&1; then
+            SNAPCRAFT_VERSION=$(snapcraft --version 2>&1 || echo "unknown")
+            echo "✓ Snapcraft is available: $SNAPCRAFT_VERSION"
+            echo "snapcraft_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Snapcraft not available - snap package will be skipped"
+            echo "snapcraft_ready=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Install appimagetool
         run: |
@@ -396,19 +441,27 @@ jobs:
           echo "=== Scan complete ==="
 
       - name: Build Snap package
+        if: steps.verify-snapcraft.outputs.snapcraft_ready == 'true'
         run: npm run gulp vscode-linux-x64-build-snap
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-        continue-on-error: true
 
       - name: Stage — Snap
         run: |
-          src=$(find .build -name "*.snap" | head -1)
+          src=$(find .build -name "*.snap" 2>/dev/null | head -1)
           if [ -n "$src" ] && [ -f "$src" ]; then
             cp "$src" "dist/loophole_${VERSION}_amd64.snap"
-            echo "Staged: $src"
+            echo "✓ Staged snap: $src"
           else
-            echo "::warning::Snap not found — skipping"
+            # Snap file not found - determine if this is an error or expected skip
+            if [ "${{ steps.verify-snapcraft.outputs.snapcraft_ready }}" == "true" ]; then
+              echo "::error::Snap build was expected but no .snap file was produced"
+              echo "Snapcraft was available, but the build failed. Check the 'Build Snap package' step for errors."
+              exit 1
+            else
+              echo "::warning::Snap package skipped - snapcraft environment was not ready"
+              echo "This is expected if snapcraft installation failed. The build will continue without snap."
+            fi
           fi
 
       # ── 6. Remote Host tarball ─────────────────────────────────────────────────
@@ -499,12 +552,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Snap
+        if: steps.verify-snapcraft.outputs.snapcraft_ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: loophole-linux-x64-${{ env.VERSION }}-snap
           path: dist/loophole_${{ env.VERSION }}_amd64.snap
           retention-days: 7
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload — Remote Host
         uses: actions/upload-artifact@v4
@@ -529,6 +583,78 @@ jobs:
           path: dist/loophole-cli-linux-x64-${{ env.VERSION }}.tar.gz
           retention-days: 7
           if-no-files-found: warn
+
+      # ── Build Summary ──────────────────────────────────────────────────────────
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "# Linux x64 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Check each artifact type
+          if [ -f "dist/loophole_${VERSION}_amd64.deb" ]; then
+            echo "| .deb Package | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| .deb Package | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "dist/loophole-${VERSION}-el8.x86_64.rpm" ]; then
+            echo "| .rpm Package | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| .rpm Package | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "dist/Loophole-linux-x64-$VERSION.tar.gz" ]; then
+            echo "| tar.gz Archive | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| tar.gz Archive | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if ls dist/*.AppImage 1> /dev/null 2>&1; then
+            echo "| AppImage | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| AppImage | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "dist/loophole_${VERSION}_amd64.snap" ]; then
+            echo "| Snap Package | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.verify-snapcraft.outputs.snapcraft_ready }}" != "true" ]; then
+            echo "| Snap Package | ⚠️ Skipped (snapcraft unavailable) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Snap Package | ❌ Build Failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "dist/loophole-reh-linux-x64-$VERSION.tar.gz" ]; then
+            echo "| Remote Host (REH) | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Remote Host (REH) | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "dist/loophole-reh-web-linux-x64-$VERSION.tar.gz" ]; then
+            echo "| Web Host (REH-Web) | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Web Host (REH-Web) | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -f "dist/loophole-cli-linux-x64-$VERSION.tar.gz" ]; then
+            echo "| CLI Tarball | ✅ Created |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| CLI Tarball | ❌ Missing |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ARTIFACT_COUNT=$(ls -1 dist/ 2>/dev/null | wc -l)
+          echo "**Total artifacts in dist/:** $ARTIFACT_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Show snapcraft status
+          if [ "${{ steps.verify-snapcraft.outputs.snapcraft_ready }}" == "true" ]; then
+            echo "**Snapcraft Status:** ✅ Available" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Snapcraft Status:** ⚠️ Not available (snap package was skipped)" >> $GITHUB_STEP_SUMMARY
+          fi
 
       # ── Upload to Gofile.io (optional) ────────────────────────────────────────
       - name: Upload to Gofile.io
