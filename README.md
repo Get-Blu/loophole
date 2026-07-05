@@ -44,19 +44,57 @@ The open-source AI code editor that thinks while you code.
 
 <br>
 
+<!--
+
+<div align="center">
+<table>
+<tr>
+<td align="center" width="50%">
+
+### IDE
+Work with your AI assistant right inside
+your editor. Get inline suggestions,
+multi-file edits, and full context of
+your codebase as you code.
+
+```
+Install IDE
+```
+
+<a href="https://github.com/loophole-ai/loophole-ide">Learn more →</a>
+<br><br>
+</td>
+<td align="center" width="50%">
+
+### CLI
+Take it to the terminal. Chat interactively
+or run it fully headless — perfect for
+scripting, automation, and CI/CD pipelines.
+
+```
+npm i -g @loophole-ai/cli
+```
+
+<a href="https://github.com/loophole-ai/loophole-cli">Learn more →</a>
+<br><br>
+</td>
+</tr>
+</table>
+</div>
+
+-->
+
 <p align="center">
   <img src="logo/banner.png" width="100%" alt="Loophole Banner" />
 </p>
 
-<p align="center">
-  <img src="logo/20260327_123134.png" width="100%" alt="Loophole Editor" />
-</p>
-
----
-
 ## Overview
 
 Loophole is an open-source AI code editor built on top of the Void editor (a fork of VS Code). It integrates AI features directly into the core editor experience with a focus on privacy, flexibility, and a premium user experience.
+
+<p align="center">
+  <img src="logo/20260327_123134.png" width="100%" alt="Loophole Editor" />
+</p>
 
 ## Features
 
