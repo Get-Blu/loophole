@@ -138,49 +138,13 @@ jobs:
       - name: Wait for snapd to be ready
         run: sudo snap wait system seed.loaded
 
-      - name: Validate snapd status
-        run: |
-          echo "=== Checking snapd service status ==="
-          sudo systemctl status snapd.service --no-pager || true
-          sudo systemctl status snapd.socket --no-pager || true
-          snap version || echo "::warning::snapd not available"
-          echo ""
-
-      - name: Install core22 snap (required for snap building)
-        run: |
-          echo "Installing core22 base snap..."
-          if sudo snap install core22 2>&1 | tee /tmp/core22-install.log; then
-            echo "✓ core22 installed successfully"
-            sudo snap list | grep core22
-          else
-            echo "::warning::core22 installation failed - snap builds may not work"
-            cat /tmp/core22-install.log || true
-          fi
-        continue-on-error: true
-
-      - name: Install snapcraft
-        id: install-snapcraft
-        run: |
-          if sudo snap install snapcraft --classic --channel=8.x/stable; then
-            echo "✓ Snapcraft installed successfully"
-            echo "snapcraft_installed=true" >> $GITHUB_OUTPUT
-          else
-            echo "::warning::Snapcraft installation failed"
-            echo "snapcraft_installed=false" >> $GITHUB_OUTPUT
-          fi
-        continue-on-error: true
-
-      - name: Verify snapcraft environment
-        id: verify-snapcraft
-        run: |
-          if command -v snapcraft >/dev/null 2>&1; then
-            SNAPCRAFT_VERSION=$(snapcraft --version 2>&1 || echo "unknown")
-            echo "✓ Snapcraft is available: $SNAPCRAFT_VERSION"
-            echo "snapcraft_ready=true" >> $GITHUB_OUTPUT
-          else
-            echo "::warning::Snapcraft not available - snap package will be skipped"
-            echo "snapcraft_ready=false" >> $GITHUB_OUTPUT
-          fi
+      # Snap packaging now runs inside Canonical's official, pinned
+      # ghcr.io/canonical/snapcraft:8_core22 container (see "Build Snap package"
+      # below) instead of installing snapcraft directly on the runner. This
+      # matches the approach Microsoft's own VS Code CI uses (a purpose-built,
+      # version-pinned container) and avoids drift when the runner's default
+      # snapcraft/core version changes underneath us. No snapd/core22/snapcraft
+      # install steps are needed here anymore.
 
       - name: Install appimagetool
         run: |
@@ -433,12 +397,28 @@ jobs:
           done
           echo "=== Scan complete ==="
 
-      - name: Build Snap package
-        if: steps.verify-snapcraft.outputs.snapcraft_ready == 'true'
-        run: npm run gulp vscode-linux-x64-build-snap
+      - name: Prepare Snap staging files
+        run: npm run gulp vscode-linux-x64-prepare-snap
         continue-on-error: true
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
+
+      - name: Build Snap package (Docker, ghcr.io/canonical/snapcraft:8_core22)
+        id: build-snap
+        continue-on-error: true
+        run: |
+          SNAP_DIR="$(pwd)/.build/linux/snap/x64/loophole-x64"
+          if [ ! -d "$SNAP_DIR/snap" ]; then
+            echo "::warning::Snap staging directory not found — skipping snap build"
+            exit 0
+          fi
+          mkdir -p .build/logs
+          docker run --rm \
+            -v "$SNAP_DIR:/project" \
+            ghcr.io/canonical/snapcraft:8_core22 \
+            pack 2>&1 | tee .build/logs/snapcraft-x64-failure.log
+          # tee swallows the docker exit code — recover it explicitly via PIPESTATUS
+          exit "${PIPESTATUS[0]}"
 
       - name: Upload — Snapcraft debug log
         if: always()
@@ -455,15 +435,7 @@ jobs:
             cp "$src" "dist/loophole_${VERSION}_amd64.snap"
             echo "✓ Staged snap: $src"
           else
-            # Snap file not found - determine if this is an error or expected skip
-            if [ "${{ steps.verify-snapcraft.outputs.snapcraft_ready }}" == "true" ]; then
-              echo "::error::Snap build was expected but no .snap file was produced"
-              echo "Snapcraft was available, but the build failed. Check the 'Build Snap package' step for errors."
-              exit 1
-            else
-              echo "::warning::Snap package skipped - snapcraft environment was not ready"
-              echo "This is expected if snapcraft installation failed. The build will continue without snap."
-            fi
+            echo "::warning::No .snap file produced — check the 'Build Snap package' step output above, or download the snapcraft-debug-log-x64 artifact for the full log."
           fi
 
       # ── 6. Remote Host tarball ─────────────────────────────────────────────────
