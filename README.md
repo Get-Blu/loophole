@@ -85,7 +85,7 @@ npm i -g @loophole-ai/cli
 -->
 
 <p align="center">
-  <img src="logo/banner.png" width="100%" alt="Loophole Banner" />
+  <img src="logo/banner_ide.png" width="100%" alt="Loophole Banner" />
 </p>
 
 ## Overview
