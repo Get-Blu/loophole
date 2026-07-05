@@ -49,8 +49,8 @@ export function createBrowserAboutDialogDetails(productService: IProductService)
 	const detailString = (useAgo: boolean): string => {
 		return localize('aboutDetail',
 			"Loophole Version: {0}\nVS Code Version: {1}\nCommit: {2}\nDate: {3}\nBrowser: {4}",
-			productService.loopholeVersion || 'Unknown',
 			productService.version || 'Unknown',
+			'1.121.0',
 			productService.commit || 'Unknown',
 			productService.date ? `${productService.date}${useAgo ? ' (' + fromNow(new Date(productService.date), true) + ')' : ''}` : 'Unknown',
 			navigator.userAgent
