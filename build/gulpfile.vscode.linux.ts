@@ -282,15 +282,13 @@ function buildSnapPackage(arch: string) {
 	const cwd = getSnapBuildPath(arch);
 	return async () => {
 		try {
-			// Default maxBuffer is 1MB combined stdout+stderr. Snapcraft's classic
-			// linter alone can emit hundreds of KB of warnings, which was silently
-			// truncating the real error mid-line before we ever saw it. Raise the
-			// cap well above anything this build could realistically produce.
 			await exec('snapcraft pack --destructive-mode', { cwd, maxBuffer: 1024 * 1024 * 50 });
 		} catch (err) {
-			// Even with a bigger buffer, print snapcraft's own on-disk log —
-			// it's the one copy of the output that's guaranteed not to be
-			// truncated by anything on the Node/gulp side.
+			// Printing the full log via console.error was still getting truncated —
+			// not by Node's maxBuffer, but by GitHub Actions' own log pipe, which
+			// silently cuts off very large single writes. A file survives that,
+			// so copy the real snapcraft log to a fixed, predictable path and let
+			// CI upload it as a proper artifact instead of streaming it to console.
 			try {
 				const logDir = path.join(process.env.HOME ?? '', '.local/state/snapcraft/log');
 				const logFiles = fs.readdirSync(logDir)
@@ -298,9 +296,20 @@ function buildSnapPackage(arch: string) {
 					.sort();
 				const latest = logFiles[logFiles.length - 1];
 				if (latest) {
-					console.error(`\n--- Full snapcraft log: ${latest} ---`);
-					console.error(fs.readFileSync(path.join(logDir, latest), 'utf8'));
-					console.error('--- end snapcraft log ---\n');
+					const destDir = path.join(process.cwd(), '.build/logs');
+					fs.mkdirSync(destDir, { recursive: true });
+					const dest = path.join(destDir, `snapcraft-${arch}-failure.log`);
+					fs.copyFileSync(path.join(logDir, latest), dest);
+					console.error(`\nSnapcraft failed. Full log saved to: ${dest}`);
+					console.error('(this will be uploaded as a build artifact — check "snapcraft-debug-logs" in this run\'s artifacts)\n');
+
+					// Small, safe preview only — a handful of short lines is well
+					// under any single-write size limit, unlike the full log.
+					const lines = fs.readFileSync(dest, 'utf8').split('\n');
+					const tail = lines.slice(-15);
+					console.error('--- last 15 lines (see uploaded artifact for full log) ---');
+					for (const line of tail) console.error(line);
+					console.error('--- end preview ---\n');
 				}
 			} catch (readErr) {
 				console.error('Could not read snapcraft log file:', readErr);
