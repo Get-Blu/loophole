@@ -6,9 +6,6 @@ on:
       - code
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version override (e.g. 1.121.03429) — defaults to package.json'
-        required: false
       upload_to_gofile:
         description: 'Upload artifacts to Gofile.io for faster download?'
         required: true
@@ -82,11 +79,7 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ -n "${{ github.event.inputs.version }}" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
+          VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION"
 
@@ -382,13 +375,13 @@ jobs:
               echo ""
               echo "Uploading: $FILENAME"
               RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
-              
+
               # Validate response is valid JSON before parsing
               if ! echo "$RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
                 echo "::warning::Invalid response from Gofile.io for $FILENAME: $RESPONSE"
                 continue
               fi
-              
+
               LINK=$(echo "$RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('data', {}).get('downloadPage', 'N/A'))" 2>/dev/null)
               if [ -n "$LINK" ] && [ "$LINK" != "N/A" ]; then
                 echo " $FILENAME → $LINK"
@@ -685,13 +678,13 @@ jobs:
               echo ""
               echo "Uploading: $FILENAME"
               RESPONSE=$(curl -s -F "file=@$FILE" "https://$SERVER.gofile.io/uploadFile")
-              
+
               # Validate response is valid JSON before parsing
               if ! echo "$RESPONSE" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
                 echo "::warning::Invalid response from Gofile.io for $FILENAME: $RESPONSE"
                 continue
               fi
-              
+
               LINK=$(echo "$RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('data', {}).get('downloadPage', 'N/A'))" 2>/dev/null)
               if [ -n "$LINK" ] && [ "$LINK" != "N/A" ]; then
                 echo " $FILENAME → $LINK"

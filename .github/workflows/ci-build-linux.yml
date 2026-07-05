@@ -6,9 +6,6 @@ on:
       - code
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version override (e.g. 1.121.03429) — defaults to package.json'
-        required: false
       upload_to_gofile:
         description: 'Upload artifacts to Gofile.io for faster download?'
         required: true
@@ -87,11 +84,7 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ -n "${{ github.event.inputs.version }}" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION=$(node -p "require('./package.json').version")
-          fi
+          VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION"
 

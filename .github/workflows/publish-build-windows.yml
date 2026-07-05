@@ -10,10 +10,6 @@ on:
         required: true
         type: string
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build and publish (e.g. 1.121.03429)'
-        required: true
 
 env:
   NODE_VERSION: '22'
@@ -26,7 +22,7 @@ jobs:
     runs-on: windows-2022
     environment: publish
     env:
-      VERSION: ${{ inputs.version || github.event.inputs.version }}
+      VERSION: ${{ inputs.version }}
 
     steps:
       - name: Checkout repository

@@ -10,10 +10,6 @@ on:
         required: true
         type: string
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build and publish (e.g. 1.121.03429)'
-        required: true
 
 env:
   NODE_VERSION: '22'
@@ -29,7 +25,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment: publish
     env:
-      VERSION: ${{ inputs.version || github.event.inputs.version }}
+      VERSION: ${{ inputs.version }}
       VSCODE_ARCH: x64
 
     steps:
@@ -273,7 +269,7 @@ jobs:
     runs-on: ubuntu-22.04-arm
     environment: publish
     env:
-      VERSION: ${{ inputs.version || github.event.inputs.version }}
+      VERSION: ${{ inputs.version }}
       VSCODE_ARCH: arm64
 
     steps:
@@ -492,7 +488,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment: publish
     env:
-      VERSION: ${{ inputs.version || github.event.inputs.version }}
+      VERSION: ${{ inputs.version }}
 
     steps:
       - name: Checkout repository
@@ -612,7 +608,7 @@ jobs:
     runs-on: ubuntu-22.04-arm
     environment: publish
     env:
-      VERSION: ${{ inputs.version || github.event.inputs.version }}
+      VERSION: ${{ inputs.version }}
 
     steps:
       - name: Checkout repository
