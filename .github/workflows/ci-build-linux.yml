@@ -137,6 +137,9 @@ jobs:
             libgbm-dev \
             libasound2-dev
 
+      - name: Wait for snapd to be ready
+        run: sudo snap wait system seed.loaded
+
       - name: Install snapcraft
         run: sudo snap install snapcraft --classic --channel=8.x/stable
         continue-on-error: true
