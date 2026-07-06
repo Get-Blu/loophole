@@ -31,7 +31,7 @@ jobs:
       - name: Resolve version & metadata
         id: meta
         run: |
-          VERSION="${GITHUB_REF_NAME}"
+          VERSION=$(node -p "require('./package.json').version")
 
           # Commits since last tag (for release notes context)
           PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p' || echo "")
@@ -65,58 +65,58 @@ jobs:
 
           | Type | File |
           |------|------|
-          | User Installer | \`LoopholeUserSetup-x64-${VERSION}.exe\` |
-          | System Installer | \`LoopholeSetup-x64-${VERSION}.exe\` |
-          | .zip | \`Loophole-win32-x64-${VERSION}.zip\` |
-          | .msi — updates enabled | \`Loophole-x64-${VERSION}.msi\` |
-          | .msi — updates disabled | \`Loophole-x64-updates-disabled-${VERSION}.msi\` |
-          | Remote Host | \`loophole-reh-win32-x64-${VERSION}.tar.gz\` |
-          | Web Host | \`loophole-reh-web-win32-x64-${VERSION}.tar.gz\` |
-          | CLI | \`loophole-cli-win32-x64-${VERSION}.tar.gz\` |
+          | User Installer | [LoopholeUserSetup-x64-${VERSION}.exe](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/LoopholeUserSetup-x64-${VERSION}.exe) |
+          | System Installer | [LoopholeSetup-x64-${VERSION}.exe](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/LoopholeSetup-x64-${VERSION}.exe) |
+          | .zip | [Loophole-win32-x64-${VERSION}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-win32-x64-${VERSION}.zip) |
+          | .msi — updates enabled | [Loophole-x64-${VERSION}.msi](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-x64-${VERSION}.msi) |
+          | .msi — updates disabled | [Loophole-x64-updates-disabled-${VERSION}.msi](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-x64-updates-disabled-${VERSION}.msi) |
+          | Remote Host | [loophole-reh-win32-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-win32-x64-${VERSION}.tar.gz) |
+          | Web Host | [loophole-reh-web-win32-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-win32-x64-${VERSION}.tar.gz) |
+          | CLI | [loophole-cli-win32-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-win32-x64-${VERSION}.tar.gz) |
 
           #### macOS
 
           | Type | File |
           |------|------|
-          | .dmg (Intel x64) | \`Loophole.x64.${VERSION}.dmg\` |
-          | .zip (Intel x64) | \`Loophole-darwin-x64-${VERSION}.zip\` |
-          | .dmg (Apple Silicon arm64) | \`Loophole.arm64.${VERSION}.dmg\` |
-          | .zip (Apple Silicon arm64) | \`Loophole-darwin-arm64-${VERSION}.zip\` |
-          | Remote Host (x64) | \`loophole-reh-darwin-x64-${VERSION}.tar.gz\` |
-          | Web Host (x64) | \`loophole-reh-web-darwin-x64-${VERSION}.tar.gz\` |
-          | CLI (x64) | \`loophole-cli-darwin-x64-${VERSION}.tar.gz\` |
-          | Remote Host (arm64) | \`loophole-reh-darwin-arm64-${VERSION}.tar.gz\` |
-          | Web Host (arm64) | \`loophole-reh-web-darwin-arm64-${VERSION}.tar.gz\` |
-          | CLI (arm64) | \`loophole-cli-darwin-arm64-${VERSION}.tar.gz\` |
+          | .dmg (Intel x64) | [Loophole.x64.${VERSION}.dmg](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole.x64.${VERSION}.dmg) |
+          | .zip (Intel x64) | [Loophole-darwin-x64-${VERSION}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-darwin-x64-${VERSION}.zip) |
+          | .dmg (Apple Silicon arm64) | [Loophole.arm64.${VERSION}.dmg](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole.arm64.${VERSION}.dmg) |
+          | .zip (Apple Silicon arm64) | [Loophole-darwin-arm64-${VERSION}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-darwin-arm64-${VERSION}.zip) |
+          | Remote Host (x64) | [loophole-reh-darwin-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-darwin-x64-${VERSION}.tar.gz) |
+          | Web Host (x64) | [loophole-reh-web-darwin-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-darwin-x64-${VERSION}.tar.gz) |
+          | CLI (x64) | [loophole-cli-darwin-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-darwin-x64-${VERSION}.tar.gz) |
+          | Remote Host (arm64) | [loophole-reh-darwin-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-darwin-arm64-${VERSION}.tar.gz) |
+          | Web Host (arm64) | [loophole-reh-web-darwin-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-darwin-arm64-${VERSION}.tar.gz) |
+          | CLI (arm64) | [loophole-cli-darwin-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-darwin-arm64-${VERSION}.tar.gz) |
 
           #### Linux
 
           | Type | File |
           |------|------|
-          | .deb (x64) | \`loophole_${VERSION}_amd64.deb\` |
-          | .rpm (x64) | \`loophole-${VERSION}-el8.x86_64.rpm\` |
-          | .tar.gz (x64) | \`Loophole-linux-x64-${VERSION}.tar.gz\` |
-          | AppImage (x64) | \`Loophole-${VERSION}.glibc2.30-x86_64.AppImage\` |
-          | AppImage zsync (x64) | \`Loophole-${VERSION}.glibc2.30-x86_64.AppImage.zsync\` |
-          | Snap (x64) | \`loophole_${VERSION}_amd64.snap\` |
-          | Remote Host (x64) | \`loophole-reh-linux-x64-${VERSION}.tar.gz\` |
-          | Web Host (x64) | \`loophole-reh-web-linux-x64-${VERSION}.tar.gz\` |
-          | CLI (x64) | \`loophole-cli-linux-x64-${VERSION}.tar.gz\` |
-          | .deb (arm64) | \`loophole_${VERSION}_arm64.deb\` |
-          | .rpm (arm64) | \`loophole-${VERSION}-el8.aarch64.rpm\` |
-          | .tar.gz (arm64) | \`Loophole-linux-arm64-${VERSION}.tar.gz\` |
-          | Remote Host (arm64) | \`loophole-reh-linux-arm64-${VERSION}.tar.gz\` |
-          | Web Host (arm64) | \`loophole-reh-web-linux-arm64-${VERSION}.tar.gz\` |
-          | CLI (arm64) | \`loophole-cli-linux-arm64-${VERSION}.tar.gz\` |
+          | .deb (x64) | [loophole_${VERSION}_amd64.deb](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole_${VERSION}_amd64.deb) |
+          | .rpm (x64) | [loophole-${VERSION}-el8.x86_64.rpm](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-${VERSION}-el8.x86_64.rpm) |
+          | .tar.gz (x64) | [Loophole-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-linux-x64-${VERSION}.tar.gz) |
+          | AppImage (x64) | [Loophole-${VERSION}.glibc2.30-x86_64.AppImage](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-${VERSION}.glibc2.30-x86_64.AppImage) |
+          | AppImage zsync (x64) | [Loophole-${VERSION}.glibc2.30-x86_64.AppImage.zsync](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-${VERSION}.glibc2.30-x86_64.AppImage.zsync) |
+          | Snap (x64) | [loophole_${VERSION}_amd64.snap](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole_${VERSION}_amd64.snap) |
+          | Remote Host (x64) | [loophole-reh-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-linux-x64-${VERSION}.tar.gz) |
+          | Web Host (x64) | [loophole-reh-web-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-linux-x64-${VERSION}.tar.gz) |
+          | CLI (x64) | [loophole-cli-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-linux-x64-${VERSION}.tar.gz) |
+          | .deb (arm64) | [loophole_${VERSION}_arm64.deb](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole_${VERSION}_arm64.deb) |
+          | .rpm (arm64) | [loophole-${VERSION}-el8.aarch64.rpm](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-${VERSION}-el8.aarch64.rpm) |
+          | .tar.gz (arm64) | [Loophole-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-linux-arm64-${VERSION}.tar.gz) |
+          | Remote Host (arm64) | [loophole-reh-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-linux-arm64-${VERSION}.tar.gz) |
+          | Web Host (arm64) | [loophole-reh-web-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-linux-arm64-${VERSION}.tar.gz) |
+          | CLI (arm64) | [loophole-cli-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-linux-arm64-${VERSION}.tar.gz) |
 
           #### Alpine (musl libc)
 
           | Type | File |
           |------|------|
-          | Remote Host (x64) | \`loophole-reh-alpine-x64-${VERSION}.tar.gz\` |
-          | Web Host (x64) | \`loophole-reh-web-alpine-x64-${VERSION}.tar.gz\` |
-          | Remote Host (arm64) | \`loophole-reh-alpine-arm64-${VERSION}.tar.gz\` |
-          | Web Host (arm64) | \`loophole-reh-web-alpine-arm64-${VERSION}.tar.gz\` |
+          | Remote Host (x64) | [loophole-reh-alpine-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-alpine-x64-${VERSION}.tar.gz) |
+          | Web Host (x64) | [loophole-reh-web-alpine-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-alpine-x64-${VERSION}.tar.gz) |
+          | Remote Host (arm64) | [loophole-reh-alpine-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-alpine-arm64-${VERSION}.tar.gz) |
+          | Web Host (arm64) | [loophole-reh-web-alpine-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-alpine-arm64-${VERSION}.tar.gz) |
 
           ---
 
@@ -135,12 +135,12 @@ jobs:
 
           # Create the release as a draft — it goes live once all builds finish
           RELEASE_URL=$(gh release create "$VERSION" \
-            --title "Loophole IDE v${VERSION}" \
+            --title "${VERSION}" \
             --notes-file release_body.md \
             --draft \
             --verify-tag 2>/dev/null || \
           gh release create "$VERSION" \
-            --title "Loophole IDE v${VERSION}" \
+            --title "${VERSION}" \
             --notes-file release_body.md \
             --draft)
 
@@ -196,10 +196,17 @@ jobs:
 
       # Download all Gofile link artifacts from platform builds
       # Each platform downloads to its own subdirectory to avoid filename collisions
-      - name: Download Gofile links — Windows
+      - name: Download Gofile links — Windows x64
         uses: actions/download-artifact@v4
         with:
-          name: gofile-links-windows
+          name: gofile-links-windows-x64
+          path: gofile-links/windows/
+        continue-on-error: true
+
+      - name: Download Gofile links — Windows ARM64
+        uses: actions/download-artifact@v4
+        with:
+          name: gofile-links-windows-arm64
           path: gofile-links/windows/
         continue-on-error: true
 
@@ -262,13 +269,14 @@ jobs:
                   return []
 
           def find_json(directory):
-              """Find the first JSON file in a directory, return [] if missing/empty."""
+              """Find and merge ALL JSON files in a directory, return [] if missing/empty."""
               if not os.path.isdir(directory):
                   return []
-              for fname in os.listdir(directory):
+              merged = []
+              for fname in sorted(os.listdir(directory)):
                   if fname.endswith('.json'):
-                      return read_json(os.path.join(directory, fname))
-              return []
+                      merged.extend(read_json(os.path.join(directory, fname)))
+              return merged
 
           def render_links(items, heading, out):
               if not items:
