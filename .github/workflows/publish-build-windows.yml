@@ -45,7 +45,7 @@ jobs:
     runs-on: windows-2022
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
 
     steps:
       # ── Checkout ──────────────────────────────────────────────────────────────
@@ -315,13 +315,13 @@ jobs:
           SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])" 2>/dev/null)
           if [ -z "$SERVER" ]; then
             echo "::warning::Failed to get Gofile.io server — skipping upload"
-            echo "[]" > gofile-links.json
+            echo "[]" > gofile-links-x64.json
             exit 0
           fi
           echo "Using server: $SERVER"
 
           # Create JSON array to store links
-          echo "[" > gofile-links.json
+          echo "[" > gofile-links-x64.json
           FIRST=true
 
           for FILE in dist/*; do
@@ -345,21 +345,21 @@ jobs:
                 if [ "$FIRST" = true ]; then
                   FIRST=false
                 else
-                  echo "," >> gofile-links.json
+                  echo "," >> gofile-links-x64.json
                 fi
 
-                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"windows-x64\"}" >> gofile-links.json
+                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"windows-x64\"}" >> gofile-links-x64.json
               fi
             fi
           done
 
-          echo "]" >> gofile-links.json
+          echo "]" >> gofile-links-x64.json
 
       - name: Upload Gofile links artifact
         uses: actions/upload-artifact@v4
         with:
           name: gofile-links-windows-x64
-          path: gofile-links.json
+          path: gofile-links-x64.json
           retention-days: 7
 
       # ── Upload to GitHub Release ───────────────────────────────────────────────
@@ -383,7 +383,7 @@ jobs:
     runs-on: windows-2022
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
 
     steps:
       # ── Checkout ──────────────────────────────────────────────────────────────
@@ -653,13 +653,13 @@ jobs:
           SERVER=$(curl -s https://api.gofile.io/servers | python3 -c "import sys,json; data=json.load(sys.stdin); print(data['data']['servers'][0]['name'])" 2>/dev/null)
           if [ -z "$SERVER" ]; then
             echo "::warning::Failed to get Gofile.io server — skipping upload"
-            echo "[]" > gofile-links.json
+            echo "[]" > gofile-links-arm64.json
             exit 0
           fi
           echo "Using server: $SERVER"
 
           # Create JSON array to store links
-          echo "[" > gofile-links.json
+          echo "[" > gofile-links-arm64.json
           FIRST=true
 
           for FILE in dist/*; do
@@ -683,21 +683,21 @@ jobs:
                 if [ "$FIRST" = true ]; then
                   FIRST=false
                 else
-                  echo "," >> gofile-links.json
+                  echo "," >> gofile-links-arm64.json
                 fi
 
-                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"windows-arm64\"}" >> gofile-links.json
+                echo "  {\"filename\": \"$FILENAME\", \"link\": \"$LINK\", \"platform\": \"windows-arm64\"}" >> gofile-links-arm64.json
               fi
             fi
           done
 
-          echo "]" >> gofile-links.json
+          echo "]" >> gofile-links-arm64.json
 
       - name: Upload Gofile links artifact
         uses: actions/upload-artifact@v4
         with:
           name: gofile-links-windows-arm64
-          path: gofile-links.json
+          path: gofile-links-arm64.json
           retention-days: 7
 
       # ── Upload to GitHub Release ───────────────────────────────────────────────
