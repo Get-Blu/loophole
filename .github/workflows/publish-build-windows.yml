@@ -101,6 +101,11 @@ jobs:
           key: publish-win-x64-node-${{ hashFiles('package-lock.json') }}
           restore-keys: publish-win-x64-node-
 
+      - name: Clear stale postinstall state marker
+        shell: pwsh
+        run: |
+          Remove-Item -Path "node_modules/.postinstall-state", "node_modules/.postinstall-state-contents" -ErrorAction SilentlyContinue
+
       # ── Install & compile ──────────────────────────────────────────────────────
       - name: Install node-gyp
         run: npm install -g node-gyp
@@ -433,6 +438,11 @@ jobs:
           path: node_modules
           key: publish-win-arm64-node-${{ hashFiles('package-lock.json') }}
           restore-keys: publish-win-arm64-node-
+
+      - name: Clear stale postinstall state marker
+        shell: pwsh
+        run: |
+          Remove-Item -Path "node_modules/.postinstall-state", "node_modules/.postinstall-state-contents" -ErrorAction SilentlyContinue
 
       # ── Install & compile ──────────────────────────────────────────────────────
       - name: Install node-gyp
