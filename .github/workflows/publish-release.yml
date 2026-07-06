@@ -195,168 +195,137 @@ jobs:
         uses: actions/checkout@v4
 
       # Download all Gofile link artifacts from platform builds
+      # Each platform downloads to its own subdirectory to avoid filename collisions
       - name: Download Gofile links — Windows
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-windows
-          path: gofile-links/
+          path: gofile-links/windows/
         continue-on-error: true
 
       - name: Download Gofile links — macOS x64
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-macos-x64
-          path: gofile-links/
+          path: gofile-links/macos-x64/
         continue-on-error: true
 
       - name: Download Gofile links — macOS ARM64
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-macos-arm64
-          path: gofile-links/
+          path: gofile-links/macos-arm64/
         continue-on-error: true
 
       - name: Download Gofile links — Linux x64
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-linux-x64
-          path: gofile-links/
+          path: gofile-links/linux-x64/
         continue-on-error: true
 
       - name: Download Gofile links — Linux ARM64
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-linux-arm64
-          path: gofile-links/
+          path: gofile-links/linux-arm64/
         continue-on-error: true
 
       - name: Download Gofile links — Alpine x64
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-alpine-x64
-          path: gofile-links/
+          path: gofile-links/alpine-x64/
         continue-on-error: true
 
       - name: Download Gofile links — Alpine ARM64
         uses: actions/download-artifact@v4
         with:
           name: gofile-links-alpine-arm64
-          path: gofile-links/
+          path: gofile-links/alpine-arm64/
         continue-on-error: true
 
       # Generate markdown file with all Gofile download links
       - name: Generate Gofile links markdown
         run: |
-          VERSION="${{ needs.create-release.outputs.version }}"
+          python3 - << 'PYEOF'
+          import json, os, sys
 
-          cat > GOFILE_DOWNLOADS.md << 'HEADER'
-          # Alternative Download Links (Gofile.io)
+          def read_json(path):
+              if not os.path.isfile(path):
+                  return []
+              try:
+                  with open(path) as f:
+                      data = json.load(f)
+                  return data if isinstance(data, list) else []
+              except Exception:
+                  return []
 
-          If you experience slow downloads from GitHub, you can use these alternative Gofile.io links for faster downloads.
+          def find_json(directory):
+              """Find the first JSON file in a directory, return [] if missing/empty."""
+              if not os.path.isdir(directory):
+                  return []
+              for fname in os.listdir(directory):
+                  if fname.endswith('.json'):
+                      return read_json(os.path.join(directory, fname))
+              return []
 
-          ---
-
-          HEADER
-
-          # Function to add links from a JSON file
-          add_links() {
-            local file=$1
-            local title=$2
-
-            if [ ! -f "$file" ]; then
-              return
-            fi
-
-            # Check if file has any links (not just empty array)
-            if [ "$(cat "$file" | python3 -c "import sys, json; data=json.load(sys.stdin); print(len(data))")" -eq 0 ]; then
-              return
-            fi
-
-            echo "" >> GOFILE_DOWNLOADS.md
-            echo "## $title" >> GOFILE_DOWNLOADS.md
-            echo "" >> GOFILE_DOWNLOADS.md
-
-            cat "$file" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
-          import sys, json
-          data = json.load(sys.stdin)
-          for item in data:
-              filename = item.get('filename', 'Unknown')
-              link = item.get('link', '#')
-              print(f"- [{filename}]({link})")
-          PYEOF
-          }
-
-          # Add links by platform
-          add_links "gofile-links/gofile-links.json" "Windows"
-          add_links "gofile-links/gofile-links-x64.json" "macOS Intel (x64)"
-          add_links "gofile-links/gofile-links-arm64.json" "macOS Apple Silicon (ARM64)"
-
-          # Combine Linux links
-          echo "" >> GOFILE_DOWNLOADS.md
-          echo "## Linux" >> GOFILE_DOWNLOADS.md
-          echo "" >> GOFILE_DOWNLOADS.md
-
-          [ -f "gofile-links/gofile-links-x64.json" ] && cat "gofile-links/gofile-links-x64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
-          import sys, json
-          data = json.load(sys.stdin)
-          if data:
-              print("### x64 (AMD64)")
-              print("")
-              for item in data:
+          def render_links(items, heading, out):
+              if not items:
+                  return
+              out.append(f"\n## {heading}\n")
+              for item in items:
                   filename = item.get('filename', 'Unknown')
                   link = item.get('link', '#')
-                  print(f"- [{filename}]({link})")
-              print("")
-          PYEOF
+                  out.append(f"- [{filename}]({link})")
 
-          [ -f "gofile-links/gofile-links-arm64.json" ] && cat "gofile-links/gofile-links-arm64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
-          import sys, json
-          data = json.load(sys.stdin)
-          if data:
-              print("### ARM64")
-              print("")
-              for item in data:
+          def render_links_sub(items, subheading, out):
+              if not items:
+                  return
+              out.append(f"\n### {subheading}\n")
+              for item in items:
                   filename = item.get('filename', 'Unknown')
                   link = item.get('link', '#')
-                  print(f"- [{filename}]({link})")
-              print("")
+                  out.append(f"- [{filename}]({link})")
+
+          lines = [
+              "# Alternative Download Links (Gofile.io)",
+              "",
+              "If you experience slow downloads from GitHub, you can use these alternative Gofile.io links for faster downloads.",
+              "",
+              "---",
+          ]
+
+          render_links(find_json("gofile-links/windows"),    "Windows",                  lines)
+          render_links(find_json("gofile-links/macos-x64"),  "macOS Intel (x64)",        lines)
+          render_links(find_json("gofile-links/macos-arm64"),"macOS Apple Silicon (ARM64)", lines)
+
+          linux_x64    = find_json("gofile-links/linux-x64")
+          linux_arm64  = find_json("gofile-links/linux-arm64")
+          alpine_x64   = find_json("gofile-links/alpine-x64")
+          alpine_arm64 = find_json("gofile-links/alpine-arm64")
+
+          if any([linux_x64, linux_arm64, alpine_x64, alpine_arm64]):
+              lines.append("\n## Linux\n")
+              render_links_sub(linux_x64,   "x64 (AMD64)",      lines)
+              render_links_sub(linux_arm64, "ARM64",            lines)
+              render_links_sub(alpine_x64,  "Alpine x64 (musl)", lines)
+              render_links_sub(alpine_arm64,"Alpine ARM64 (musl)", lines)
+
+          lines += [
+              "",
+              "---",
+              "",
+              "**Note:** Gofile.io links are provided for convenience and faster download speeds. For official releases, please use the GitHub release assets above.",
+          ]
+
+          content = "\n".join(lines) + "\n"
+          with open("GOFILE_DOWNLOADS.md", "w") as f:
+              f.write(content)
+
+          print("Generated GOFILE_DOWNLOADS.md:")
+          print(content)
           PYEOF
-
-          [ -f "gofile-links/gofile-links-alpine-x64.json" ] && cat "gofile-links/gofile-links-alpine-x64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
-          import sys, json
-          data = json.load(sys.stdin)
-          if data:
-              print("### Alpine x64 (musl)")
-              print("")
-              for item in data:
-                  filename = item.get('filename', 'Unknown')
-                  link = item.get('link', '#')
-                  print(f"- [{filename}]({link})")
-              print("")
-          PYEOF
-
-          [ -f "gofile-links/gofile-links-alpine-arm64.json" ] && cat "gofile-links/gofile-links-alpine-arm64.json" | python3 << 'PYEOF' >> GOFILE_DOWNLOADS.md
-          import sys, json
-          data = json.load(sys.stdin)
-          if data:
-              print("### Alpine ARM64 (musl)")
-              print("")
-              for item in data:
-                  filename = item.get('filename', 'Unknown')
-                  link = item.get('link', '#')
-                  print(f"- [{filename}]({link})")
-              print("")
-          PYEOF
-
-          cat >> GOFILE_DOWNLOADS.md << 'FOOTER'
-
-          ---
-
-          **Note:** Gofile.io links are provided for convenience and faster download speeds. For official releases, please use the GitHub release assets above.
-          FOOTER
-
-          echo "Generated GOFILE_DOWNLOADS.md:"
-          cat GOFILE_DOWNLOADS.md
 
       # Upload the Gofile links markdown to the release
       - name: Upload Gofile links to release
