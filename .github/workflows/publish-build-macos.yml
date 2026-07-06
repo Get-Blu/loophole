@@ -50,7 +50,7 @@ jobs:
     runs-on: macos-14        # macos-14 = Apple Silicon host, cross-compiles for x64
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
       VSCODE_ARCH: x64
       VSCODE_QUALITY: stable
 
@@ -377,7 +377,7 @@ jobs:
     runs-on: macos-14        # macos-14 = Apple Silicon arm64
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
       VSCODE_ARCH: arm64
       VSCODE_QUALITY: stable
 
