@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
       VSCODE_ARCH: x64
       VSCODE_QUALITY: stable
 
@@ -574,7 +574,7 @@ jobs:
     runs-on: ubuntu-22.04-arm
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
       VSCODE_ARCH: arm64
       VSCODE_QUALITY: stable
 
@@ -921,7 +921,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
       VSCODE_ARCH: x64
 
     steps:
@@ -1101,7 +1101,7 @@ jobs:
     runs-on: ubuntu-22.04-arm
     environment: publish
     env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
+      VERSION: ${{ inputs.version || needs.resolve-version.outputs.version }}
       VSCODE_ARCH: arm64
 
     steps:
