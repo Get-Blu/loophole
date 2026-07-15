@@ -46,8 +46,8 @@ export const AcceptAllButtonWrapper = ({ text, onClick, className, ...props }: {
 			${className}
 		`}
 		style={{
-			backgroundColor: 'var(--vscode-button-background)',
-			color: 'var(--vscode-button-foreground)',
+			backgroundColor: '#16a34a',
+			color: 'white',
 			border: 'none',
 		}}
 		type='button'
@@ -69,8 +69,8 @@ export const RejectAllButtonWrapper = ({ text, onClick, className, ...props }: {
 			${className}
 		`}
 		style={{
-			backgroundColor: 'var(--vscode-button-secondaryBackground)',
-			color: 'var(--vscode-button-secondaryForeground)',
+			backgroundColor: '#dc2626',
+			color: 'white',
 			border: 'none',
 		}}
 		type='button'
@@ -203,7 +203,8 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
 						</span>
 					</div>
 					<button
-						className="text-xs whitespace-nowrap cursor-pointer flex items-center justify-center gap-1 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] hover:opacity-90 h-full px-3"
+						className="text-xs whitespace-nowrap cursor-pointer flex items-center justify-center gap-1 hover:opacity-90 h-full px-3 text-white"
+						style={{ backgroundColor: '#16a34a', border: 'none' }}
 						onClick={() => commandBarService.goToURIIdx(nextURIIdx)}
 						onKeyDown={(e) => {
 							if (e.key === 'Enter' || e.key === ' ') {
@@ -377,7 +378,3 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
 		</div>
 	)
 }
-
-
-
-
