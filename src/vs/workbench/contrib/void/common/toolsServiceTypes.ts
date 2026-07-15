@@ -27,6 +27,7 @@ export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: '
 	'run_persistent_command': 'terminal',
 	'open_persistent_terminal': 'terminal',
 	'kill_persistent_terminal': 'terminal',
+	// todo_write has no approval - it's instant state management
 }
 
 
@@ -40,6 +41,13 @@ export const toolApprovalTypes = new Set<ToolApprovalType>([
 
 
 
+
+// Todo item type used by the todo_write tool
+export type TodoItem = {
+	content: string;
+	status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+	priority: 'high' | 'medium' | 'low';
+}
 
 // PARAMS OF TOOL CALL
 export type BuiltinToolCallParams = {
@@ -60,6 +68,12 @@ export type BuiltinToolCallParams = {
 	'open_persistent_terminal': { cwd: string | null },
 	'run_persistent_command': { command: string; persistentTerminalId: string },
 	'kill_persistent_terminal': { persistentTerminalId: string },
+	// --- todos ---
+	'todo_write': { todos: TodoItem[] },
+	// --- skills ---
+	'load_skill': { skillName: string },
+	// --- sub-agents ---
+	'task': { description: string, prompt: string, subagentType: string, taskId: string | null, background: boolean },
 }
 
 // RESULT OF TOOL CALL
@@ -81,6 +95,12 @@ export type BuiltinToolResultType = {
 	'run_persistent_command': { result: string; resolveReason: TerminalResolveReason; },
 	'open_persistent_terminal': { persistentTerminalId: string },
 	'kill_persistent_terminal': {},
+	// --- todos ---
+	'todo_write': { todos: TodoItem[] },
+	// --- skills ---
+	'load_skill': { content: string },
+	// --- sub-agents ---
+	'task': { output: string, taskId: string },
 }
 
 

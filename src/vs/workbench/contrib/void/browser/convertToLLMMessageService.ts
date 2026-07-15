@@ -18,6 +18,8 @@ import { URI } from '../../../../base/common/uri.js';
 import { EndOfLinePreference } from '../../../../editor/common/model.js';
 import { ToolName } from '../common/toolsServiceTypes.js';
 import { IMCPService } from '../common/mcpService.js';
+import { IChatThreadService } from './chatThreadService.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
 
 export const EMPTY_MESSAGE = '(empty message)'
 
@@ -540,11 +542,66 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		@ILoopholeSettingsService private readonly voidSettingsService: ILoopholeSettingsService,
 		@ILoopholeModelService private readonly voidModelService: ILoopholeModelService,
 		@IMCPService private readonly mcpService: IMCPService,
+		@IChatThreadService private readonly chatThreadService: IChatThreadService,
+		@IFileService private readonly fileService: IFileService,
 	) {
 		super()
 	}
 
 	// Read .loopholerules files from workspace folders
+	// Scan .loophole/skills/ for SKILL.md files and extract name + description from frontmatter
+	private async _discoverSkills(): Promise<{ name: string, description: string }[]> {
+		try {
+			const workspaceFolders = this.workspaceContextService.getWorkspace().folders
+			if (!workspaceFolders.length) return []
+			const root = workspaceFolders[0].uri
+			const skillsDir = URI.joinPath(root, '.loophole', 'skills')
+
+			const dir = await this.fileService.resolve(skillsDir).catch(() => null)
+			if (!dir?.children) return []
+
+			const skills: { name: string, description: string }[] = []
+
+			for (const entry of dir.children) {
+				// Support both .loophole/skills/my-skill/SKILL.md and .loophole/skills/my-skill.md
+				let skillFile: URI | null = null
+				let skillName = ''
+
+				if (entry.isDirectory) {
+					skillFile = URI.joinPath(entry.resource, 'SKILL.md')
+					skillName = entry.name
+				} else if (entry.name.endsWith('.md')) {
+					skillFile = entry.resource
+					skillName = entry.name.replace(/\.md$/, '')
+				}
+
+				if (!skillFile || !skillName) continue
+
+				try {
+					const content = (await this.fileService.readFile(skillFile)).value.toString()
+					// Extract description from YAML frontmatter: description: "..."
+					const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/)
+					let description = `Custom skill: ${skillName}`
+					if (frontmatterMatch) {
+						const descMatch = frontmatterMatch[1].match(/description:\s*["']?(.+?)["']?\s*$/m)
+						if (descMatch) description = descMatch[1].trim()
+					} else {
+						// Fall back to first non-empty line after the title
+						const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#'))
+						if (lines[0]) description = lines[0].trim().slice(0, 120)
+					}
+					skills.push({ name: skillName, description })
+				} catch {
+					// Skip unreadable skill files
+				}
+			}
+
+			return skills
+		} catch {
+			return []
+		}
+	}
+
 	private _getLoopholeRulesFileContents(): string {
 		try {
 			const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
@@ -592,7 +649,22 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		const mcpTools = this.mcpService.getMCPTools()
 
 		const persistentTerminalIDs = this.terminalToolService.listPersistentTerminalIds()
-		const systemMessage = chat_systemMessage({ workspaceFolders, openedURIs, directoryStr, activeURI, persistentTerminalIDs, chatMode, mcpTools, includeXMLToolDefinitions })
+
+		// session memory (async — load last 3 digests)
+		const memoryBlock = chatMode === 'agent' ? await this.chatThreadService.readSessionMemoryBlock() : null
+
+		// context compaction (if conversation is very long)
+		const currentThreadId = this.chatThreadService.state.currentThreadId
+		const compactionSummary = currentThreadId ? this.chatThreadService.getCompactionSummary(currentThreadId) : null
+
+		// skills discovery — scan .loophole/skills/ for SKILL.md files
+		const availableSkills = chatMode === 'agent' ? await this._discoverSkills() : null
+
+		// get provider for per-model prompt selection
+		const modelSelection = this.voidSettingsService.state.modelSelectionOfFeature['Chat']
+		const providerName = modelSelection?.providerName ?? null
+
+		const systemMessage = chat_systemMessage({ workspaceFolders, openedURIs, directoryStr, activeURI, persistentTerminalIDs, chatMode, mcpTools, includeXMLToolDefinitions, memoryBlock, compactionSummary, availableSkills, providerName })
 		return systemMessage
 	}
 

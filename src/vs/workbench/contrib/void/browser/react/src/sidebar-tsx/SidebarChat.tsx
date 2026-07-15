@@ -24,7 +24,7 @@ import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
 import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2 } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
-import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes } from '../../../../common/toolsServiceTypes.js';
+import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes, TodoItem } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
 import { IsRunningType } from '../../../chatThreadService.js';
 import { acceptAllBg, acceptBorder, buttonFontSize, buttonTextColor, rejectAllBg, rejectBg, rejectBorder } from '../../../../common/helpers/colors.js';
@@ -3172,6 +3172,79 @@ const EditToolSoFar = ({ toolCallSoFar, }: { toolCallSoFar: RawToolCallObj }) =>
 }
 
 
+// ===== TODO PANEL =====
+const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
+	const [isCollapsed, setIsCollapsed] = useState(false)
+
+	if (todos.length === 0) return null
+
+	const pending = todos.filter(t => t.status === 'pending')
+	const inProgress = todos.filter(t => t.status === 'in_progress')
+	const completed = todos.filter(t => t.status === 'completed')
+	const cancelled = todos.filter(t => t.status === 'cancelled')
+
+	const priorityColor = (p: string) => p === 'high' ? 'text-red-400' : p === 'medium' ? 'text-yellow-400' : 'text-loophole-fg-3'
+
+	const statusIcon = (status: string) => {
+		if (status === 'completed') return <Check size={12} className='text-green-400 flex-shrink-0' />
+		if (status === 'in_progress') return <div className='w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0' />
+		if (status === 'cancelled') return <X size={12} className='text-loophole-fg-3 flex-shrink-0' />
+		return <div className='w-3 h-3 rounded-full border border-loophole-fg-3 flex-shrink-0' />
+	}
+
+	const progressCount = completed.length
+	const totalCount = todos.filter(t => t.status !== 'cancelled').length
+	const progressPct = totalCount > 0 ? Math.round((progressCount / totalCount) * 100) : 0
+
+	return (
+		<div className='mx-2 mb-2 rounded border border-loophole-border-2 bg-loophole-bg-2 overflow-hidden text-xs'>
+			{/* Header */}
+			<button
+				onClick={() => setIsCollapsed(c => !c)}
+				className='w-full flex items-center justify-between px-3 py-2 hover:bg-loophole-bg-1 transition-colors'
+			>
+				<div className='flex items-center gap-2'>
+					<span className='font-medium text-loophole-fg-1'>Tasks</span>
+					{inProgress.length > 0 && (
+						<span className='px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]'>
+							{inProgress.length} active
+						</span>
+					)}
+					<span className='text-loophole-fg-3'>{progressCount}/{totalCount}</span>
+				</div>
+				<div className='flex items-center gap-2'>
+					{/* Progress bar */}
+					<div className='w-16 h-1 rounded-full bg-loophole-border-2 overflow-hidden'>
+						<div
+							className='h-full rounded-full bg-blue-400 transition-all duration-300'
+							style={{ width: `${progressPct}%` }}
+						/>
+					</div>
+					<ChevronRight size={12} className={`text-loophole-fg-3 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-90'}`} />
+				</div>
+			</button>
+
+			{/* Task list */}
+			{!isCollapsed && (
+				<div className='border-t border-loophole-border-2 divide-y divide-loophole-border-2/50'>
+					{todos.map((todo, i) => (
+						<div
+							key={i}
+							className={`flex items-start gap-2 px-3 py-1.5 ${todo.status === 'completed' || todo.status === 'cancelled' ? 'opacity-50' : ''}`}
+						>
+							<div className='mt-0.5'>{statusIcon(todo.status)}</div>
+							<span className={`flex-1 leading-tight ${todo.status === 'completed' ? 'line-through text-loophole-fg-3' : 'text-loophole-fg-1'}`}>
+								{todo.content}
+							</span>
+							<Flag size={10} className={`mt-0.5 flex-shrink-0 ${priorityColor(todo.priority)}`} />
+						</div>
+					))}
+				</div>
+			)}
+		</div>
+	)
+}
+
 export const SidebarChat = () => {
 	const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
 	const textAreaFnsRef = useRef<TextAreaFns | null>(null)
@@ -3505,11 +3578,17 @@ export const SidebarChat = () => {
 	// 		</ErrorBoundary>
 	// 	</div>
 	// </div>
+	const todos = chatThreadsState.allThreads[chatThreadsState.currentThreadId]?.todos ?? []
+
 	const threadPageContent = <div
 		ref={sidebarRef}
 		className='w-full h-full flex flex-col overflow-hidden'
 	>
-
+		{todos.length > 0 && (
+			<ErrorBoundary>
+				<TodoPanel todos={todos} />
+			</ErrorBoundary>
+		)}
 		<ErrorBoundary>
 			{messagesHTML}
 		</ErrorBoundary>

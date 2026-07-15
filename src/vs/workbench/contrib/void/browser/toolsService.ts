@@ -8,7 +8,11 @@ import { QueryBuilder } from '../../../services/search/common/queryBuilder.js'
 import { ISearchService } from '../../../services/search/common/search.js'
 import { IEditCodeService } from './editCodeServiceInterface.js'
 import { ITerminalToolService } from './terminalToolService.js'
-import { LintErrorItem, BuiltinToolCallParams, BuiltinToolResultType, BuiltinToolName } from '../common/toolsServiceTypes.js'
+import { LintErrorItem, BuiltinToolCallParams, BuiltinToolResultType, BuiltinToolName, TodoItem } from '../common/toolsServiceTypes.js'
+import { IChatThreadService } from './chatThreadService.js'
+import { ILLMMessageService } from '../common/sendLLMMessageService.js'
+import { IConvertToLLMMessageService } from './convertToLLMMessageService.js'
+import { VSBuffer } from '../../../../base/common/buffer.js'
 import { ILoopholeModelService } from '../common/voidModelService.js'
 import { EndOfLinePreference } from '../../../../editor/common/model.js'
 import { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
@@ -163,6 +167,9 @@ export class ToolsService implements IToolsService {
 		@IDirectoryStrService private readonly directoryStrService: IDirectoryStrService,
 		@IMarkerService private readonly markerService: IMarkerService,
 		@ILoopholeSettingsService private readonly loopholeSettingsService: ILoopholeSettingsService,
+		@IChatThreadService private readonly chatThreadService: IChatThreadService,
+		@ILLMMessageService private readonly llmMessageService: ILLMMessageService,
+		@IConvertToLLMMessageService private readonly convertToLLMMessageService: IConvertToLLMMessageService,
 	) {
 		const queryBuilder = instantiationService.createInstance(QueryBuilder);
 
@@ -298,6 +305,35 @@ export class ToolsService implements IToolsService {
 				const { persistent_terminal_id: terminalIdUnknown } = params;
 				const persistentTerminalId = validateProposedTerminalId(terminalIdUnknown);
 				return { persistentTerminalId };
+			},
+
+			todo_write: (params: RawToolParamsObj) => {
+				const { todos: todosUnknown } = params;
+				if (!Array.isArray(todosUnknown)) throw new Error('todos must be an array');
+				const todos: TodoItem[] = todosUnknown.map((item: any, i: number) => {
+					if (typeof item !== 'object' || item === null) throw new Error(`todos[${i}] must be an object`);
+					const content = typeof item.content === 'string' ? item.content : String(item.content ?? '');
+					const status = ['pending', 'in_progress', 'completed', 'cancelled'].includes(item.status) ? item.status : 'pending';
+					const priority = ['high', 'medium', 'low'].includes(item.priority) ? item.priority : 'medium';
+					return { content, status, priority } satisfies TodoItem;
+				});
+				return { todos };
+			},
+
+			load_skill: (params: RawToolParamsObj) => {
+				const skillName = typeof params.skill_name === 'string' ? params.skill_name.trim() : ''
+				if (!skillName) throw new Error('skill_name is required')
+				return { skillName }
+			},
+
+			task: (params: RawToolParamsObj) => {
+				const description = typeof params.description === 'string' ? params.description.trim() : ''
+				const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : ''
+				const subagentType = typeof params.subagent_type === 'string' ? params.subagent_type.trim() : 'general'
+				const taskId = typeof params.task_id === 'string' && params.task_id ? params.task_id : null
+				const background = params.background === true
+				if (!prompt) throw new Error('prompt is required for task tool')
+				return { description, prompt, subagentType, taskId, background }
 			},
 
 		}
@@ -471,6 +507,90 @@ export class ToolsService implements IToolsService {
 				await this.terminalToolService.killPersistentTerminal(persistentTerminalId)
 				return { result: {} }
 			},
+			todo_write: async ({ todos }) => {
+				const threadId = this.chatThreadService.state.currentThreadId
+				this.chatThreadService.setTodosForThread(threadId, todos)
+				return { result: { todos } }
+			},
+
+			load_skill: async ({ skillName }) => {
+				// Look for .loophole/skills/{skillName}/SKILL.md or .loophole/skills/{skillName}.md
+				const workspaceFolders = workspaceContextService.getWorkspace().folders
+				if (!workspaceFolders.length) throw new Error('No workspace folder open')
+				const root = workspaceFolders[0].uri
+
+				const candidates = [
+					URI.joinPath(root, '.loophole', 'skills', skillName, 'SKILL.md'),
+					URI.joinPath(root, '.loophole', 'skills', `${skillName}.md`),
+					URI.joinPath(root, '.loopholes', 'skills', skillName, 'SKILL.md'),
+				]
+
+				for (const candidate of candidates) {
+					try {
+						const file = await fileService.readFile(candidate)
+						const content = file.value.toString()
+						return { result: { content } }
+					} catch {
+						// try next candidate
+					}
+				}
+				throw new Error(`Skill "${skillName}" not found. Create it at .loophole/skills/${skillName}/SKILL.md`)
+			},
+
+			task: async ({ description, prompt, subagentType, taskId, background }) => {
+				const isResearcher = subagentType === 'researcher'
+				const subagentChatMode = isResearcher ? 'gather' : 'agent'
+
+				const { messages, separateSystemMessage } = await this.convertToLLMMessageService.prepareLLMChatMessages({
+					chatMessages: [{ role: 'user', content: prompt }] as any,
+					modelSelection: undefined,
+					chatMode: subagentChatMode,
+				})
+
+				const modelSelection = this.loopholeSettingsService.state.modelSelectionOfFeature['chat']
+				const resultTaskId = taskId ?? `task-${Date.now()}`
+				const currentThreadId = this.chatThreadService.state.currentThreadId
+
+				const runAgent = (): Promise<string> => new Promise<string>((resolve, reject) => {
+					const token = this.llmMessageService.sendLLMMessage({
+						messagesType: 'chatMessages',
+						chatMode: subagentChatMode,
+						messages,
+						modelSelection,
+						modelSelectionOptions: undefined,
+						overridesOfModel: undefined,
+						separateSystemMessage,
+						logging: { loggingName: `SubAgent - ${description}`, loggingExtras: { subagentType, taskId: resultTaskId, background } },
+						onText: () => {},
+						onFinalMessage: ({ fullText }) => resolve(fullText || '(no output)'),
+						onError: ({ message }) => reject(new Error(message)),
+						onAbort: () => reject(new Error('Sub-agent was aborted')),
+					})
+					if (!token) reject(new Error('Failed to start sub-agent'))
+				})
+
+				if (background) {
+					// Fire and forget — inject result into thread when done
+					runAgent()
+						.then(output => {
+							this.chatThreadService.injectBackgroundTaskResult(currentThreadId, resultTaskId, description, output, 'completed')
+						})
+						.catch(err => {
+							this.chatThreadService.injectBackgroundTaskResult(currentThreadId, resultTaskId, description, String(err?.message ?? err), 'error')
+						})
+
+					return {
+						result: {
+							output: `Background task started. You will be notified automatically when it finishes.\nDo not duplicate its work. Continue with non-overlapping work, or stop if there is nothing else useful to do.`,
+							taskId: resultTaskId,
+						}
+					}
+				}
+
+				// Foreground — wait for result
+				const output = await runAgent()
+				return { result: { output, taskId: resultTaskId } }
+			},
 		}
 
 
@@ -573,6 +693,25 @@ export class ToolsService implements IToolsService {
 			},
 			kill_persistent_terminal: (params, _result) => {
 				return `Successfully closed terminal "${params.persistentTerminalId}".`;
+			},
+			todo_write: (_params, result) => {
+				const { todos } = result;
+				const pending = todos.filter(t => t.status === 'pending').length;
+				const inProgress = todos.filter(t => t.status === 'in_progress').length;
+				const completed = todos.filter(t => t.status === 'completed').length;
+				const lines = todos.map((t, i) => {
+					const icon = t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '▶' : t.status === 'cancelled' ? '✗' : '○';
+					return `${icon} [${t.priority}] ${t.content}`;
+				});
+				return `Todo list updated (${inProgress} in progress, ${pending} pending, ${completed} completed):\n${lines.join('\n')}`;
+			},
+
+			load_skill: (_params, result) => {
+				return `<skill_content>\n${result.content}\n</skill_content>`
+			},
+
+			task: ({ description }, result) => {
+				return `<task id="${result.taskId}" state="completed">\n<summary>Sub-agent completed: ${description}</summary>\n<task_result>\n${result.output}\n</task_result>\n</task>`
 			},
 		}
 

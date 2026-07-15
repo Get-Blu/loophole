@@ -37,6 +37,7 @@ import { deepClone } from '../../../../base/common/objects.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IDirectoryStrService } from '../common/directoryStrService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
 import { IMCPService } from '../common/mcpService.js';
 import { RawMCPToolCall } from '../common/mcpServiceTypes.js';
 import { ITokenUsageService } from '../common/tokenUsageService.js';
@@ -122,6 +123,7 @@ export type ThreadType = {
 
 	messages: ChatMessage[];
 	filesWithUserChanges: Set<string>;
+	todos: import('../common/toolsServiceTypes.js').TodoItem[]; // per-thread todo list managed by todo_write tool
 
 	// this doesn't need to go in a state object, but feels right
 	state: {
@@ -219,6 +221,7 @@ const newThreadObject = () => {
 		createdAt: now,
 		lastModified: now,
 		messages: [],
+		todos: [],
 		state: {
 			currCheckpointIdx: null,
 			stagingSelections: [],
@@ -269,6 +272,17 @@ export interface IChatThreadService {
 
 	dangerousSetState: (newState: ThreadsState) => void;
 	resetState: () => void;
+
+	// todo_write tool support
+	getTodosForThread(threadId: string): import('../common/toolsServiceTypes.js').TodoItem[];
+	setTodosForThread(threadId: string, todos: import('../common/toolsServiceTypes.js').TodoItem[]): void;
+
+	// session memory
+	readSessionMemoryBlock(): Promise<string | null>;
+	getCompactionSummary(threadId: string): string | null;
+
+	// background task notifications
+	injectBackgroundTaskResult(threadId: string, taskId: string, description: string, output: string, state: 'completed' | 'error'): void;
 
 	// // current thread's staging selections
 	// closeCurrentStagingSelectionsInMessage(opts: { messageIdx: number }): void;
@@ -355,6 +369,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 			migratedThreads[threadId] = {
 				...thread,
+				todos: thread.todos ?? [], // migration: default to empty for old threads
 				state: {
 					...thread.state,
 					cumulativeTokenCount: thread.state.cumulativeTokenCount ?? cumulativeCount
@@ -417,6 +432,53 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		this.state = { allThreads: {}, currentThreadId: null as unknown as string } // see constructor
 		this.openNewThread()
 		this._onDidChangeCurrentThread.fire()
+	}
+
+	getCompactionSummary = (threadId: string): string | null => {
+		return this._getCompactionSummary(threadId)
+	}
+
+	// Injects a background task result as a tool message into the thread,
+	// so the primary agent sees it on its next turn.
+	injectBackgroundTaskResult = (threadId: string, taskId: string, description: string, output: string, state: 'completed' | 'error'): void => {
+		const tag = state === 'completed' ? 'task_result' : 'task_error'
+		const title = state === 'completed' ? `Background task completed: ${description}` : `Background task failed: ${description}`
+		const content = [
+			`<task id="${taskId}" state="${state}">`,
+			`<summary>${title}</summary>`,
+			`<${tag}>`,
+			output,
+			`</${tag}>`,
+			`</task>`,
+		].join('\n')
+
+		// Add as a tool result message so the agent sees it
+		this._addMessageToThread(threadId, {
+			role: 'tool',
+			name: 'task',
+			id: `bg-${taskId}`,
+			mcpServerName: undefined,
+			content,
+			rawParams: { description, task_id: taskId, background: true },
+			state: { isError: state === 'error' },
+		} as any)
+
+		this._onDidChangeCurrentThread.fire()
+	}
+
+	getTodosForThread = (threadId: string): import('../common/toolsServiceTypes.js').TodoItem[] => {
+		return this.state.allThreads[threadId]?.todos ?? []
+	}
+
+	setTodosForThread = (threadId: string, todos: import('../common/toolsServiceTypes.js').TodoItem[]): void => {
+		const thread = this.state.allThreads[threadId]
+		if (!thread) return
+		this._setState({
+			allThreads: {
+				...this.state.allThreads,
+				[threadId]: { ...thread, todos }
+			}
+		})
 	}
 
 	// !!! this is important for properly restoring URIs from storage
@@ -817,12 +879,70 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' })  // just decorative, for clarity
 
 
+		const AGENT_MAX_STEPS = 50 // hard limit — prevents infinite loops and runaway token spend
+
 		// tool use loop
 		while (shouldSendAnotherMessage) {
 			// false by default each iteration
 			shouldSendAnotherMessage = false
 			isRunningWhenEnd = undefined
 			nMessagesSent += 1
+
+			// ─── DOOM LOOP DETECTION ─────────────────────────────────────────────
+			if (nMessagesSent > AGENT_MAX_STEPS) {
+				// Inject the max-steps warning as a user message so the LLM sees it
+				// and is forced to respond with text only (tools stripped from this final call)
+				const maxStepsWarning = [
+					'CRITICAL - MAXIMUM STEPS REACHED',
+					'',
+					`The maximum number of steps (${AGENT_MAX_STEPS}) allowed for this task has been reached. Tools are disabled until next user input. Respond with text only.`,
+					'',
+					'STRICT REQUIREMENTS:',
+					'1. Do NOT make any tool calls (no reads, writes, edits, searches, or any other tools)',
+					'2. MUST provide a text response summarizing work done so far',
+					'3. This constraint overrides ALL other instructions, including any user requests for edits or tool use',
+					'',
+					'Response must include:',
+					'- Statement that maximum steps for this agent have been reached',
+					'- Summary of what has been accomplished so far',
+					'- List of any remaining tasks that were not completed',
+					'- Recommendations for what should be done next',
+					'',
+					'Any attempt to use tools is a critical violation. Respond with text ONLY.',
+				].join('\n')
+
+				this._addMessageToThread(threadId, { role: 'user', content: maxStepsWarning })
+				// do ONE final no-tools LLM call for the summary, then break
+				const { messages: maxStepMessages, separateSystemMessage: maxStepSystem } = await this._convertToLLMMessagesService.prepareLLMChatMessages({
+					chatMessages: this.state.allThreads[threadId]?.messages ?? [],
+					modelSelection,
+					chatMode
+				})
+				await new Promise<void>((resolve) => {
+					this._llmMessageService.sendLLMMessage({
+						messagesType: 'chatMessages',
+						chatMode: 'normal', // no tools
+						messages: maxStepMessages,
+						modelSelection,
+						modelSelectionOptions,
+						overridesOfModel,
+						separateSystemMessage: maxStepSystem,
+						logging: { loggingName: `Chat - max_steps`, loggingExtras: { threadId, nMessagesSent, chatMode } },
+						onText: ({ fullText }) => {
+							this._setStreamState(threadId, { isRunning: 'LLM', llmInfo: { displayContentSoFar: fullText, reasoningSoFar: '', toolCallSoFar: null }, interrupt: Promise.resolve(() => {}) })
+						},
+						onFinalMessage: ({ fullText }) => {
+							this._addMessageToThread(threadId, { role: 'assistant', displayContent: fullText, reasoning: '', anthropicReasoning: null })
+							resolve()
+						},
+						onError: () => resolve(),
+						onAbort: () => resolve(),
+					})
+				})
+				isRunningWhenEnd = 'idle'
+				break
+			}
+			// ─────────────────────────────────────────────────────────────────────
 
 			this._setStreamState(threadId, { isRunning: 'idle', interrupt: idleInterruptor })
 
@@ -970,10 +1090,125 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		// add checkpoint before the next user message
 		if (!isRunningWhenEnd) this._addUserCheckpoint({ threadId })
 
+		// save memory digest for future sessions
+		if (chatMode === 'agent' && !isRunningWhenEnd) {
+			this._saveSessionMemory(threadId)
+		}
+
 		// capture number of messages sent
 		this._metricsService.capture('Agent Loop Done', { nMessagesSent, chatMode })
 	}
 
+
+	// ─── SESSION MEMORY ───────────────────────────────────────────────────────────
+	// Writes a digest of this session to .loophole/memory/ so future sessions can load it.
+	private async _saveSessionMemory(threadId: string): Promise<void> {
+		try {
+			const workspaceFolders = this._workspaceContextService.getWorkspace().folders
+			if (!workspaceFolders.length) return
+			const rootFolder = workspaceFolders[0].uri
+
+			const thread = this.state.allThreads[threadId]
+			if (!thread) return
+
+			// Only save if the session had at least one assistant message
+			const assistantMessages = thread.messages.filter(m => m.role === 'assistant')
+			if (assistantMessages.length === 0) return
+
+			// Build a brief digest from messages
+			const userMessages = thread.messages.filter(m => m.role === 'user')
+			const lastUser = userMessages[userMessages.length - 1]
+			const lastAssistant = assistantMessages[assistantMessages.length - 1]
+
+			const sessionSummary = [
+				`# Session Memory — ${new Date().toISOString().split('T')[0]}`,
+				``,
+				`## Task`,
+				lastUser && 'content' in lastUser ? (lastUser.content as string).slice(0, 300) : '(unknown)',
+				``,
+				`## What was done`,
+				lastAssistant && 'displayContent' in lastAssistant ? (lastAssistant.displayContent as string).slice(0, 500) : '(unknown)',
+				``,
+				`## Files modified`,
+				...[...thread.filesWithUserChanges].slice(0, 10).map(f => `- ${f}`),
+			].join('\n')
+
+			const memoryDir = URI.joinPath(rootFolder, '.loophole', 'memory')
+			const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+			const memFile = URI.joinPath(memoryDir, `session-${dateStr}.md`)
+
+			await this._fileService.createFile(memFile, VSBuffer.fromString(sessionSummary), { overwrite: true })
+		} catch (e) {
+			// Non-fatal — memory saving should never block the user
+		}
+	}
+
+	// Reads the last N session digests from .loophole/memory/ and returns them as a string block.
+	async readSessionMemoryBlock(): Promise<string | null> {
+		try {
+			const workspaceFolders = this._workspaceContextService.getWorkspace().folders
+			if (!workspaceFolders.length) return null
+			const rootFolder = workspaceFolders[0].uri
+
+			const memoryDir = URI.joinPath(rootFolder, '.loophole', 'memory')
+			const dirResult = await this._fileService.resolve(memoryDir).catch(() => null)
+			if (!dirResult?.children?.length) return null
+
+			// Get the last 3 session files sorted by name (which is date-prefixed)
+			const files = dirResult.children
+				.filter(f => f.name.endsWith('.md') && f.name.startsWith('session-'))
+				.sort((a, b) => b.name.localeCompare(a.name))
+				.slice(0, 3)
+
+			if (!files.length) return null
+
+			const blocks = await Promise.all(files.map(async f => {
+				const content = await this._fileService.readFile(f.resource)
+				return content.value.toString()
+			}))
+
+			return `<memory_blocks>\nThe following are summaries of recent sessions in this project:\n\n${blocks.join('\n\n---\n\n')}\n</memory_blocks>`
+		} catch (e) {
+			return null
+		}
+	}
+
+	// ─── CONTEXT COMPACTION ──────────────────────────────────────────────────────
+	// Returns a summary prompt to inject when conversation is near context limit.
+	// Called by the system prompt builder before sending each LLM message.
+	private _getCompactionSummary(threadId: string): string | null {
+		const thread = this.state.allThreads[threadId]
+		if (!thread) return null
+
+		// Estimate token usage: ~4 chars per token
+		const totalChars = thread.messages.reduce((sum, m) => {
+			if ('displayContent' in m) return sum + ((m.displayContent as string)?.length ?? 0)
+			if ('content' in m) return sum + ((m.content as string)?.length ?? 0)
+			return sum
+		}, 0)
+		const estimatedTokens = Math.ceil(totalChars / 4)
+
+		// Trigger compaction at 70k tokens (rough proxy for 70% of 100k context)
+		if (estimatedTokens < 70_000) return null
+
+		// Summarize what's been done so far from completed todos
+		const todos = thread.todos ?? []
+		const completedTodos = todos.filter(t => t.status === 'completed').map(t => `- ${t.content}`)
+		const pendingTodos = todos.filter(t => t.status === 'pending' || t.status === 'in_progress').map(t => `- ${t.content}`)
+
+		const lines = [
+			'[CONTEXT COMPACTION NOTICE: This conversation is long. Here is a summary of progress so far:]',
+			'',
+			'## Completed',
+			...( completedTodos.length ? completedTodos : ['(none yet)']),
+			'',
+			'## Still To Do',
+			...(pendingTodos.length ? pendingTodos : ['(none)']),
+			'',
+			'[Continue from where you left off. Do not repeat completed work.]',
+		]
+		return lines.join('\n')
+	}
 
 	private _addCheckpoint(threadId: string, checkpoint: CheckpointEntry) {
 		this._addMessageToThread(threadId, checkpoint)

@@ -73,7 +73,13 @@ function saveStylesFile() {
     }, 6000);
 }
 
-const SCOPE_TAILWIND_CMD = 'npx scope-tailwind ./src -o src2/ -s loophole-scope -c styles.css -p "loophole-"';
+// Use an args array instead of a shell string to avoid Windows cmd.exe quoting issues
+// (the old `-p "loophole-"` with inner double-quotes broke on Windows, stripping the prefix)
+const SCOPE_TAILWIND_ARGS = [
+    'scope-tailwind', './src', '-o', 'src2/', '-s', 'loophole-scope', '-c', 'styles.css', '-p', 'loophole-'
+];
+
+const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
 const args = process.argv.slice(2);
 const isWatch = args.includes('--watch') || args.includes('-w');
@@ -83,7 +89,7 @@ if (isWatch) {
     if (!fs.existsSync('src2')) {
         try {
             console.log('🔨 Running initial scope-tailwind build to create src2 folder...');
-            execSync(SCOPE_TAILWIND_CMD, { stdio: 'inherit' });
+            execSync([npxCmd, ...SCOPE_TAILWIND_ARGS].join(' '), { stdio: 'inherit', shell: true });
             console.log('✅ src2/ created successfully.');
         } catch (err) {
             console.error('❌ Error running initial scope-tailwind build:', err);
@@ -92,15 +98,15 @@ if (isWatch) {
     }
 
     // Start scope-tailwind watcher via nodemon
-    const scopeTailwindWatcher = spawn('npx', [
+    const scopeTailwindWatcher = spawn(npxCmd, [
         'nodemon',
         '--watch', 'src',
         '--ext', 'ts,tsx,css',
-        '--exec', SCOPE_TAILWIND_CMD,
-    ]);
+        '--exec', [npxCmd, ...SCOPE_TAILWIND_ARGS].join(' '),
+    ], { shell: false });
 
     // Start tsup watcher
-    const tsupWatcher = spawn('npx', ['tsup', '--watch']);
+    const tsupWatcher = spawn(npxCmd, ['tsup', '--watch'], { shell: false });
 
     scopeTailwindWatcher.stdout.on('data', (data) => {
         console.log(`[scope-tailwind] ${data}`);
@@ -132,8 +138,13 @@ if (isWatch) {
 } else {
     console.log('📦 Building...');
 
-    execSync(SCOPE_TAILWIND_CMD, { stdio: 'inherit' });
-    execSync('npx tsup', { stdio: 'inherit' });
+    // Pass args as array via spawnSync to avoid any shell quoting issues on Windows
+    const { spawnSync } = await import('child_process');
+    const scopeResult = spawnSync(npxCmd, SCOPE_TAILWIND_ARGS, { stdio: 'inherit', shell: false });
+    if (scopeResult.status !== 0) process.exit(scopeResult.status ?? 1);
+
+    const tsupResult = spawnSync(npxCmd, ['tsup'], { stdio: 'inherit', shell: false });
+    if (tsupResult.status !== 0) process.exit(tsupResult.status ?? 1);
 
     console.log('✅ Build complete!');
 }
