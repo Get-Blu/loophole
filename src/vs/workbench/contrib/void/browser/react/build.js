@@ -80,6 +80,7 @@ const SCOPE_TAILWIND_ARGS = [
 ];
 
 const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+const spawnOpts = { stdio: 'inherit', shell: process.platform === 'win32' };
 
 const args = process.argv.slice(2);
 const isWatch = args.includes('--watch') || args.includes('-w');
@@ -103,10 +104,10 @@ if (isWatch) {
         '--watch', 'src',
         '--ext', 'ts,tsx,css',
         '--exec', [npxCmd, ...SCOPE_TAILWIND_ARGS].join(' '),
-    ], { shell: false });
+    ], { shell: process.platform === 'win32' });
 
     // Start tsup watcher
-    const tsupWatcher = spawn(npxCmd, ['tsup', '--watch'], { shell: false });
+    const tsupWatcher = spawn(npxCmd, ['tsup', '--watch'], { shell: process.platform === 'win32' });
 
     scopeTailwindWatcher.stdout.on('data', (data) => {
         console.log(`[scope-tailwind] ${data}`);
@@ -140,10 +141,10 @@ if (isWatch) {
 
     // Pass args as array via spawnSync to avoid any shell quoting issues on Windows
     const { spawnSync } = await import('child_process');
-    const scopeResult = spawnSync(npxCmd, SCOPE_TAILWIND_ARGS, { stdio: 'inherit', shell: false });
+    const scopeResult = spawnSync(npxCmd, SCOPE_TAILWIND_ARGS, spawnOpts);
     if (scopeResult.status !== 0) process.exit(scopeResult.status ?? 1);
 
-    const tsupResult = spawnSync(npxCmd, ['tsup'], { stdio: 'inherit', shell: false });
+    const tsupResult = spawnSync(npxCmd, ['tsup'], spawnOpts);
     if (tsupResult.status !== 0) process.exit(tsupResult.status ?? 1);
 
     console.log('✅ Build complete!');
