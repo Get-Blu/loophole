@@ -9,10 +9,9 @@ import { ISearchService } from '../../../services/search/common/search.js'
 import { IEditCodeService } from './editCodeServiceInterface.js'
 import { ITerminalToolService } from './terminalToolService.js'
 import { LintErrorItem, BuiltinToolCallParams, BuiltinToolResultType, BuiltinToolName, TodoItem } from '../common/toolsServiceTypes.js'
-import { IChatThreadService } from './chatThreadService.js'
 import { ILLMMessageService } from '../common/sendLLMMessageService.js'
-import { IConvertToLLMMessageService } from './convertToLLMMessageService.js'
-import { VSBuffer } from '../../../../base/common/buffer.js'
+// IChatThreadService is imported from its types file to avoid circular dependency
+import { IChatThreadService } from './chatThreadService.js'
 import { ILoopholeModelService } from '../common/voidModelService.js'
 import { EndOfLinePreference } from '../../../../editor/common/model.js'
 import { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
@@ -169,7 +168,6 @@ export class ToolsService implements IToolsService {
 		@ILoopholeSettingsService private readonly loopholeSettingsService: ILoopholeSettingsService,
 		@IChatThreadService private readonly chatThreadService: IChatThreadService,
 		@ILLMMessageService private readonly llmMessageService: ILLMMessageService,
-		@IConvertToLLMMessageService private readonly convertToLLMMessageService: IConvertToLLMMessageService,
 	) {
 		const queryBuilder = instantiationService.createInstance(QueryBuilder);
 
@@ -331,7 +329,7 @@ export class ToolsService implements IToolsService {
 				const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : ''
 				const subagentType = typeof params.subagent_type === 'string' ? params.subagent_type.trim() : 'general'
 				const taskId = typeof params.task_id === 'string' && params.task_id ? params.task_id : null
-				const background = params.background === true
+				const background = params.background === true || params.background === 'true'
 				if (!prompt) throw new Error('prompt is required for task tool')
 				return { description, prompt, subagentType, taskId, background }
 			},
@@ -541,25 +539,22 @@ export class ToolsService implements IToolsService {
 				const isResearcher = subagentType === 'researcher'
 				const subagentChatMode = isResearcher ? 'gather' : 'agent'
 
-				const { messages, separateSystemMessage } = await this.convertToLLMMessageService.prepareLLMChatMessages({
-					chatMessages: [{ role: 'user', content: prompt }] as any,
-					modelSelection: undefined,
-					chatMode: subagentChatMode,
-				})
-
-				const modelSelection = this.loopholeSettingsService.state.modelSelectionOfFeature['chat']
+				const modelSelection = this.loopholeSettingsService.state.modelSelectionOfFeature['Chat'] ?? null
 				const resultTaskId = taskId ?? `task-${Date.now()}`
 				const currentThreadId = this.chatThreadService.state.currentThreadId
+
+				// Simple single-turn message — avoids circular dependency with convertToLLMMessageService
+				const messages = [{ role: 'user' as const, content: prompt }]
 
 				const runAgent = (): Promise<string> => new Promise<string>((resolve, reject) => {
 					const token = this.llmMessageService.sendLLMMessage({
 						messagesType: 'chatMessages',
 						chatMode: subagentChatMode,
-						messages,
+						messages: messages as any,
 						modelSelection,
 						modelSelectionOptions: undefined,
 						overridesOfModel: undefined,
-						separateSystemMessage,
+						separateSystemMessage: undefined,
 						logging: { loggingName: `SubAgent - ${description}`, loggingExtras: { subagentType, taskId: resultTaskId, background } },
 						onText: () => {},
 						onFinalMessage: ({ fullText }) => resolve(fullText || '(no output)'),
