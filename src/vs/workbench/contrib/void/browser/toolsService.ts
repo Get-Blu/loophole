@@ -10,8 +10,6 @@ import { IEditCodeService } from './editCodeServiceInterface.js'
 import { ITerminalToolService } from './terminalToolService.js'
 import { LintErrorItem, BuiltinToolCallParams, BuiltinToolResultType, BuiltinToolName, TodoItem } from '../common/toolsServiceTypes.js'
 import { ILLMMessageService } from '../common/sendLLMMessageService.js'
-// IChatThreadService is imported from its types file to avoid circular dependency
-import { IChatThreadService } from './chatThreadService.js'
 import { ILoopholeModelService } from '../common/voidModelService.js'
 import { EndOfLinePreference } from '../../../../editor/common/model.js'
 import { ILoopholeCommandBarService } from './voidCommandBarServiceInterface.js';
@@ -154,11 +152,17 @@ export class ToolsService implements IToolsService {
 	public callTool: CallBuiltinTool;
 	public stringOfResult: BuiltinToolResultToString;
 
+	// Lazy getter to avoid circular dependency: chatThreadService -> toolsService -> chatThreadService
+	private get chatThreadService() {
+		const { IChatThreadService } = require('./chatThreadService.js') as typeof import('./chatThreadService.js')
+		return this.instantiationService.invokeFunction(accessor => accessor.get(IChatThreadService))
+	}
+
 	constructor(
 		@IFileService fileService: IFileService,
 		@IWorkspaceContextService workspaceContextService: IWorkspaceContextService,
 		@ISearchService searchService: ISearchService,
-		@IInstantiationService instantiationService: IInstantiationService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@ILoopholeModelService loopholeModelService: ILoopholeModelService,
 		@IEditCodeService editCodeService: IEditCodeService,
 		@ITerminalToolService private readonly terminalToolService: ITerminalToolService,
@@ -166,10 +170,9 @@ export class ToolsService implements IToolsService {
 		@IDirectoryStrService private readonly directoryStrService: IDirectoryStrService,
 		@IMarkerService private readonly markerService: IMarkerService,
 		@ILoopholeSettingsService private readonly loopholeSettingsService: ILoopholeSettingsService,
-		@IChatThreadService private readonly chatThreadService: IChatThreadService,
 		@ILLMMessageService private readonly llmMessageService: ILLMMessageService,
 	) {
-		const queryBuilder = instantiationService.createInstance(QueryBuilder);
+		const queryBuilder = this.instantiationService.createInstance(QueryBuilder);
 
 		this.validateParams = {
 			read_file: (params: RawToolParamsObj) => {
@@ -329,7 +332,7 @@ export class ToolsService implements IToolsService {
 				const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : ''
 				const subagentType = typeof params.subagent_type === 'string' ? params.subagent_type.trim() : 'general'
 				const taskId = typeof params.task_id === 'string' && params.task_id ? params.task_id : null
-				const background = params.background === true || params.background === 'true'
+				const background = params.background === 'true' || String(params.background ?? '').toLowerCase() === 'true'
 				if (!prompt) throw new Error('prompt is required for task tool')
 				return { description, prompt, subagentType, taskId, background }
 			},
