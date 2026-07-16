@@ -2,7 +2,7 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { deepClone } from '../../../../base/common/objects.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
-import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
+import { createDecorator, IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { ChatMessage } from '../common/chatThreadServiceTypes.js';
@@ -18,8 +18,9 @@ import { URI } from '../../../../base/common/uri.js';
 import { EndOfLinePreference } from '../../../../editor/common/model.js';
 import { ToolName } from '../common/toolsServiceTypes.js';
 import { IMCPService } from '../common/mcpService.js';
-import { IChatThreadService } from './chatThreadService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
+// IChatThreadService loaded lazily to avoid circular dependency:
+// convertToLLMMessageService -> chatThreadService -> convertToLLMMessageService
 
 export const EMPTY_MESSAGE = '(empty message)'
 
@@ -542,10 +543,16 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		@ILoopholeSettingsService private readonly voidSettingsService: ILoopholeSettingsService,
 		@ILoopholeModelService private readonly voidModelService: ILoopholeModelService,
 		@IMCPService private readonly mcpService: IMCPService,
-		@IChatThreadService private readonly chatThreadService: IChatThreadService,
 		@IFileService private readonly fileService: IFileService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 	) {
 		super()
+	}
+
+	// Lazy getter to avoid circular dependency with chatThreadService
+	private get chatThreadService() {
+		const { IChatThreadService } = require('./chatThreadService.js') as typeof import('./chatThreadService.js')
+		return this.instantiationService.invokeFunction(accessor => accessor.get(IChatThreadService))
 	}
 
 	// Read .loopholerules files from workspace folders
@@ -834,6 +841,3 @@ gemini response:
 	}
 }
 */
-
-
-
