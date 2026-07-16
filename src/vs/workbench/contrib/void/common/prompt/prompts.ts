@@ -11,7 +11,7 @@ import { os } from '../helpers/systemInfo.js';
 import { RawToolParamsObj } from '../sendLLMMessageTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, BuiltinToolResultType, ToolName } from '../toolsServiceTypes.js';
 import { ChatMode, ProviderName } from '../voidSettingsTypes.js';
-import { prompt_anthropic, prompt_gpt, prompt_gemini, prompt_default, prompt_max_steps, prompt_plan, prompt_plan_mode, prompt_plan_reminder_anthropic, prompt_deepseek, prompt_xai, prompt_mistral, prompt_groq, prompt_ollama, prompt_vllm, prompt_litellm, prompt_openrouter, prompt_openai_compatible, prompt_lmstudio, prompt_cohere, prompt_perplexity, prompt_togetherai, prompt_fireworksai, prompt_googlevertex, prompt_microsoftazure, prompt_awsbedrock } from './modelPrompts.js';
+import { prompt_anthropic, prompt_gpt, prompt_gemini, prompt_default, prompt_plan_mode, prompt_plan_reminder_anthropic, prompt_deepseek, prompt_xai, prompt_mistral, prompt_groq, prompt_ollama, prompt_vllm, prompt_litellm, prompt_openrouter, prompt_openai_compatible, prompt_lmstudio, prompt_cohere, prompt_perplexity, prompt_togetherai, prompt_fireworksai, prompt_googlevertex, prompt_microsoftazure, prompt_awsbedrock } from './modelPrompts.js';
 
 // Triple backtick wrapper used throughout the prompts for code blocks
 export const tripleTick = ['```', '```']
@@ -550,19 +550,6 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 			default:                 return prompt_default
 		}
 	})()
-
-	// ─── IDENTITY ────────────────────────────────────────────────────────────────
-	const identity = mode === 'agent'
-		? `You are Loophole, the best coding agent on the planet. You are a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
-
-You are operating as an autonomous coding agent inside the Loophole IDE. Keep going until the user's query is completely resolved before ending your turn. You have everything you need to resolve problems — fully solve them autonomously before yielding back to the user.
-
-Only terminate your turn when you are sure the problem is solved and all todo items are checked off. When you say you are going to make a tool call, ACTUALLY make the tool call instead of ending your turn.`
-		: mode === 'gather'
-		? `You are Loophole, a highly skilled software engineer. Your job right now is to search, understand, and reference files in the user's codebase. Gather thorough context before drawing conclusions.`
-		: mode === 'plan'
-		? `You are Loophole, a highly skilled software engineer. Your job right now is to read the codebase and create clear planning documents. Think carefully, read broadly, and ask clarifying questions. Do NOT make large assumptions about user intent.`
-		: `You are Loophole, a highly skilled software engineer and coding assistant. Help the user with their coding tasks.`
 
 	// ─── PERSONALITY & TONE ──────────────────────────────────────────────────────
 	const personality = `# Personality and tone
