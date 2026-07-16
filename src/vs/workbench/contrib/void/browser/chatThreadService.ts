@@ -911,7 +911,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					'Any attempt to use tools is a critical violation. Respond with text ONLY.',
 				].join('\n')
 
-				this._addMessageToThread(threadId, { role: 'user', content: maxStepsWarning })
+				this._addMessageToThread(threadId, { role: 'user', content: maxStepsWarning, displayContent: maxStepsWarning, selections: null, state: defaultMessageState })
 				// do ONE final no-tools LLM call for the summary, then break
 				const { messages: maxStepMessages, separateSystemMessage: maxStepSystem } = await this._convertToLLMMessagesService.prepareLLMChatMessages({
 					chatMessages: this.state.allThreads[threadId]?.messages ?? [],
@@ -939,7 +939,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 						onAbort: () => resolve(),
 					})
 				})
-				isRunningWhenEnd = 'idle'
+				isRunningWhenEnd = undefined
 				break
 			}
 			// ─────────────────────────────────────────────────────────────────────
