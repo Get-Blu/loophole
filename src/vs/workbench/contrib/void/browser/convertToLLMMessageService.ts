@@ -658,10 +658,10 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 		const persistentTerminalIDs = this.terminalToolService.listPersistentTerminalIds()
 
 		// session memory (async — load last 3 digests)
-		const memoryBlock = chatMode === 'agent' ? await this.chatThreadService.readSessionMemoryBlock() : null
+		const memoryBlock = chatMode === 'agent' ? await this.chatThreadService?.readSessionMemoryBlock?.() : null
 
 		// context compaction (if conversation is very long)
-		const currentThreadId = this.chatThreadService.state.currentThreadId
+		const currentThreadId = this.chatThreadService?.state?.currentThreadId
 		const compactionSummary = currentThreadId ? this.chatThreadService.getCompactionSummary(currentThreadId) : null
 
 		// skills discovery — scan .loophole/skills/ for SKILL.md files
