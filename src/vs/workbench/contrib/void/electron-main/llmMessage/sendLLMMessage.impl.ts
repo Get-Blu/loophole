@@ -665,10 +665,9 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 	stream.on('finalMessage', (response) => {
 		const anthropicReasoning = response.content.filter((c: any) => c.type === 'thinking' || c.type === 'redacted_thinking')
 		const tools = response.content.filter((c: any) => c.type === 'tool_use')
-		// console.log('TOOLS!!!!!!', JSON.stringify(tools, null, 2))
-		// console.log('TOOLS!!!!!!', JSON.stringify(response, null, 2))
-		const toolCall = tools[0] && rawToolCallObjOfAnthropicParams(tools[0])
-		const toolCallObj = toolCall ? { toolCall } : {}
+		const toolCallObjs = tools.map((t: any) => rawToolCallObjOfAnthropicParams(t)).filter(Boolean) as RawToolCallObj[]
+		const toolCall = toolCallObjs[0]
+		const toolCallObj = toolCall ? { toolCall, toolCalls: toolCallObjs } : {}
 
 		// Extract token usage from Anthropic response
 		// @ts-ignore - Anthropic SDK types may vary
