@@ -1715,6 +1715,10 @@ const titleOfBuiltinToolName = {
 
 	'read_lint_errors': { done: `Read lint errors`, proposed: 'Read lint errors', running: loadingTitleWrapper('Reading lint errors') },
 	'search_in_file': { done: 'Searched in file', proposed: 'Search in file', running: loadingTitleWrapper('Searching in file') },
+
+	'todo_write': { done: 'Updated tasks', proposed: 'Update tasks', running: loadingTitleWrapper('Updating tasks') },
+	'load_skill': { done: 'Loaded skill', proposed: 'Load skill', running: loadingTitleWrapper('Loading skill') },
+	'task': { done: 'Task completed', proposed: 'Launch task', running: loadingTitleWrapper('Running task') },
 } as const satisfies Record<BuiltinToolName, { done: any, proposed: any, running: any }>
 
 
@@ -1854,7 +1858,21 @@ const toolNameToDesc = (toolName: BuiltinToolName, _toolParams: BuiltinToolCallP
 				desc1: getBasename(toolParams.uri.fsPath),
 				desc1Info: getRelative(toolParams.uri, accessor),
 			}
-		}
+		},
+		'todo_write': () => {
+			const toolParams = _toolParams as BuiltinToolCallParams['todo_write']
+			const total = toolParams?.todos?.length ?? 0
+			const done = toolParams?.todos?.filter(t => t.status === 'completed').length ?? 0
+			return { desc1: `${done}/${total} completed` }
+		},
+		'load_skill': () => {
+			const toolParams = _toolParams as BuiltinToolCallParams['load_skill']
+			return { desc1: toolParams.skillName }
+		},
+		'task': () => {
+			const toolParams = _toolParams as BuiltinToolCallParams['task']
+			return { desc1: toolParams.description || toolParams.subagentType }
+		},
 	}
 
 	try {
