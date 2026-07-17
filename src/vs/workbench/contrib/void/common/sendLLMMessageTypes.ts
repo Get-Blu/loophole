@@ -101,7 +101,8 @@ export type TokenUsageInfo = {
 }
 
 export type OnText = (p: { fullText: string; fullReasoning: string; toolCall?: RawToolCallObj }) => void
-export type OnFinalMessage = (p: { fullText: string; fullReasoning: string; toolCall?: RawToolCallObj; anthropicReasoning: AnthropicReasoning[] | null; tokenUsage?: TokenUsageInfo }) => void // id is tool_use_id
+// toolCalls supports parallel tool execution — multiple tool calls from one LLM turn
+export type OnFinalMessage = (p: { fullText: string; fullReasoning: string; toolCall?: RawToolCallObj; toolCalls?: RawToolCallObj[]; anthropicReasoning: AnthropicReasoning[] | null; tokenUsage?: TokenUsageInfo }) => void // id is tool_use_id
 export type OnError = (p: { message: string; fullError: Error | null }) => void
 export type OnAbort = () => void
 export type AbortRef = { current: (() => void) | null }
@@ -224,5 +225,3 @@ export type ServiceTranscribeAudioParams = {
 	pcmBase64: string;
 	sampleRate: number;
 };
-
-
