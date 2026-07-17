@@ -284,6 +284,9 @@ export interface IChatThreadService {
 	// background task notifications
 	injectBackgroundTaskResult(threadId: string, taskId: string, description: string, output: string, state: 'completed' | 'error'): void;
 
+	// sub-agent: run a full agentic loop with tools, returns the final assistant text
+	runSubAgentLoop(opts: { prompt: string, chatMode: import('../common/voidSettingsTypes.js').ChatMode, modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null, parentThreadId: string }): Promise<string>;
+
 	// // current thread's staging selections
 	// closeCurrentStagingSelectionsInMessage(opts: { messageIdx: number }): void;
 	// closeCurrentStagingSelectionsInThread(): void;
@@ -464,6 +467,115 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		} as any)
 
 		this._onDidChangeCurrentThread.fire()
+	}
+
+	// Run a full agentic loop for a sub-agent task — gives the sub-agent full tool access
+	runSubAgentLoop = async ({ prompt, chatMode, modelSelection, parentThreadId }: {
+		prompt: string,
+		chatMode: import('../common/voidSettingsTypes.js').ChatMode,
+		modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null,
+		parentThreadId: string,
+	}): Promise<string> => {
+		// Create an ephemeral sub-thread to run the agent in
+		const subThreadId = generateUuid()
+		const subThread = newThreadObject()
+		this._setState({
+			allThreads: { ...this.state.allThreads, [subThreadId]: { ...subThread, id: subThreadId } }
+		})
+
+		// Add the user prompt as the first message
+		this._addMessageToThread(subThreadId, {
+			role: 'user',
+			content: prompt,
+			displayContent: prompt,
+			selections: null,
+			state: defaultMessageState,
+		})
+
+		// Run the full agentic loop on the sub-thread
+		const { modelSelectionOptions, overridesOfModel } = this._settingsService.state
+		let nSteps = 0
+		const SUB_AGENT_MAX_STEPS = 30
+		let shouldContinue = true
+		let lastAssistantText = ''
+
+		const idleInterruptor = Promise.resolve(() => {})
+
+		while (shouldContinue && nSteps < SUB_AGENT_MAX_STEPS) {
+			shouldContinue = false
+			nSteps++
+
+			const chatMessages = this.state.allThreads[subThreadId]?.messages ?? []
+			const { messages, separateSystemMessage } = await this._convertToLLMMessagesService.prepareLLMChatMessages({
+				chatMessages,
+				modelSelection,
+				chatMode,
+			})
+
+			const result = await new Promise<{ text: string, toolCalls: RawToolCallObj[] }>((resolve, reject) => {
+				this._llmMessageService.sendLLMMessage({
+					messagesType: 'chatMessages',
+					chatMode,
+					messages,
+					modelSelection,
+					modelSelectionOptions,
+					overridesOfModel,
+					separateSystemMessage,
+					logging: { loggingName: `SubAgent step ${nSteps}`, loggingExtras: { parentThreadId, chatMode } },
+					onText: () => {},
+					onFinalMessage: ({ fullText, toolCalls, toolCall }) => {
+						const calls = toolCalls ?? (toolCall ? [toolCall] : [])
+						resolve({ text: fullText, toolCalls: calls })
+					},
+					onError: ({ message }) => reject(new Error(message)),
+					onAbort: () => reject(new Error('Sub-agent aborted')),
+				})
+			})
+
+			lastAssistantText = result.text
+			this._addMessageToThread(subThreadId, {
+				role: 'assistant',
+				displayContent: result.text,
+				reasoning: '',
+				anthropicReasoning: null,
+			})
+
+			// Execute tool calls if any
+			if (result.toolCalls.length > 0) {
+				const mcpTools = this._mcpService.getMCPTools()
+				const readOnlyTools = new Set(['read_file', 'ls_dir', 'get_dir_tree', 'search_pathnames_only', 'search_for_files', 'search_in_file', 'read_lint_errors', 'load_skill', 'todo_write'])
+
+				// Run read-only calls in parallel, writes sequentially
+				const groups: Array<{ parallel: boolean, calls: RawToolCallObj[] }> = []
+				for (const tc of result.toolCalls) {
+					const parallel = readOnlyTools.has(tc.name)
+					const last = groups[groups.length - 1]
+					if (last && last.parallel === parallel) { last.calls.push(tc) }
+					else { groups.push({ parallel, calls: [tc] }) }
+				}
+
+				for (const group of groups) {
+					if (group.parallel && group.calls.length > 1) {
+						await Promise.all(group.calls.map(tc => {
+							const mcpTool = mcpTools?.find(t => t.name === tc.name)
+							return this._runToolCall(subThreadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: true, unvalidatedToolParams: tc.rawParams })
+						}))
+					} else {
+						for (const tc of group.calls) {
+							const mcpTool = mcpTools?.find(t => t.name === tc.name)
+							await this._runToolCall(subThreadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: true, unvalidatedToolParams: tc.rawParams })
+						}
+					}
+				}
+				shouldContinue = true // tool calls mean we keep going
+			}
+		}
+
+		// Clean up the ephemeral sub-thread
+		const { [subThreadId]: _removed, ...remainingThreads } = this.state.allThreads
+		this._setState({ allThreads: remainingThreads })
+
+		return lastAssistantText || '(no output)'
 	}
 
 	getTodosForThread = (threadId: string): import('../common/toolsServiceTypes.js').TodoItem[] => {
@@ -965,7 +1077,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				nAttempts += 1
 
 				type ResTypes =
-					| { type: 'llmDone', toolCall?: RawToolCallObj, info: { fullText: string, fullReasoning: string, anthropicReasoning: AnthropicReasoning[] | null, tokenUsage?: TokenUsageInfo } }
+					| { type: 'llmDone', toolCall?: RawToolCallObj, toolCalls?: RawToolCallObj[], info: { fullText: string, fullReasoning: string, anthropicReasoning: AnthropicReasoning[] | null, tokenUsage?: TokenUsageInfo } }
 					| { type: 'llmError', error?: { message: string; fullError: Error | null; } }
 					| { type: 'llmAborted' }
 
@@ -984,8 +1096,8 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					onText: ({ fullText, fullReasoning, toolCall }) => {
 						this._setStreamState(threadId, { isRunning: 'LLM', llmInfo: { displayContentSoFar: fullText, reasoningSoFar: fullReasoning, toolCallSoFar: toolCall ?? null }, interrupt: Promise.resolve(() => { if (llmCancelToken) this._llmMessageService.abort(llmCancelToken) }) })
 					},
-					onFinalMessage: async ({ fullText, fullReasoning, toolCall, anthropicReasoning, tokenUsage }) => {
-						resMessageIsDonePromise({ type: 'llmDone', toolCall, info: { fullText, fullReasoning, anthropicReasoning, tokenUsage } }) // resolve with tool calls
+					onFinalMessage: async ({ fullText, fullReasoning, toolCall, toolCalls, anthropicReasoning, tokenUsage }) => {
+						resMessageIsDonePromise({ type: 'llmDone', toolCall, toolCalls, info: { fullText, fullReasoning, anthropicReasoning, tokenUsage } }) // resolve with tool calls
 						// Track token usage if available
 						if (tokenUsage) {
 							this._tokenUsageService.addTokens({ ...tokenUsage, providerName: modelSelection?.providerName, modelName: modelSelection?.modelName })
@@ -1049,7 +1161,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				}
 
 				// llm res success
-				const { toolCall, info } = llmRes
+				const { toolCall, toolCalls, info } = llmRes
 
 				this._addMessageToThread(threadId, { role: 'assistant', displayContent: info.fullText, reasoning: info.fullReasoning, anthropicReasoning: info.anthropicReasoning, tokenUsage: info.tokenUsage })
 
@@ -1065,21 +1177,68 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 				this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' }) // just decorative for clarity
 
-				// call tool if there is one
-				if (toolCall) {
-					const mcpTools = this._mcpService.getMCPTools()
-					const mcpTool = mcpTools?.find(t => t.name === toolCall.name)
+				// ─── PARALLEL TOOL EXECUTION ─────────────────────────────────────
+				// Run all tool calls from this turn in parallel (e.g. multiple read_file calls)
+				// Sequential fallback for write/terminal tools that must not overlap
+				const allToolCalls = (toolCalls && toolCalls.length > 1) ? toolCalls : (toolCall ? [toolCall] : [])
 
-					const { awaitingUserApproval, interrupted } = await this._runToolCall(threadId, toolCall.name, toolCall.id, mcpTool?.mcpServerName, { preapproved: false, unvalidatedToolParams: toolCall.rawParams })
-					if (interrupted) {
+				if (allToolCalls.length > 0) {
+					const mcpTools = this._mcpService.getMCPTools()
+
+					// Classify: read-only tools can run in parallel, write/terminal must be sequential
+					const readOnlyTools = new Set(['read_file', 'ls_dir', 'get_dir_tree', 'search_pathnames_only', 'search_for_files', 'search_in_file', 'read_lint_errors', 'load_skill', 'todo_write'])
+					const isReadOnly = (name: string) => readOnlyTools.has(name)
+
+					// Split into parallel-safe and sequential groups while preserving order
+					const groups: Array<{ parallel: boolean, calls: typeof allToolCalls }> = []
+					for (const tc of allToolCalls) {
+						const parallel = isReadOnly(tc.name)
+						const last = groups[groups.length - 1]
+						if (last && last.parallel === parallel) {
+							last.calls.push(tc)
+						} else {
+							groups.push({ parallel, calls: [tc] })
+						}
+					}
+
+					let anyAwaitingApproval = false
+					let anyInterrupted = false
+
+					for (const group of groups) {
+						if (anyInterrupted) break
+
+						if (group.parallel && group.calls.length > 1) {
+							// Run this group in parallel
+							const results = await Promise.all(group.calls.map(tc => {
+								const mcpTool = mcpTools?.find(t => t.name === tc.name)
+								return this._runToolCall(threadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: false, unvalidatedToolParams: tc.rawParams })
+							}))
+							for (const r of results) {
+								if (r.interrupted) { anyInterrupted = true; break }
+								if (r.awaitingUserApproval) anyAwaitingApproval = true
+							}
+						} else {
+							// Run sequentially
+							for (const tc of group.calls) {
+								if (anyInterrupted) break
+								const mcpTool = mcpTools?.find(t => t.name === tc.name)
+								const { awaitingUserApproval, interrupted } = await this._runToolCall(threadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: false, unvalidatedToolParams: tc.rawParams })
+								if (interrupted) { anyInterrupted = true; break }
+								if (awaitingUserApproval) anyAwaitingApproval = true
+							}
+						}
+					}
+
+					if (anyInterrupted) {
 						this._setStreamState(threadId, undefined)
 						return
 					}
-					if (awaitingUserApproval) { isRunningWhenEnd = 'awaiting_user' }
+					if (anyAwaitingApproval) { isRunningWhenEnd = 'awaiting_user' }
 					else { shouldSendAnotherMessage = true }
 
-					this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' }) // just decorative, for clarity
+					this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' })
 				}
+				// ─────────────────────────────────────────────────────────────────
 
 			} // end while (attempts)
 		} // end while (send message)
