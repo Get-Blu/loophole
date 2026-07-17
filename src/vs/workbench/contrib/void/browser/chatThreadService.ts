@@ -493,13 +493,14 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		})
 
 		// Run the full agentic loop on the sub-thread
-		const { modelSelectionOptions, overridesOfModel } = this._settingsService.state
+		const { overridesOfModel } = this._settingsService.state
+		const modelSelectionOptions = modelSelection
+			? this._settingsService.state.optionsOfModelSelection['Chat']?.[modelSelection.providerName]?.[modelSelection.modelName]
+			: undefined
 		let nSteps = 0
 		const SUB_AGENT_MAX_STEPS = 30
 		let shouldContinue = true
 		let lastAssistantText = ''
-
-		const idleInterruptor = Promise.resolve(() => {})
 
 		while (shouldContinue && nSteps < SUB_AGENT_MAX_STEPS) {
 			shouldContinue = false
@@ -558,12 +559,12 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					if (group.parallel && group.calls.length > 1) {
 						await Promise.all(group.calls.map(tc => {
 							const mcpTool = mcpTools?.find(t => t.name === tc.name)
-							return this._runToolCall(subThreadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: true, unvalidatedToolParams: tc.rawParams })
+							return this._runToolCall(subThreadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: false, unvalidatedToolParams: tc.rawParams })
 						}))
 					} else {
 						for (const tc of group.calls) {
 							const mcpTool = mcpTools?.find(t => t.name === tc.name)
-							await this._runToolCall(subThreadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: true, unvalidatedToolParams: tc.rawParams })
+							await this._runToolCall(subThreadId, tc.name, tc.id, mcpTool?.mcpServerName, { preapproved: false, unvalidatedToolParams: tc.rawParams })
 						}
 					}
 				}
