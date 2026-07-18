@@ -23,6 +23,8 @@ export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: '
 	'delete_file_or_folder': 'edits',
 	'rewrite_file': 'edits',
 	'edit_file': 'edits',
+	'rename_file': 'edits',
+	'insert_code_at_line': 'edits',
 	'run_command': 'terminal',
 	'run_persistent_command': 'terminal',
 	'open_persistent_terminal': 'terminal',
@@ -73,6 +75,13 @@ export type BuiltinToolCallParams = {
 	'todo_write': { todos: TodoItem[] },
 	// --- skills ---
 	'load_skill': { skillName: string },
+	// --- power search (ripgrep-style with context lines) ---
+	'search_files_with_context': { query: string, includePattern: string | null, contextLines: number, searchInFolder: URI | null },
+	// --- file operations ---
+	'rename_file': { oldUri: URI, newUri: URI },
+	'insert_code_at_line': { uri: URI, line: number, content: string },
+	// --- user interaction ---
+	'ask_followup_question': { question: string, suggestions: string[] },
 	// --- sub-agents ---
 	'task': { description: string, prompt: string, subagentType: string, taskId: string | null, background: boolean },
 	// --- completion signal ---
@@ -104,6 +113,13 @@ export type BuiltinToolResultType = {
 	'todo_write': { todos: TodoItem[] },
 	// --- skills ---
 	'load_skill': { content: string },
+	// --- power search ---
+	'search_files_with_context': { matches: Array<{ uri: URI, line: number, lineContent: string, contextBefore: string[], contextAfter: string[] }>, hasNextPage: boolean },
+	// --- file operations ---
+	'rename_file': {},
+	'insert_code_at_line': { lintErrors: LintErrorItem[] | null },
+	// --- user interaction ---
+	'ask_followup_question': { userResponse: string },
 	// --- sub-agents ---
 	'task': { output: string, taskId: string },
 	// --- completion signal ---
