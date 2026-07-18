@@ -277,6 +277,10 @@ export interface IChatThreadService {
 	getTodosForThread(threadId: string): import('../common/toolsServiceTypes.js').TodoItem[];
 	setTodosForThread(threadId: string, todos: import('../common/toolsServiceTypes.js').TodoItem[]): void;
 
+	// ask_followup_question tool support
+	addFollowupQuestion(threadId: string, opts: { question: string, suggestions: string[] }): void;
+	waitForFollowupResponse(threadId: string): Promise<string>;
+
 	// session memory
 	readSessionMemoryBlock(): Promise<string | null>;
 	getCompactionSummary(threadId: string): string | null;
@@ -592,6 +596,42 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				[threadId]: { ...thread, todos }
 			}
 		})
+	}
+
+	// ─── ask_followup_question support ────────────────────────────────────────
+	// Pending resolvers keyed by threadId — one per thread at a time.
+	private _followupResolvers = new Map<string, (answer: string) => void>()
+
+	addFollowupQuestion = (threadId: string, opts: { question: string, suggestions: string[] }): void => {
+		// Surface the question to the user as a special assistant message
+		const suggestionText = opts.suggestions.length > 0
+			? `\n\nSuggested answers:\n${opts.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
+			: ''
+		this._addMessageToThread(threadId, {
+			role: 'assistant',
+			displayContent: `**Question:** ${opts.question}${suggestionText}`,
+			reasoning: '',
+			anthropicReasoning: null,
+		})
+		// Signal to the UI that we're waiting for user input
+		this._setStreamState(threadId, { isRunning: 'awaiting_user', interrupt: 'not_needed' })
+	}
+
+	waitForFollowupResponse = (threadId: string): Promise<string> => {
+		return new Promise<string>((resolve) => {
+			this._followupResolvers.set(threadId, resolve)
+		})
+	}
+
+	// Called by the normal user-send flow to resolve any pending followup
+	private _resolveFollowupIfPending = (threadId: string, userText: string): boolean => {
+		const resolver = this._followupResolvers.get(threadId)
+		if (resolver) {
+			this._followupResolvers.delete(threadId)
+			resolver(userText)
+			return true
+		}
+		return false
 	}
 
 	// !!! this is important for properly restoring URIs from storage
@@ -1788,6 +1828,20 @@ We only need to do it for files that were edited since `from`, ie files between 
 	private async _addUserMessageAndStreamResponse({ userMessage, _chatSelections, threadId }: { userMessage: string, _chatSelections?: StagingSelectionItem[], threadId: string }) {
 		const thread = this.state.allThreads[threadId]
 		if (!thread) return // should never happen
+
+		// ─── ask_followup_question: if AI is waiting for a user answer, resolve it ──
+		// This makes the user's reply feed directly into the waiting tool call
+		// instead of starting a new agent loop from scratch.
+		if (this._resolveFollowupIfPending(threadId, userMessage)) {
+			// Add user message to thread for display, then resume agent loop
+			const userHistoryElt: ChatMessage = {
+				role: 'user', content: userMessage, displayContent: userMessage,
+				selections: [], state: defaultMessageState,
+			}
+			this._addMessageToThread(threadId, userHistoryElt)
+			// Agent loop will continue automatically once the promise resolves above
+			return
+		}
 
 		// interrupt existing stream
 		if (this.streamState[threadId]?.isRunning) {
