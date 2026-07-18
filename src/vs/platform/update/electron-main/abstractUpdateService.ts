@@ -451,6 +451,418 @@ export abstract class AbstractUpdateService implements IUpdateService {
 				}
 
 				const fetchedVersion = /\d+\.\d+\.\d+\.\d+/.test(update.productVersion) ? update.productVersion.replace(/(\d+\.\d+\.\d+)\.\d+(\-\w+)?/, '$1$2') : update.productVersion.replace(/(\d+\.\d+\.)0+(\d+)(\-\w+)?/, '$1$2$3');
+				const currentVersion = (this.productService.loopholeVersion ?? this.productService.version).replace(/(\d+\.\d+\.)0+(\d+)(\-\w+)?/, '$1$2$3');
+
+				this.logService.info(`update#isLatestVersion() - found: ${fetchedVersion}, current: ${currentVersion}`);
+
+				const lastest = semver.compareBuild(currentVersion, fetchedVersion) >= 0;
+
+				const minReleaseAge = this.configurationService.getValue<number>('update.minReleaseAge');
+
+				if(minReleaseAge === 0) {
+					return Promise.resolve({ lastest, update });
+				}
+
+				const releaseDate = update.timestamp ? new Date(Number.parseInt(String(update.timestamp), 10)) : null;
+
+				this.logService.info(`update#isLatestVersion() - releaseDate: ${releaseDate}`);
+
+				if(!releaseDate || isNaN(releaseDate.getTime())) {
+					return Promise.resolve(undefined);
+				}
+
+				const age = Math.round(Math.abs(Date.now() - releaseDate.getTime()) / (1000 * 60 * 60));
+
+				this.logService.info(`update#isLatestVersion() - releaseAge: ${age}, minReleaseAge: ${minReleaseAge}`);
+
+				if(age >= minReleaseAge) {
+					return Promise.resolve({ lastest, update });
+				}
+				else {
+					return Promise.resolve(undefined);
+				}
+			})
+	}
+
+	async _applySpecificUpdate(packagePath: string): Promise<void> {
+		// noop
+	}
+
+	async setInternalOrg(internalOrg: string | undefined): Promise<void> {
+		if (this._internalOrg === internalOrg) {
+			return;
+		}
+
+		this.logService.info('update#setInternalOrg', internalOrg);
+		this._internalOrg = internalOrg;
+	}
+
+	protected getInternalOrg(): string | undefined {
+		return this._internalOrg;
+	}
+
+	protected getUpdateType(): UpdateType {
+		return UpdateType.Archive;
+	}
+
+	protected doQuitAndInstall(): void {
+		// noop
+	}
+
+	protected async postInitialize(): Promise<void> {
+		// noop
+	}
+
+	protected async cancelPendingUpdate(): Promise<void> {
+		// noop
+	}
+
+	protected abstract buildUpdateFeedUrl(quality: string, commit: string, options?: IUpdateURLOptions): string | undefined;
+	protected abstract doCheckForUpdates(explicit: boolean, pendingCommit?: string): void;
+		}		if (this.supportsUpdateOverwrite) {
+			if (state.type === StateType.Ready) {
+				this.overwriteUpdatesCheckInterval.cancelAndSet(() => this.checkForOverwriteUpdates(), 5 * 60 * 1000);
+			} else {
+				this.overwriteUpdatesCheckInterval.cancel();
+			}
+		}
+	}
+
+	constructor(
+		@ILifecycleMainService protected readonly lifecycleMainService: ILifecycleMainService,
+		@IConfigurationService protected configurationService: IConfigurationService,
+		@IEnvironmentMainService protected environmentMainService: IEnvironmentMainService,
+		@IRequestService protected requestService: IRequestService,
+		@ILogService protected logService: ILogService,
+		@IProductService protected readonly productService: IProductService,
+		@ITelemetryService protected readonly telemetryService: ITelemetryService,
+		@IApplicationStorageMainService protected readonly applicationStorageMainService: IApplicationStorageMainService,
+		@IMeteredConnectionService protected readonly meteredConnectionService: IMeteredConnectionService,
+		protected readonly supportsUpdateOverwrite: boolean,
+	) {
+		lifecycleMainService.when(LifecycleMainPhase.AfterWindowOpen)
+			.finally(() => this.initialize());
+	}
+
+	/**
+	 * This must be called before any other call. This is a performance
+	 * optimization, to avoid using extra CPU cycles before first window open.
+	 * https://github.com/microsoft/vscode/issues/89784
+	 */
+	protected async initialize(): Promise<void> {
+		if (!this.environmentMainService.isBuilt) {
+			this.setState(State.Disabled(DisablementReason.NotBuilt));
+			return; // updates are never enabled when running out of sources
+		}
+
+		await this.trackVersionChange();
+
+		if (this.environmentMainService.disableUpdates) {
+			this.setState(State.Disabled(DisablementReason.DisabledByEnvironment));
+			this.logService.info('update#ctor - updates are disabled by the environment');
+			return;
+		}
+
+		if (!this.productService.updateUrl || !this.productService.commit) {
+			this.setState(State.Disabled(DisablementReason.MissingConfiguration));
+			this.logService.info('update#ctor - updates are disabled as there is no update URL');
+			return;
+		}
+
+		const updateMode = this.configurationService.getValue<'none' | 'manual' | 'start' | 'default'>('update.mode');
+		const updateModeInspection = this.configurationService.inspect<'none' | 'manual' | 'start' | 'default'>('update.mode');
+		const policyDisablesUpdates = updateModeInspection.policyValue !== undefined && !this.getProductQuality(updateModeInspection.policyValue);
+		const quality = this.getProductQuality(updateMode);
+
+		if (!quality) {
+			if (policyDisablesUpdates) {
+				this.setState(State.Disabled(DisablementReason.Policy));
+				this.logService.info('update#ctor - updates are disabled by policy');
+			} else {
+				this.setState(State.Disabled(DisablementReason.ManuallyDisabled));
+				this.logService.info('update#ctor - updates are disabled by user preference');
+			}
+			return;
+		}
+
+		if (!this.buildUpdateFeedUrl(quality, this.productService.commit!)) {
+			this.setState(State.Disabled(DisablementReason.InvalidConfiguration));
+			this.logService.info('update#ctor - updates are disabled as the update URL is badly formed');
+			return;
+		}
+
+		this.quality = quality;
+
+		this.setState(State.Idle(this.getUpdateType()));
+
+		await this.postInitialize();
+
+		if (updateMode === 'manual') {
+			this.logService.info('update#ctor - manual checks only; automatic updates are disabled by user preference');
+			return;
+		}
+
+		if (updateMode === 'start') {
+			this.logService.info('update#ctor - startup checks only; automatic updates are disabled by user preference');
+
+			// Check for updates only once after 30 seconds
+			setTimeout(() => this.checkForUpdates(false), 30 * 1000);
+		} else {
+			// Start checking for updates after 30 seconds
+			this.scheduleCheckForUpdates(30 * 1000).then(undefined, err => this.logService.error(err));
+		}
+	}
+
+	private async trackVersionChange(): Promise<void> {
+		await this.applicationStorageMainService.whenReady;
+
+		interface ILastKnownVersion {
+			readonly version: string;
+			readonly commit: string | undefined;
+			readonly timestamp: number;
+		}
+
+		let from: ILastKnownVersion | undefined;
+		const raw = this.applicationStorageMainService.get(LAST_KNOWN_VERSION_STORAGE_KEY, StorageScope.APPLICATION);
+		if (typeof raw === 'string') {
+			try {
+				from = JSON.parse(raw);
+			} catch (error) {
+				// ignore
+			}
+		}
+
+		const to: ILastKnownVersion = {
+			version: this.productService.version,
+			commit: this.productService.commit,
+			timestamp: Date.now(),
+		};
+
+		if (from?.commit === to.commit) {
+			return;
+		}
+
+		this.applicationStorageMainService.store(LAST_KNOWN_VERSION_STORAGE_KEY, JSON.stringify(to), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+		if (!from) {
+			return;
+		}
+
+		type VersionChangeEvent = {
+			fromVersion: string | undefined;
+			fromCommit: string | undefined;
+			fromVersionTime: number | undefined;
+			toVersion: string;
+			toCommit: string | undefined;
+			timeToUpdateMs: number | undefined;
+			updateMode: string | undefined;
+		};
+
+		type VersionChangeClassification = {
+			owner: 'dmitriv';
+			comment: 'Fired when VS Code detects a version change on startup.';
+			fromVersion: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The previous version of VS Code.' };
+			fromCommit: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The commit hash of the previous version.' };
+			fromVersionTime: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Timestamp when the previous version was first detected.' };
+			toVersion: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The current version of VS Code.' };
+			toCommit: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The commit hash of the current version.' };
+			timeToUpdateMs: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; isMeasurement: true; comment: 'Milliseconds between the previous version install and this version install.' };
+			updateMode: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The update mode configured by the user.' };
+		};
+
+		this.telemetryService.publicLog2<VersionChangeEvent, VersionChangeClassification>('update:versionChanged', {
+			fromVersion: from.version,
+			fromCommit: from.commit,
+			fromVersionTime: from.timestamp,
+			toVersion: to.version,
+			toCommit: to.commit,
+			timeToUpdateMs: to.timestamp - from.timestamp,
+			updateMode: this.configurationService.getValue<string>('update.mode'),
+		});
+	}
+
+	private getProductQuality(updateMode: string): string | undefined {
+		return updateMode === 'none' ? undefined : this.productService.quality;
+	}
+
+	private scheduleCheckForUpdates(delay = 60 * 60 * 1000): Promise<void> {
+		return timeout(delay)
+			.then(() => this.checkForUpdates(false))
+			.then(() => {
+				// Check again after 1 hour
+				return this.scheduleCheckForUpdates(60 * 60 * 1000);
+			});
+	}
+
+	async checkForUpdates(explicit: boolean): Promise<void> {
+		this.logService.trace('update#checkForUpdates, state = ', this.state.type);
+
+		if (this.state.type !== StateType.Idle) {
+			return;
+		}
+
+		this.doCheckForUpdates(explicit);
+	}
+
+	async downloadUpdate(explicit: boolean): Promise<void> {
+		this.logService.trace('update#downloadUpdate, state = ', this.state.type);
+
+		if (this.state.type !== StateType.AvailableForDownload) {
+			return;
+		}
+
+		if (!explicit && this.meteredConnectionService.isConnectionMetered) {
+			this.logService.info('update#downloadUpdate - skipping download because connection is metered');
+			return;
+		}
+
+		await this.doDownloadUpdate(this.state);
+	}
+
+	protected async doDownloadUpdate(state: AvailableForDownload): Promise<void> {
+		// noop
+	}
+
+	async applyUpdate(): Promise<void> {
+		this.logService.trace('update#applyUpdate, state = ', this.state.type);
+
+		if (this.state.type !== StateType.Downloaded) {
+			return;
+		}
+
+		await this.doApplyUpdate();
+	}
+
+	protected async doApplyUpdate(): Promise<void> {
+		// noop
+	}
+
+	async quitAndInstall(): Promise<void> {
+		this.logService.trace('update#quitAndInstall, state = ', this.state.type);
+
+		if (this.state.type !== StateType.Ready) {
+			return undefined;
+		}
+
+		if (this.supportsUpdateOverwrite && !this._hasCheckedForOverwriteOnQuit) {
+			this._hasCheckedForOverwriteOnQuit = true;
+			const didOverwrite = await this.checkForOverwriteUpdates(true);
+
+			if (didOverwrite) {
+				this.logService.info('update#quitAndInstall(): overwrite update detected, postponing quitAndInstall');
+				return;
+			}
+		}
+
+		// Remember the Ready state so we can restore it if the quit is vetoed
+		const readyState = this.state;
+
+		this.setState(State.Restarting(this.state.update));
+		this.logService.trace('update#quitAndInstall(): before lifecycle quit()');
+
+		this.lifecycleMainService.quit(true /* will restart */).then(vetod => {
+			this.logService.trace(`update#quitAndInstall(): after lifecycle quit() with veto: ${vetod}`);
+			if (vetod) {
+				this.logService.info('update#quitAndInstall(): quit was vetoed, restoring Ready state');
+				this.setState(readyState);
+				return;
+			}
+
+			this.logService.trace('update#quitAndInstall(): running raw#quitAndInstall()');
+			this.doQuitAndInstall();
+		});
+
+		return Promise.resolve(undefined);
+	}
+
+	private async checkForOverwriteUpdates(explicit: boolean = false): Promise<boolean> {
+		if (this._state.type !== StateType.Ready) {
+			return false;
+		}
+
+		const pendingUpdateCommit = this._state.update.version;
+
+		if (!pendingUpdateCommit || pendingUpdateCommit === 'unknown') {
+			return false;
+		}
+
+		let isLatest: boolean | undefined;
+
+		try {
+			const cts = new CancellationTokenSource();
+			const timeoutPromise = timeout(2000).then(() => { cts.cancel(); return undefined; });
+			isLatest = await Promise.race([this.isLatestVersion(pendingUpdateCommit, cts.token), timeoutPromise]);
+			cts.dispose();
+		} catch (error) {
+			this.logService.warn('update#checkForOverwriteUpdates(): failed to check for updates, proceeding with restart');
+			this.logService.warn(error);
+			return false;
+		}
+
+		if (isLatest === false && this._state.type === StateType.Ready) {
+			this.logService.info('update#readyStateCheck: newer update available, restarting update machinery');
+
+			try {
+				await this.cancelPendingUpdate();
+			} catch (error) {
+				this.logService.error('update#checkForOverwriteUpdates(): failed to cancel pending update, aborting overwrite');
+				this.logService.error(error);
+				return false;
+			}
+
+			this._overwrite = true;
+			this.setState(State.Overwriting(this._state.update, explicit));
+			this.doCheckForUpdates(explicit, pendingUpdateCommit);
+			return true;
+		}
+
+		return false;
+	}
+
+	async isLatestVersion(commit?: string, token: CancellationToken = CancellationToken.None): Promise<boolean | undefined> {
+		if (!this.quality) {
+			return undefined;
+		}
+
+		const mode = this.configurationService.getValue<'none' | 'manual' | 'start' | 'default'>('update.mode');
+
+		if (mode === 'none' || mode === 'manual') {
+			return undefined;
+		}
+
+		const url = this.buildUpdateFeedUrl(this.quality, commit ?? this.productService.commit!, { internalOrg: this.getInternalOrg() });
+
+		if (!url) {
+			return undefined;
+		}
+
+		return this._isLatestVersion(url, false)
+			.then((result) => {
+				return Promise.resolve(result ? result.lastest : result);
+			})
+			.then(undefined, (error) => {
+				this.logService.error('update#isLatestVersion(): failed to check for updates');
+				this.logService.error(error);
+
+				return Promise.resolve(undefined);
+			});
+	}
+
+	_isLatestVersion(url: string, explicit: boolean): Promise<{lastest: boolean, update: IUpdate} | undefined> {
+		const headers = getUpdateRequestHeaders(this.productService.version);
+
+		this.logService.info('update#isLatestVersion() - checking update server', { url, headers });
+
+		return this.requestService.request({ url, headers, callSite: NO_FETCH_TELEMETRY }, CancellationToken.None)
+			.then<IUpdate | null>(asJson)
+			.then(update => {
+				if (!update || !update.url || !update.version || !update.productVersion) {
+					this.setState(State.Idle(UpdateType.Setup, undefined, explicit || undefined));
+
+					return Promise.resolve(undefined);
+				}
+
+				const fetchedVersion = /\d+\.\d+\.\d+\.\d+/.test(update.productVersion) ? update.productVersion.replace(/(\d+\.\d+\.\d+)\.\d+(\-\w+)?/, '$1$2') : update.productVersion.replace(/(\d+\.\d+\.)0+(\d+)(\-\w+)?/, '$1$2$3');
 				const currentVersion = this.productService.version.replace(/(\d+\.\d+\.)0+(\d+)(\-\w+)?/, '$1$2$3');
 
 				this.logService.info(`update#isLatestVersion() - found: ${fetchedVersion}, current: ${currentVersion}`);
