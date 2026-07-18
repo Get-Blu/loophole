@@ -275,36 +275,31 @@ export const extractXMLToolsWrapper = (
 	const toolOpenTags = tools.map(t => `<${t.name}>`)
 	for (const t of tools) { toolOfToolName[t.name] = t }
 
-	const toolId = generateUuid()
+	// ─── MULTI-TOOL XML PARSER (upgraded from single-tool) ───────────────────
+	// Previously only captured the FIRST tool call found in the response text.
+	// Now captures ALL tool calls, enabling parallel execution (like Roo Code).
+	// The first tool call is still surfaced as `toolCall` for streaming UI,
+	// and all calls are collected into `toolCalls` on the final message.
 
-	// detect <availableTools[0]></availableTools[0]>, etc
 	let fullText = '';
 	let trueFullText = ''
+	// Streaming: track the first in-progress tool for live UI
 	let latestToolCall: RawToolCallObj | undefined = undefined
-
-	let foundOpenTag: { idx: number, toolName: ToolName } | null = null
-	let openToolTagBuffer = '' // the characters we've seen so far that come after a < with no space afterwards, not yet added to fullText
-
+	let foundFirstOpenTag: { idx: number, toolName: ToolName } | null = null
+	let openToolTagBuffer = ''
 	let prevFullTextLen = 0
+
 	const newOnText: OnText = (params) => {
 		const newText = params.fullText.substring(prevFullTextLen)
 		prevFullTextLen = params.fullText.length
 		trueFullText = params.fullText
 
-		// console.log('NEWTEXT', JSON.stringify(newText))
-
-
-		if (foundOpenTag === null) {
+		if (foundFirstOpenTag === null) {
 			const newFullText = openToolTagBuffer + newText
-			// ensure the code below doesn't run if only half a tag has been written
 			const isPartial = findPartiallyWrittenToolTagAtEnd(newFullText, toolOpenTags)
 			if (isPartial) {
-				// console.log('--- partial!!!')
 				openToolTagBuffer += newText
-			}
-			// if no tooltag is partially written at the end, attempt to get the index
-			else {
-				// we will instantly retroactively remove this if it's a tag match
+			} else {
 				fullText += openToolTagBuffer
 				openToolTagBuffer = ''
 				fullText += newText
@@ -313,48 +308,71 @@ export const extractXMLToolsWrapper = (
 				if (i !== null) {
 					const [idx, toolTag] = i
 					const toolName = toolTag.substring(1, toolTag.length - 1) as ToolName
-					// console.log('found ', toolName)
-					foundOpenTag = { idx, toolName }
-
-					// do not count anything at or after i in fullText
+					foundFirstOpenTag = { idx, toolName }
 					fullText = fullText.substring(0, idx)
 				}
-
-
 			}
 		}
 
-		// toolTagIdx is not null, so parse the XML
-		if (foundOpenTag !== null) {
+		// Update streaming preview of the first tool call
+		if (foundFirstOpenTag !== null) {
 			latestToolCall = parseXMLPrefixToToolCall(
-				foundOpenTag.toolName,
-				toolId,
-				trueFullText.substring(foundOpenTag.idx, Infinity),
+				foundFirstOpenTag.toolName,
+				generateUuid(),
+				trueFullText.substring(foundFirstOpenTag.idx, Infinity),
 				toolOfToolName,
 			)
 		}
 
-		onText({
-			...params,
-			fullText,
-			toolCall: latestToolCall,
-		});
+		onText({ ...params, fullText, toolCall: latestToolCall });
 	};
 
-
 	const newOnFinalMessage: OnFinalMessage = (params) => {
-		// treat like just got text before calling onFinalMessage (or else we sometimes miss the final chunk that's new to finalMessage)
 		newOnText({ ...params })
-
 		fullText = fullText.trimEnd()
-		const toolCall = latestToolCall
 
-		// console.log('final message!!!', trueFullText)
-		// console.log('----- returning ----\n', fullText)
-		// console.log('----- tools ----\n', JSON.stringify(firstToolCallRef.current, null, 2))
-		// console.log('----- toolCall ----\n', JSON.stringify(toolCall, null, 2))
+		// ─── Parse ALL tool calls from the complete response ─────────────────
+		// Walk through the entire response text extracting every tool block.
+		// This gives us parallel tool calls (e.g. multiple read_file at once).
+		const allToolCalls: RawToolCallObj[] = []
+		if (foundFirstOpenTag !== null) {
+			const toolSection = trueFullText.substring(foundFirstOpenTag.idx)
+			let remaining = toolSection
+			let searchOffset = 0
 
-		onFinalMessage({ ...params, fullText, toolCall: toolCall })
+			while (true) {
+				// Find the next opening tool tag
+				const nextTagResult = findIndexOfAny(remaining.substring(searchOffset), toolOpenTags)
+				if (!nextTagResult) break
+
+				const [relIdx, toolTag] = nextTagResult
+				const absIdx = searchOffset + relIdx
+				const toolName = toolTag.substring(1, toolTag.length - 1) as ToolName
+				const closeTag = `</${toolName}>`
+				const closeIdx = remaining.indexOf(closeTag, absIdx)
+				if (closeIdx === -1) {
+					// Tool call not yet closed — parse as partial (streaming edge case)
+					const partial = parseXMLPrefixToToolCall(toolName, generateUuid(), remaining.substring(absIdx), toolOfToolName)
+					if (partial && partial.name) allToolCalls.push(partial)
+					break
+				}
+
+				// Parse the complete tool call block
+				const toolBlock = remaining.substring(absIdx, closeIdx + closeTag.length)
+				const parsed = parseXMLPrefixToToolCall(toolName, generateUuid(), toolBlock, toolOfToolName)
+				if (parsed && parsed.name) allToolCalls.push(parsed)
+
+				// Advance past this tool call
+				searchOffset = closeIdx + closeTag.length
+			}
+		}
+
+		const toolCall = allToolCalls[0]
+		const toolCallsObj = allToolCalls.length > 0
+			? { toolCall, toolCalls: allToolCalls }
+			: {}
+
+		onFinalMessage({ ...params, fullText, ...toolCallsObj })
 	}
 	return { newOnText, newOnFinalMessage };
 }
