@@ -327,6 +327,38 @@ export class ToolsService implements IToolsService {
 				return { skillName }
 			},
 
+			search_files_with_context: (params: RawToolParamsObj) => {
+				const query = validateStr('query', params.query)
+				const includePattern = validateOptionalStr('include_pattern', params.include_pattern)
+				const searchInFolder = validateOptionalURI(params.search_in_folder)
+				const contextLinesRaw = validateNumber(params.context_lines, { default: 3 })
+				const contextLines = Math.max(0, Math.min(10, contextLinesRaw ?? 3))
+				return { query, includePattern, contextLines, searchInFolder }
+			},
+			rename_file: (params: RawToolParamsObj) => {
+				const oldUri = validateURI(params.old_uri)
+				const newUri = validateURI(params.new_uri)
+				return { oldUri, newUri }
+			},
+			insert_code_at_line: (params: RawToolParamsObj) => {
+				const uri = validateURI(params.uri)
+				const lineRaw = validateNumber(params.line, { default: 1 })
+				const line = Math.max(1, lineRaw ?? 1)
+				const content = validateStr('content', params.content)
+				return { uri, line, content }
+			},
+			ask_followup_question: (params: RawToolParamsObj) => {
+				const question = validateStr('question', params.question)
+				let suggestions: string[] = []
+				if (Array.isArray(params.suggestions)) {
+					suggestions = params.suggestions.filter((s): s is string => typeof s === 'string')
+				} else if (typeof params.suggestions === 'string') {
+					// AI sometimes passes as JSON string
+					try { suggestions = JSON.parse(params.suggestions) } catch { suggestions = [] }
+				}
+				if (!question) throw new Error('question is required for ask_followup_question')
+				return { question, suggestions }
+			},
 			task: (params: RawToolParamsObj) => {
 				const description = typeof params.description === 'string' ? params.description.trim() : ''
 				const prompt = typeof params.prompt === 'string' ? params.prompt.trim() : ''
@@ -514,6 +546,117 @@ export class ToolsService implements IToolsService {
 				await this.terminalToolService.killPersistentTerminal(persistentTerminalId)
 				return { result: {} }
 			},
+			search_files_with_context: async ({ query, includePattern, contextLines, searchInFolder }) => {
+				const MAX_MATCHES = 50
+				const searchFolders = searchInFolder
+					? [searchInFolder]
+					: workspaceContextService.getWorkspace().folders.map(f => f.uri)
+
+				// Text search to find matching files
+				const textQuery = queryBuilder.text(
+					{ pattern: query, isRegExp: true },
+					searchFolders,
+					{ includePattern: includePattern ?? undefined }
+				)
+				const data = await searchService.textSearch(textQuery, CancellationToken.None)
+
+				const matches: Array<{
+					uri: URI, line: number, lineContent: string,
+					contextBefore: string[], contextAfter: string[]
+				}> = []
+
+				for (const fileResult of data.results) {
+					if (matches.length >= MAX_MATCHES) break
+					const uri = fileResult.resource
+
+					// Load file contents to extract context lines
+					try {
+						await loopholeModelService.initializeModel(uri)
+						const { model } = await loopholeModelService.getModelSafe(uri)
+						if (!model) continue
+						const allLines = model.getValue(EndOfLinePreference.LF).split('\n')
+						const totalLines = allLines.length
+
+						// fileResult.results contains the matching ranges
+						const linesSeen = new Set<number>()
+						for (const match of (fileResult.results ?? [])) {
+							if (matches.length >= MAX_MATCHES) break
+							// ITextSearchMatch has ranges
+							const matchLine = (match as any).ranges?.[0]?.startLineNumber
+								?? (match as any).range?.startLineNumber
+								?? 1
+							const lineIdx = matchLine - 1
+							if (linesSeen.has(lineIdx)) continue
+							linesSeen.add(lineIdx)
+
+							const ctxBefore = allLines.slice(Math.max(0, lineIdx - contextLines), lineIdx)
+							const ctxAfter = allLines.slice(lineIdx + 1, Math.min(totalLines, lineIdx + 1 + contextLines))
+
+							matches.push({
+								uri,
+								line: matchLine,
+								lineContent: allLines[lineIdx] ?? '',
+								contextBefore: ctxBefore,
+								contextAfter: ctxAfter,
+							})
+						}
+					} catch {
+						// skip files we can't read
+					}
+				}
+
+				const hasNextPage = data.results.length > MAX_MATCHES
+				return { result: { matches, hasNextPage } }
+			},
+
+			rename_file: async ({ oldUri, newUri }) => {
+				await fileService.move(oldUri, newUri, true /* overwrite */)
+				return { result: {} }
+			},
+
+			insert_code_at_line: async ({ uri, line, content }) => {
+				await loopholeModelService.initializeModel(uri)
+				const { model } = await loopholeModelService.getModelSafe(uri)
+				if (!model) throw new Error(`File not found: ${uri.toString()}`)
+
+				const totalLines = model.getLineCount()
+				// Clamp line to valid range
+				const insertLine = Math.min(Math.max(1, line), totalLines + 1)
+
+				let searchReplaceBlocks: string
+				if (insertLine <= totalLines) {
+					// Insert before the target line: match the existing line, prepend content
+					const existingLine = model.getLineContent(insertLine)
+					searchReplaceBlocks = `<<<<<<< SEARCH\n${existingLine}\n=======\n${content}${existingLine}\n>>>>>>> REPLACE`
+				} else {
+					// Append to end of file
+					const lastLine = model.getLineContent(totalLines)
+					searchReplaceBlocks = `<<<<<<< SEARCH\n${lastLine}\n=======\n${lastLine}\n${content}\n>>>>>>> REPLACE`
+				}
+
+				await editCodeService.callBeforeApplyOrEdit(uri)
+				editCodeService.instantlyApplySearchReplaceBlocks({ uri, searchReplaceBlocks })
+
+				const lintErrorsPromise = Promise.resolve().then(async () => {
+					await timeout(2000)
+					const { lintErrors } = this._getLintErrors(uri)
+					return { lintErrors }
+				})
+				return { result: lintErrorsPromise }
+			},
+
+			ask_followup_question: async ({ question, suggestions }) => {
+				// Surface question to user via a special message in the thread, then wait for their reply
+				// The thread service's normal user-reply flow handles the rest
+				const threadId = this.chatThreadService.state.currentThreadId
+				this.chatThreadService.addFollowupQuestion(threadId, { question, suggestions })
+
+				// Wait for user response — the thread service resolves this promise
+				// when the user sends their next message
+				const userResponse = await this.chatThreadService.waitForFollowupResponse(threadId)
+				return { result: { userResponse } }
+			},
+
 			todo_write: async ({ todos }) => {
 				const threadId = this.chatThreadService.state.currentThreadId
 				this.chatThreadService.setTodosForThread(threadId, todos)
@@ -713,6 +856,38 @@ export class ToolsService implements IToolsService {
 					return `${icon} [${t.priority}] ${t.content}`;
 				});
 				return `Todo list updated (${inProgress} in progress, ${pending} pending, ${completed} completed):\n${lines.join('\n')}`;
+			},
+
+			search_files_with_context: ({ query }, result) => {
+				if (result.matches.length === 0) {
+					return `No matches found for "${query}".`
+				}
+				const lines: string[] = [`Found ${result.matches.length} match${result.matches.length === 1 ? '' : 'es'} for "${query}":`, '']
+				for (const m of result.matches) {
+					const filePath = m.uri.fsPath || m.uri.toString()
+					lines.push(`## ${filePath}:${m.line}`)
+					for (const before of m.contextBefore) lines.push(`  ${before}`)
+					lines.push(`> ${m.lineContent}   ← match`)
+					for (const after of m.contextAfter) lines.push(`  ${after}`)
+					lines.push('')
+				}
+				if (result.hasNextPage) lines.push('(Results truncated — narrow your search with include_pattern or search_in_folder)')
+				return lines.join('\n')
+			},
+
+			rename_file: ({ oldUri, newUri }) => {
+				return `Renamed: ${oldUri.fsPath || oldUri.toString()} → ${newUri.fsPath || newUri.toString()}`
+			},
+
+			insert_code_at_line: ({ uri, line }, result) => {
+				const base = `Inserted code at line ${line} of ${uri.fsPath || uri.toString()}.`
+				if (!result.lintErrors || result.lintErrors.length === 0) return `${base} No lint errors.`
+				const errList = result.lintErrors.map(e => `  L${e.startLineNumber}: ${e.message}`).join('\n')
+				return `${base}\nLint errors detected:\n${errList}`
+			},
+
+			ask_followup_question: ({ question }, result) => {
+				return `User answered: ${result.userResponse}`
 			},
 
 			load_skill: (_params, result) => {
