@@ -610,7 +610,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		this._addMessageToThread(threadId, {
 			role: 'assistant',
 			displayContent: `**Question:** ${opts.question}${suggestionText}`,
-			reasoning: '',
+			reasoning: undefined,
 			anthropicReasoning: null,
 		})
 		// Signal to the UI that we're waiting for user input
