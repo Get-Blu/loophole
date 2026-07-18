@@ -425,6 +425,27 @@ The skill name must exactly match one of the skills listed in the "Available Ski
 	// go_to_definition
 	// go_to_usages
 
+	attempt_completion: {
+		name: 'attempt_completion',
+		description: `Signal that the current task is fully complete and present the final result to the user.
+
+## CRITICAL RULES
+- You MUST call this tool when a task is finished. Do NOT just respond with text saying you are done.
+- Call this ONLY when you are certain all required work is complete and verified.
+- Do NOT call this if there are pending steps, unresolved errors, or outstanding tool calls.
+- The result field should be a concise, plain-English summary of what was accomplished.
+- Optionally provide a command the user can run to verify or use the result (e.g. "npm run dev").
+
+## When to call
+- After all files have been written, edited, and verified
+- After all tests pass (if tests were requested)
+- After all todo items are marked complete`,
+		params: {
+			result: { description: `A concise summary of what was completed. Be specific: mention files changed, features added, bugs fixed. Do NOT start with "I" or use first person. Example: "Created a React todo app with add, complete, and delete functionality in src/TodoApp.tsx."` },
+			command: { description: `Optional shell command the user can run to see or verify the result, e.g. "npm run dev" or "python main.py". Only include if directly relevant.` },
+		}
+	},
+
 } satisfies { [T in keyof BuiltinToolResultType]: InternalToolInfo }
 
 
@@ -561,6 +582,19 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 - Do not use tools like terminal commands or code comments as a way to communicate with the user — output all communication directly in your response text.
 - If you cannot or will not help with something, do not explain why or what it could lead to. Offer alternatives if possible, and keep it to 1-2 sentences.
 - When referencing specific functions or pieces of code, include the pattern \`file_path:line_number\` so the user can navigate directly to the source.`
+
+	// ─── AGENT LOOP RULES ─────────────────────────────────────────────────────────
+	const agentLoopRules = mode !== 'agent' ? '' : `# Agent loop rules — READ CAREFULLY
+These rules override all other instructions.
+
+1. **You MUST use a tool in EVERY response.** Never respond with text only when in agent mode. If you have nothing to do, call attempt_completion.
+2. **Start every multi-step task by calling todo_write** to list the steps you plan to take. Update it as you complete each step (mark completed, add new steps as discovered).
+3. **Call attempt_completion when ALL work is done.** This is the ONLY valid way to signal task completion. Do not say "I'm done" in text — call the tool.
+4. **If a tool call fails, try a different approach.** Do not repeat the exact same tool call more than twice. After 2 failures on the same step, pick an alternative strategy.
+5. **Read before writing.** Before editing any file you have not already read in this session, use read_file first. Never assume file contents.
+6. **One thing at a time for writes, parallel for reads.** You may call multiple read_file / search tools simultaneously. Write/edit tools must be called one at a time.
+7. **Verify your edits.** After writing or editing a file, use read_lint_errors to check for issues. Fix any errors before continuing.
+8. **Never ask the user for something you can discover yourself.** Search the codebase, read files, run commands. Only use ask_followup_question when the information is genuinely impossible to determine from the codebase.`
 
 	// ─── PROFESSIONAL OBJECTIVITY ─────────────────────────────────────────────────
 	const objectivity = `# Professional objectivity
@@ -720,6 +754,7 @@ ${directoryStr}
 	const sections = [
 		perModelPrompt,
 		personality,
+		agentLoopRules || null,
 		objectivity,
 		codeConventions,
 		taskManagement,
