@@ -607,12 +607,13 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		const suggestionText = opts.suggestions.length > 0
 			? `\n\nSuggested answers:\n${opts.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
 			: ''
-		this._addMessageToThread(threadId, {
-			role: 'assistant',
+		const followupMsg: any = {
+			role: 'assistant' as const,
 			displayContent: `**Question:** ${opts.question}${suggestionText}`,
-			reasoning: undefined,
+			reasoning: '',
 			anthropicReasoning: null,
-		})
+		}
+		this._addMessageToThread(threadId, followupMsg)
 		// Signal to the UI that we're waiting for user input
 		this._setStreamState(threadId, { isRunning: 'awaiting_user', interrupt: 'not_needed' })
 	}
