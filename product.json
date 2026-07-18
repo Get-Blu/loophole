@@ -266,7 +266,7 @@
   ],
   "releaseNotesUrl": "https://github.com/loophole-ai/loophole-ide/releases",
   "requestFeatureUrl": "https://github.com/loophole-ai/loophole-ide/issues/new",
-  "updateUrl": "https://raw.githubusercontent.com/loophole-ai/versions/refs/heads/master",
+  "updateUrl": "https://raw.githubusercontent.com/loophole-ai/versions/refs/heads/main",
   "downloadUrl": "https://github.com/loophole-ai/loophole-ide/releases",
   "quality": "oss",
   "win32AppId": "{{0A0A5C6F-E5F1-456A-BE68-8F085F2F97CF}",
