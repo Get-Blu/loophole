@@ -336,6 +336,12 @@ export class ToolsService implements IToolsService {
 				if (!prompt) throw new Error('prompt is required for task tool')
 				return { description, prompt, subagentType, taskId, background }
 			},
+			attempt_completion: (params: RawToolParamsObj) => {
+				const result = typeof params.result === 'string' ? params.result.trim() : ''
+				const command = typeof params.command === 'string' ? params.command.trim() : undefined
+				if (!result) throw new Error('result is required for attempt_completion')
+				return { result, command }
+			},
 
 		}
 
@@ -589,6 +595,11 @@ export class ToolsService implements IToolsService {
 				const output = await runAgent()
 				return { result: { output, taskId: resultTaskId } }
 			},
+			attempt_completion: async ({ result, command }) => {
+				// This tool is a signal to the agent loop — no side effects here.
+				// The loop in chatThreadService detects this tool call and stops iterating.
+				return { result: { result } }
+			},
 		}
 
 
@@ -710,6 +721,11 @@ export class ToolsService implements IToolsService {
 
 			task: ({ description }, result) => {
 				return `<task id="${result.taskId}" state="completed">\n<summary>Sub-agent completed: ${description}</summary>\n<task_result>\n${result.output}\n</task_result>\n</task>`
+			},
+			attempt_completion: ({ result, command }, _toolResult) => {
+				return command
+					? `Task completed.\n\nResult: ${result}\n\nVerification command: ${command}`
+					: `Task completed.\n\nResult: ${result}`
 			},
 		}
 
