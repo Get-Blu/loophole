@@ -980,6 +980,13 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		let shouldSendAnotherMessage = true
 		let isRunningWhenEnd: IsRunningType = undefined
 
+		// ─── ROOCODE-STYLE AGENT IMPROVEMENTS ────────────────────────────────────
+		// 1. Consecutive mistake counter — stops doom loops where AI repeats same broken tool call
+		let consecutiveMistakeCount = 0
+		const CONSECUTIVE_MISTAKE_LIMIT = 3
+		// Track last tool+params to detect exact repetitions
+		let lastToolCallSignature: string | null = null
+
 		// before enter loop, call tool
 		if (callThisToolFirst) {
 			const { interrupted } = await this._runToolCall(threadId, callThisToolFirst.name, callThisToolFirst.id, callThisToolFirst.mcpServerName, { preapproved: true, unvalidatedToolParams: callThisToolFirst.rawParams, validatedParams: callThisToolFirst.params })
@@ -1183,8 +1190,92 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				// Sequential fallback for write/terminal tools that must not overlap
 				const allToolCalls = (toolCalls && toolCalls.length > 1) ? toolCalls : (toolCall ? [toolCall] : [])
 
+				// ─── NO TOOLS USED — enforce tool use in agent mode ──────────────
+				// When AI responds with text only (no tools), send it back a message
+				// forcing it to either use a tool or call attempt_completion.
+				// Without this, the agent stops silently when it "talks" instead of acts.
+				if (allToolCalls.length === 0 && chatMode === 'agent') {
+					const noToolsMsg = [
+						'You responded with text but did not call any tool.',
+						'',
+						'You MUST either:',
+						'1. Call a tool to continue working on the task, OR',
+						'2. Call attempt_completion if the task is fully done.',
+						'',
+						'Do NOT respond with text only. Choose a tool and call it now.',
+					].join('\n')
+					this._addMessageToThread(threadId, {
+						role: 'user',
+						content: noToolsMsg,
+						displayContent: noToolsMsg,
+						selections: null,
+						state: defaultMessageState,
+					})
+					consecutiveMistakeCount += 1
+					// If AI keeps ignoring this, force-break after limit
+					if (consecutiveMistakeCount >= CONSECUTIVE_MISTAKE_LIMIT) {
+						this._addMessageToThread(threadId, {
+							role: 'assistant',
+							displayContent: '(Agent stopped: repeated failure to use tools. Please try again with a clearer instruction.)',
+							reasoning: '',
+							anthropicReasoning: null,
+						})
+						isRunningWhenEnd = undefined
+						shouldSendAnotherMessage = false
+					} else {
+						shouldSendAnotherMessage = true
+					}
+				}
+
 				if (allToolCalls.length > 0) {
 					const mcpTools = this._mcpService.getMCPTools()
+
+					// ─── ATTEMPT_COMPLETION EXIT ──────────────────────────────────
+					// If the AI calls attempt_completion, stop the loop immediately.
+					// This is the Roo Code pattern — the AI must explicitly signal done.
+					const completionCall = allToolCalls.find(tc => tc.name === 'attempt_completion')
+					if (completionCall) {
+						// Run only attempt_completion (ignore any other tools in same turn)
+						await this._runToolCall(threadId, 'attempt_completion', completionCall.id, undefined, { preapproved: false, unvalidatedToolParams: completionCall.rawParams })
+						consecutiveMistakeCount = 0
+						isRunningWhenEnd = undefined
+						shouldSendAnotherMessage = false
+						this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' })
+						break
+					}
+
+					// ─── CONSECUTIVE MISTAKE DETECTION ───────────────────────────
+					// If the AI is calling the exact same tool with the exact same params repeatedly,
+					// it's stuck in a loop. Inject an error message to break the pattern.
+					const thisSignature = JSON.stringify(allToolCalls.map(tc => ({ name: tc.name, params: tc.rawParams })))
+					if (thisSignature === lastToolCallSignature) {
+						consecutiveMistakeCount += 1
+						if (consecutiveMistakeCount >= CONSECUTIVE_MISTAKE_LIMIT) {
+							const stuckMsg = [
+								`AGENT STUCK: You have called the same tool(s) with the same parameters ${consecutiveMistakeCount} times in a row.`,
+								'',
+								'This is not working. You must try a completely different approach:',
+								'- If a file edit failed, try rewrite_file instead of edit_file',
+								'- If a search returned nothing, try different search terms',
+								'- If a command failed, investigate the error and fix the root cause',
+								'- If the task is impossible, call attempt_completion and explain why',
+								'',
+								'Do NOT repeat the same tool call. Choose a different action.',
+							].join('\n')
+							this._addMessageToThread(threadId, {
+								role: 'user',
+								content: stuckMsg,
+								displayContent: stuckMsg,
+								selections: null,
+								state: defaultMessageState,
+							})
+							shouldSendAnotherMessage = true
+							continue
+						}
+					} else {
+						consecutiveMistakeCount = 0
+						lastToolCallSignature = thisSignature
+					}
 
 					// Classify: read-only tools can run in parallel, write/terminal must be sequential
 					const readOnlyTools = new Set(['read_file', 'ls_dir', 'get_dir_tree', 'search_pathnames_only', 'search_for_files', 'search_in_file', 'read_lint_errors', 'load_skill', 'todo_write'])
@@ -1235,7 +1326,11 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 						return
 					}
 					if (anyAwaitingApproval) { isRunningWhenEnd = 'awaiting_user' }
-					else { shouldSendAnotherMessage = true }
+					else {
+						shouldSendAnotherMessage = true
+						// Successful tool execution — reset mistake counter
+						consecutiveMistakeCount = 0
+					}
 
 					this._setStreamState(threadId, { isRunning: 'idle', interrupt: 'not_needed' })
 				}
