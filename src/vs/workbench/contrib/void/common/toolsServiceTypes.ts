@@ -28,6 +28,7 @@ export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: '
 	'open_persistent_terminal': 'terminal',
 	'kill_persistent_terminal': 'terminal',
 	// todo_write has no approval - it's instant state management
+	// attempt_completion has no approval - it's the task completion signal
 }
 
 
@@ -74,6 +75,10 @@ export type BuiltinToolCallParams = {
 	'load_skill': { skillName: string },
 	// --- sub-agents ---
 	'task': { description: string, prompt: string, subagentType: string, taskId: string | null, background: boolean },
+	// --- completion signal ---
+	// The AI MUST call this to signal that a task is fully done.
+	// Without this the agent loop keeps running. This is the only valid way to end a task.
+	'attempt_completion': { result: string, command?: string },
 }
 
 // RESULT OF TOOL CALL
@@ -101,6 +106,8 @@ export type BuiltinToolResultType = {
 	'load_skill': { content: string },
 	// --- sub-agents ---
 	'task': { output: string, taskId: string },
+	// --- completion signal ---
+	'attempt_completion': { result: string },
 }
 
 
