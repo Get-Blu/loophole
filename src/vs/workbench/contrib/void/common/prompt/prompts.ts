@@ -374,6 +374,91 @@ Skip when:
 		}
 	},
 
+	search_files_with_context: {
+		name: 'search_files_with_context',
+		description: `Ripgrep-style search that returns matching lines WITH surrounding context lines. Use this when you need to understand how a pattern is used in context — not just which file it appears in.
+
+## When to use instead of search_for_files
+- You need to see the actual code around a match, not just the filename
+- You want to understand HOW a function/variable is used, not just WHERE it exists
+- You're debugging and need to see what surrounds an error pattern
+
+## Tips
+- Use \`context_lines: 3\` for most cases (shows 3 lines before and after each match)
+- Use \`include_pattern\` to limit to specific file types (e.g., "*.ts", "*.py")
+- Supports full regex: "useState\\\\(", "import.*from", "function\\\\s+\\\\w+"
+- Faster than read_file + search_in_file when you don't know which file to open`,
+		params: {
+			query: { description: 'The regex or string pattern to search for.' },
+			include_pattern: { description: 'Optional. Glob pattern to restrict which files are searched, e.g. "*.ts" or "src/**/*.tsx".' },
+			context_lines: { description: 'Optional. Number of lines to show before and after each match. Default is 3. Max 10.' },
+			search_in_folder: { description: 'Optional. Restrict search to descendants of this folder URI. Leave blank to search entire workspace.' },
+		},
+	},
+
+	rename_file: {
+		name: 'rename_file',
+		description: `Move or rename a file or folder. Works for both renaming in-place (same directory) and moving to a different location.
+
+## Rules
+- Both old_uri and new_uri must be absolute paths / full URIs
+- The destination directory must already exist (create it with create_file_or_folder first if needed)
+- If a file already exists at new_uri, it will be overwritten
+- After renaming, update any import paths in other files that reference the old path`,
+		params: {
+			old_uri: { description: 'The current full path / URI of the file or folder to rename or move.' },
+			new_uri: { description: 'The new full path / URI. Must include the filename.' },
+		},
+	},
+
+	insert_code_at_line: {
+		name: 'insert_code_at_line',
+		description: `Insert one or more lines of code at a specific line number in a file. Existing content at that line shifts down. Use this when you know EXACTLY where to insert and don't need to find/match surrounding text.
+
+## When to use instead of edit_file
+- Inserting a new import at line 1
+- Adding a new function between two known line numbers
+- Adding a line to a config file at a known position
+- When edit_file's SEARCH block would be fragile (many similar lines nearby)
+
+## Rules
+- Line numbers are 1-indexed (first line = 1)
+- Content is inserted BEFORE the specified line
+- To append to end of file: use line = (total lines + 1)
+- You MUST read_file first to know the correct line numbers`,
+		params: {
+			uri: { description: 'Full path / URI of the file to insert into.' },
+			line: { description: 'The 1-indexed line number to insert BEFORE. Line 1 inserts at the very top.' },
+			content: { description: 'The text to insert. Include a trailing newline if you want the inserted content on its own line.' },
+		},
+	},
+
+	ask_followup_question: {
+		name: 'ask_followup_question',
+		description: `Pause the current task and ask the user a clarifying question. Use this ONLY when the information is genuinely impossible to determine from the codebase.
+
+## CRITICAL: Do NOT use this tool when you can:
+- Search the codebase for the answer (use search_for_files or search_files_with_context)
+- Read a config file to find a setting (use read_file)
+- Try something and see what happens (use run_command)
+- Make a reasonable assumption (just proceed and mention the assumption in attempt_completion)
+
+## Good reasons to ask:
+- Which of two mutually exclusive approaches the user prefers
+- A secret/credential/API key you can't find or infer
+- A product decision that has no right answer from code alone
+- Explicit user preference about style or architecture when both options are valid
+
+## Rules
+- Provide 2–4 concrete suggestions so the user can answer with a single click
+- The question must be specific and unambiguous
+- Do not ask multiple questions at once`,
+		params: {
+			question: { description: 'The specific question to ask the user. Must be clear and unambiguous.' },
+			suggestions: { description: 'Array of 2–4 suggested answers the user can click. Each should be a complete, standalone answer (not just "yes"/"no").' },
+		},
+	},
+
 	load_skill: {
 		name: 'load_skill',
 		description: `Load a specialized skill when the task at hand matches one of the available skills listed in the system prompt.
