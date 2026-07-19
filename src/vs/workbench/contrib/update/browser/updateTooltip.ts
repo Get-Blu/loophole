@@ -137,7 +137,7 @@ export class UpdateTooltip extends Disposable {
 	}
 
 	private updateCurrentVersion() {
-		const productVersion = this.productService.version;
+		const productVersion = this.productService.loopholeVersion ?? this.productService.version;
 		if (productVersion) {
 			const currentCommitId = this.productService.commit?.substring(0, 7);
 			this.currentVersionNode.textContent = currentCommitId
@@ -391,7 +391,7 @@ export class UpdateTooltip extends Disposable {
 		}
 
 		// Release notes button
-		this.releaseNotesVersion = version ?? this.productService.version;
+		this.releaseNotesVersion = version ?? this.productService.loopholeVersion ?? this.productService.version;
 		this.releaseNotesButton.style.display = this.releaseNotesVersion ? '' : 'none';
 		this.releaseNotesButton.style.marginRight = this.releaseNotesVersion ? 'auto' : '';
 		this.buttonBar.style.display = this.releaseNotesVersion ? '' : 'none';
@@ -442,4 +442,4 @@ export class UpdateTooltip extends Disposable {
 		this.commandService.executeCommand(command, ...args);
 		this.hoverService.hideHover(true);
 	}
-}
+				}
