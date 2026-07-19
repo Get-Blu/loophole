@@ -63,7 +63,7 @@ export class ShowReleaseNotesAction extends Action2 {
 		const instantiationService = accessor.get(IInstantiationService);
 		const productService = accessor.get(IProductService);
 		const openerService = accessor.get(IOpenerService);
-		const targetVersion = version ?? productService.version;
+		const targetVersion = version ?? productService.loopholeVersion ?? productService.version;
 
 		try {
 			await showReleaseNotesInEditor(instantiationService, targetVersion, false);
@@ -96,7 +96,7 @@ export class ShowCurrentReleaseNotesFromCurrentFileAction extends Action2 {
 		const productService = accessor.get(IProductService);
 
 		try {
-			await showReleaseNotesInEditor(instantiationService, productService.version, true);
+			await showReleaseNotesInEditor(instantiationService, productService.loopholeVersion ?? productService.version, true);
 		} catch (err) {
 			throw new Error(localize('releaseNotesFromFileNone', "Cannot open the current file as Release Notes"));
 		}
