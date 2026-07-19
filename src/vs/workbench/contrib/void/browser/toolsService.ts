@@ -309,7 +309,7 @@ export class ToolsService implements IToolsService {
 			},
 
 			todo_write: (params: RawToolParamsObj) => {
-				let todosUnknown = params.todos;
+				let todosUnknown: unknown = params.todos;
 				// AI sometimes passes todos as a JSON string — parse it
 				if (typeof todosUnknown === 'string') {
 					try { todosUnknown = JSON.parse(todosUnknown); } catch { todosUnknown = []; }
