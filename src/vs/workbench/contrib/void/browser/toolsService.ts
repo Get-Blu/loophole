@@ -309,7 +309,11 @@ export class ToolsService implements IToolsService {
 			},
 
 			todo_write: (params: RawToolParamsObj) => {
-				const { todos: todosUnknown } = params;
+				let todosUnknown = params.todos;
+				// AI sometimes passes todos as a JSON string — parse it
+				if (typeof todosUnknown === 'string') {
+					try { todosUnknown = JSON.parse(todosUnknown); } catch { todosUnknown = []; }
+				}
 				if (!Array.isArray(todosUnknown)) throw new Error('todos must be an array');
 				const todos: TodoItem[] = todosUnknown.map((item: any, i: number) => {
 					if (typeof item !== 'object' || item === null) throw new Error(`todos[${i}] must be an object`);
