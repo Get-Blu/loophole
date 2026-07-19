@@ -114,7 +114,7 @@ export class PostUpdateWidgetContribution extends Disposable implements IWorkben
 	private async getUpdateInfo(input?: string | null): Promise<IParsedUpdateInfoInput | undefined> {
 		if (!input) {
 			try {
-				const url = getUpdateInfoUrl(this.productService.version);
+				const url = getUpdateInfoUrl(this.productService.loopholeVersion ?? this.productService.version);
 				const context = await this.requestService.request({ url, callSite: 'postUpdateWidget' }, CancellationToken.None);
 				input = await asTextOrError(context);
 			} catch { }
@@ -130,7 +130,7 @@ export class PostUpdateWidgetContribution extends Disposable implements IWorkben
 				...info, buttons: [{
 					label: localize('postUpdate.releaseNotes', "Release Notes"),
 					commandId: ShowCurrentReleaseNotesActionId,
-					args: [this.productService.version],
+					args: [this.productService.loopholeVersion ?? this.productService.version],
 					style: 'secondary'
 				}]
 			};
@@ -178,7 +178,7 @@ export class PostUpdateWidgetContribution extends Disposable implements IWorkben
 		// Title
 		const titleEl = dom.append(body, dom.$('.title'));
 		titleEl.id = titleId;
-		titleEl.textContent = title ?? localize('postUpdate.title', "New in {0}", this.productService.version);
+		titleEl.textContent = title ?? localize('postUpdate.title', "New in {0}", this.productService.loopholeVersion ?? this.productService.version);
 
 		// Features (preferred) or markdown body
 		if (features?.length) {
@@ -273,7 +273,7 @@ export class PostUpdateWidgetContribution extends Disposable implements IWorkben
 		} catch { }
 
 		const to: ILastKnownVersion = {
-			version: this.productService.version,
+			version: this.productService.loopholeVersion ?? this.productService.version,
 			commit: this.productService.commit,
 			timestamp: Date.now(),
 		};
