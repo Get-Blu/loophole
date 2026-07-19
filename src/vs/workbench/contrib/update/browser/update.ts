@@ -253,7 +253,7 @@ export class UpdateContribution extends Disposable implements IWorkbenchContribu
 			case StateType.Ready: {
 				const productVersion = state.update.productVersion;
 				if (productVersion) {
-					const currentVersion = tryParseVersion(this.productService.loopholeVersion ?? productService.version);
+					const currentVersion = tryParseVersion(this.productService.loopholeVersion ?? this.productService.version);
 					const nextVersion = tryParseVersion(productVersion);
 					this.majorMinorUpdateAvailableContextKey.set(Boolean(currentVersion && nextVersion && isMajorMinorUpdate(currentVersion, nextVersion)));
 				}
