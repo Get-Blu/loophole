@@ -191,10 +191,3 @@ This project incorporates code from:
 
 See [LICENSE.txt](./LICENSE.txt) for the full license text.
 
----
-
-<div align="center">
-
-**Garv Agnihotri** — Open Source • Privacy-First AI Editor
-
-</div>
