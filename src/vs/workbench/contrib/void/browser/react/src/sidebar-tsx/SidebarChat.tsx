@@ -3192,72 +3192,138 @@ const EditToolSoFar = ({ toolCallSoFar, }: { toolCallSoFar: RawToolCallObj }) =>
 
 // ===== TODO PANEL =====
 const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
-	const [isCollapsed, setIsCollapsed] = useState(false)
+	const [isCollapsed, setIsCollapsed] = useState(true)
+	const ulRef = useRef<HTMLUListElement | null>(null)
+	const itemRefs = useRef<(HTMLLIElement | null)[]>([])
 
-	if (todos.length === 0) return null
+	if (!Array.isArray(todos) || todos.length === 0) return null
 
-	const pending = todos.filter(t => t.status === 'pending')
-	const inProgress = todos.filter(t => t.status === 'in_progress')
-	const completed = todos.filter(t => t.status === 'completed')
-	const cancelled = todos.filter(t => t.status === 'cancelled')
+	const completedCount = todos.filter(t => t.status === 'completed').length
+	const totalCount = todos.filter(t => t.status !== 'cancelled').length
+	const allCompleted = completedCount === totalCount && totalCount > 0
 
-	const priorityColor = (p: string) => p === 'high' ? 'text-red-400' : p === 'medium' ? 'text-yellow-400' : 'text-loophole-fg-3'
+	// Most important todo to show when collapsed — in_progress first, then first pending
+	const activeTodo = todos.find(t => t.status === 'in_progress') ?? todos.find(t => t.status === 'pending')
 
-	const statusIcon = (status: string) => {
-		if (status === 'completed') return <Check size={12} className='text-green-400 flex-shrink-0' />
-		if (status === 'in_progress') return <div className='w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0' />
-		if (status === 'cancelled') return <X size={12} className='text-loophole-fg-3 flex-shrink-0' />
-		return <div className='w-3 h-3 rounded-full border border-loophole-fg-3 flex-shrink-0' />
+	// Index to auto-scroll to when expanded
+	const scrollIndex = (() => {
+		const i = todos.findIndex(t => t.status === 'in_progress')
+		if (i !== -1) return i
+		return todos.findIndex(t => t.status !== 'completed')
+	})()
+
+	useEffect(() => {
+		if (isCollapsed || scrollIndex === -1 || !ulRef.current) return
+		const target = itemRefs.current[scrollIndex]
+		if (target && ulRef.current) {
+			const ul = ulRef.current
+			ul.scrollTop = target.offsetTop - ul.offsetTop - ul.clientHeight / 2 + target.offsetHeight / 2
+		}
+	}, [todos, isCollapsed, scrollIndex])
+
+	// Exact Roo Code icons
+	const getTodoIcon = (status: string) => {
+		if (status === 'completed') return <Check size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+		if (status === 'in_progress') return <ChevronRight size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+		return (
+			<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' style={{ marginTop: 2, flexShrink: 0, opacity: 0.6 }}>
+				<rect x='3' y='3' width='18' height='18' rx='2' />
+			</svg>
+		)
 	}
 
-	const progressCount = completed.length
-	const totalCount = todos.filter(t => t.status !== 'cancelled').length
-	const progressPct = totalCount > 0 ? Math.round((progressCount / totalCount) * 100) : 0
-
 	return (
-		<div className='mx-2 mb-2 rounded border border-loophole-border-2 bg-loophole-bg-2 overflow-hidden text-xs'>
-			{/* Header */}
-			<button
+		<div style={{
+			marginTop: 4,
+			marginLeft: -10,
+			marginRight: -10,
+			borderTop: '1px solid var(--vscode-sideBar-background)',
+			overflow: 'hidden',
+			fontSize: 12,
+		}}>
+			{/* Header — exactly Roo Code's header layout */}
+			<div
 				onClick={() => setIsCollapsed(c => !c)}
-				className='w-full flex items-center justify-between px-3 py-2 hover:bg-loophole-bg-1 transition-colors'
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 8,
+					padding: '8px 10px 6px 10px',
+					cursor: 'pointer',
+					userSelect: 'none',
+					color: activeTodo?.status === 'in_progress' && isCollapsed
+						? 'var(--vscode-charts-yellow)'
+						: 'var(--vscode-foreground)',
+				}}
 			>
-				<div className='flex items-center gap-2'>
-					<span className='font-medium text-loophole-fg-1'>Tasks</span>
-					{inProgress.length > 0 && (
-						<span className='px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]'>
-							{inProgress.length} active
-						</span>
-					)}
-					<span className='text-loophole-fg-3'>{progressCount}/{totalCount}</span>
-				</div>
-				<div className='flex items-center gap-2'>
-					{/* Progress bar */}
-					<div className='w-16 h-1 rounded-full bg-loophole-border-2 overflow-hidden'>
-						<div
-							className='h-full rounded-full bg-blue-400 transition-all duration-300'
-							style={{ width: `${progressPct}%` }}
-						/>
-					</div>
-					<ChevronRight size={12} className={`text-loophole-fg-3 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-90'}`} />
-				</div>
-			</button>
+				{/* ListChecks icon — exactly Roo Code's size-3 */}
+				<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' style={{ flexShrink: 0 }}>
+					<path d='M9 11l3 3L22 4' /><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' />
+				</svg>
 
-			{/* Task list */}
+				{/* Main text — exactly Roo Code: active task when collapsed, count when expanded */}
+				<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 400 }}>
+					{isCollapsed
+						? allCompleted
+							? `All done (${completedCount}/${totalCount})`
+							: activeTodo?.content ?? 'Tasks'
+						: `${completedCount}/${totalCount} tasks`
+					}
+				</span>
+
+				{/* Count badge when collapsed and not done — exactly Roo Code */}
+				{isCollapsed && !allCompleted && (
+					<span style={{ flexShrink: 0, color: 'var(--vscode-descriptionForeground)', fontSize: 11 }}>
+						{completedCount}/{totalCount}
+					</span>
+				)}
+
+				{/* Chevron — rotates like Roo Code */}
+				<ChevronRight size={12} style={{
+					flexShrink: 0,
+					color: 'var(--vscode-descriptionForeground)',
+					transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+					transition: 'transform 0.15s ease',
+				}} />
+			</div>
+
+			{/* Expanded list — exactly Roo Code: max-h-[300px] overflow-y-auto, font-light, gap-2 */}
 			{!isCollapsed && (
-				<div className='border-t border-loophole-border-2 divide-y divide-loophole-border-2/50'>
-					{todos.map((todo, i) => (
-						<div
-							key={i}
-							className={`flex items-start gap-2 px-3 py-1.5 ${todo.status === 'completed' || todo.status === 'cancelled' ? 'opacity-50' : ''}`}
+				<ul
+					ref={ulRef}
+					style={{
+						listStyle: 'none',
+						margin: '8px 0 4px 0',
+						padding: '0 10px',
+						maxHeight: 300,
+						overflowY: 'auto',
+						cursor: 'default',
+					}}
+				>
+					{todos.map((todo, idx) => (
+						<li
+							key={todo.content}
+							ref={el => { itemRefs.current[idx] = el }}
+							style={{
+								display: 'flex',
+								flexDirection: 'row',
+								gap: 8,
+								alignItems: 'flex-start',
+								minHeight: 20,
+								lineHeight: 1.5,
+								marginBottom: 8,
+								fontWeight: 300,
+								color: todo.status === 'in_progress'
+									? 'var(--vscode-charts-yellow)'
+									: 'var(--vscode-foreground)',
+								opacity: todo.status !== 'in_progress' && todo.status !== 'completed' ? 0.6 : 1,
+							}}
 						>
-							<div className='mt-0.5'>{statusIcon(todo.status)}</div>
-							<span className={`flex-1 leading-tight ${todo.status === 'completed' ? 'line-through text-loophole-fg-3' : 'text-loophole-fg-1'}`}>
-								{todo.content}
-							</span>
-							<Flag size={10} className={`mt-0.5 flex-shrink-0 ${priorityColor(todo.priority)}`} />
-						</div>
+							{getTodoIcon(todo.status)}
+							<span>{todo.content}</span>
+						</li>
 					))}
-				</div>
+				</ul>
 			)}
 		</div>
 	)
