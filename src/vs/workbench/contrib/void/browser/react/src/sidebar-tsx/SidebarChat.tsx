@@ -3638,9 +3638,6 @@ export const SidebarChat = () => {
 			}
 		</div>
 
-		{/* Separator line above input */}
-		<div className='h-px bg-loophole-border-2 mx-2 mb-1' />
-
 		{/* Input at bottom */}
 		<ErrorBoundary>
 			{landingPageInput}
