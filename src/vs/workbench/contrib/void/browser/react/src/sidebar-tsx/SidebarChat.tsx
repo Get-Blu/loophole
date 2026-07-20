@@ -3237,7 +3237,6 @@ const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
 			marginTop: 4,
 			marginLeft: -10,
 			marginRight: -10,
-			borderTop: '1px solid var(--vscode-sideBar-background)',
 			overflow: 'hidden',
 			fontSize: 12,
 		}}>
