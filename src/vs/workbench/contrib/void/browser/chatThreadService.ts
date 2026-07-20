@@ -1236,34 +1236,60 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 				// forcing it to either use a tool or call attempt_completion.
 				// Without this, the agent stops silently when it "talks" instead of acts.
 				if (allToolCalls.length === 0 && chatMode === 'agent') {
-					const noToolsMsg = [
-						'You responded with text but did not call any tool.',
-						'',
-						'You MUST either:',
-						'1. Call a tool to continue working on the task, OR',
-						'2. Call attempt_completion if the task is fully done.',
-						'',
-						'Do NOT respond with text only. Choose a tool and call it now.',
-					].join('\n')
-					this._addMessageToThread(threadId, {
-						role: 'user',
-						content: noToolsMsg,
-						displayContent: noToolsMsg,
-						selections: null,
-						state: defaultMessageState,
-					})
+					// Get the last assistant message text — the AI may have "explained" what it wants to do
+					const lastAssistantText = (() => {
+						const msgs = this.state.allThreads[threadId]?.messages ?? []
+						for (let i = msgs.length - 1; i >= 0; i--) {
+							const m = msgs[i]
+							if (m.role === 'assistant' && 'displayContent' in m) return m.displayContent
+						}
+						return ''
+					})()
+
 					consecutiveMistakeCount += 1
-					// If AI keeps ignoring this, force-break after limit
+
 					if (consecutiveMistakeCount >= CONSECUTIVE_MISTAKE_LIMIT) {
+						// AI kept responding with text only — auto-complete with summary of what it said
+						const summaryMsg = lastAssistantText
+							? `Task complete.\n\n${lastAssistantText}`
+							: '(Agent stopped: could not complete task with available tools.)'
 						this._addMessageToThread(threadId, {
 							role: 'assistant',
-							displayContent: '(Agent stopped: repeated failure to use tools. Please try again with a clearer instruction.)',
+							displayContent: summaryMsg,
 							reasoning: '',
 							anthropicReasoning: null,
 						})
 						isRunningWhenEnd = undefined
 						shouldSendAnotherMessage = false
 					} else {
+						// First or second failure — be very explicit about what tool to call
+						const noToolsMsg = consecutiveMistakeCount === 1
+							? [
+								'[SYSTEM] You described what you want to do but did not call any tool.',
+								'',
+								`Your plan: "${lastAssistantText.slice(0, 200)}"`,
+								'',
+								'Now EXECUTE it. Call the appropriate tool immediately:',
+								'- To create/write a file → use create_file_or_folder then rewrite_file',
+								'- To edit a file → use read_file then edit_file',
+								'- To run something → use run_command',
+								'- If already done → use attempt_completion with a summary',
+								'',
+								'Do NOT explain. Just call the tool.',
+							].join('\n')
+							: [
+								'[SYSTEM] You STILL have not called any tool. This is your final warning.',
+								'Call a tool RIGHT NOW or call attempt_completion.',
+								'No more text responses.',
+							].join('\n')
+
+						this._addMessageToThread(threadId, {
+							role: 'user',
+							content: noToolsMsg,
+							displayContent: noToolsMsg,
+							selections: null,
+							state: defaultMessageState,
+						})
 						shouldSendAnotherMessage = true
 					}
 				}
@@ -1272,12 +1298,27 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					const mcpTools = this._mcpService.getMCPTools()
 
 					// ─── ATTEMPT_COMPLETION EXIT ──────────────────────────────────
-					// If the AI calls attempt_completion, stop the loop immediately.
-					// This is the Roo Code pattern — the AI must explicitly signal done.
+					// If the AI calls attempt_completion, stop the loop and show summary.
 					const completionCall = allToolCalls.find(tc => tc.name === 'attempt_completion')
 					if (completionCall) {
-						// Run only attempt_completion (ignore any other tools in same turn)
-						await this._runToolCall(threadId, 'attempt_completion', completionCall.id, undefined, { preapproved: false, unvalidatedToolParams: completionCall.rawParams })
+						// Extract the result summary from params
+						const rawParams = completionCall.rawParams ?? {}
+						const resultText = typeof rawParams.result === 'string'
+							? rawParams.result
+							: typeof rawParams === 'object' && rawParams !== null
+								? JSON.stringify(rawParams)
+								: 'Task completed.'
+						const commandText = typeof rawParams.command === 'string' && rawParams.command
+							? `\n\n**Run to verify:** \`${rawParams.command}\``
+							: ''
+
+						// Show a clean summary message to the user
+						this._addMessageToThread(threadId, {
+							role: 'assistant',
+							displayContent: `✅ **Done**\n\n${resultText}${commandText}`,
+							reasoning: '',
+							anthropicReasoning: null,
+						})
 						consecutiveMistakeCount = 0
 						isRunningWhenEnd = undefined
 						shouldSendAnotherMessage = false
