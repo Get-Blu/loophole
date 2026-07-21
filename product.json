@@ -5,7 +5,7 @@
   "nameLong": "Loophole Editor",
   "applicationName": "loophole",
   "dataFolderName": ".loophole",
-  "sharedDataFolderName": ".vscode-oss-shared",
+  "sharedDataFolderName": ".loophole-shared",
   "win32MutexName": "loophole",
   "licenseName": "AGPL-3.0",
   "licenseUrl": "https://github.com/loophole-ai/loophole-ide/blob/main/LICENSE.txt",
@@ -36,7 +36,6 @@
   "nodejsRepository": "https://nodejs.org",
   "urlProtocol": "loophole",
   "agentsTelemetryAppName": "agents",
-  "loopholeVersion": "2.0.0",
   "webviewContentExternalBaseUrlTemplate": "https://{{uuid}}.vscode-cdn.net/insider/ef65ac1ba57f57f2a3961bfe94aa20481caca4c6/out/vs/workbench/contrib/webview/browser/pre/",
   "builtInExtensions": [
     {
@@ -296,7 +295,6 @@
     "cdn.travis-ci.org",
     "ci.appveyor.com",
     "circleci.com",
-    "cla.opensource.microsoft.com",
     "codacy.com",
     "codeclimate.com",
     "codecov.io",
