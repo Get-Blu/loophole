@@ -3605,6 +3605,82 @@ export const SidebarChat = () => {
 		return { pct, estimated, contextWindow, isFull: pct >= 95 }
 	}, [currentThread, settingsState])
 
+	// ─── NEW CHAT WITH SUMMARY (Cursor-style) ────────────────────────────────────
+	const [isSummarizing, setIsSummarizing] = useState(false)
+
+	const handleNewChatWithSummary = useCallback(async () => {
+		if (isSummarizing) return
+
+		// If the thread is empty or very short, just open a plain new thread
+		if (!currentThread || currentThread.messages.length < 2) {
+			chatThreadsService.openNewThread()
+			return
+		}
+
+		setIsSummarizing(true)
+
+		try {
+			const llmMessageService = accessor.get('ILLMMessageService')
+			const modelSelection = settingsState.modelSelectionOfFeature['Chat']
+
+			// Build a condensed conversation transcript for summarization
+			const transcript = currentThread.messages
+				.filter(m => m.role === 'user' || m.role === 'assistant')
+				.map(m => {
+					if (m.role === 'user' && 'displayContent' in m) return `User: ${m.displayContent}`
+					if (m.role === 'assistant' && 'displayContent' in m) return `Assistant: ${m.displayContent}`
+					return null
+				})
+				.filter(Boolean)
+				.join('\n\n')
+
+			// Ask the LLM to summarize the conversation
+			let summary = ''
+			await new Promise<void>((resolve, reject) => {
+				const abortRef = { current: false }
+				llmMessageService.sendLLMMessage({
+					messagesType: 'chatMessages',
+					messages: [
+						{
+							role: 'user',
+							content: `Please write a concise summary of the following conversation that can be used as context for continuing the work in a new chat. Focus on: what was being worked on, key decisions made, current state of the code/task, and what still needs to be done. Keep it under 300 words.\n\n${transcript}`
+						}
+					],
+					separateSystemMessage: 'You are a helpful assistant that summarizes conversations concisely.',
+					chatMode: null,
+					modelSelection,
+					modelSelectionOptions: undefined,
+					overridesOfModel: settingsState.overridesOfModel,
+					logging: { loggingName: 'context-summary' },
+					onText: ({ newText }) => { summary += newText },
+					onFinalMessage: () => resolve(),
+					onError: (e) => { console.error('Summary error:', e); resolve() }, // resolve so we still open the thread
+					onAbort: () => resolve(),
+				})
+			})
+
+			// Open a new thread
+			chatThreadsService.openNewThread()
+
+			// Wait a tick for the thread to be created and state to update
+			await new Promise(r => setTimeout(r, 50))
+
+			// Seed the new thread with the summary as context
+			const newThreadId = chatThreadsService.state.currentThreadId
+			if (summary.trim()) {
+				await chatThreadsService.addUserMessageAndStreamResponse({
+					userMessage: `[Context from previous chat]\n\n${summary.trim()}\n\n---\nI've continued in a new chat to keep the context window fresh. Please acknowledge this context and let me know you're ready to continue.`,
+					threadId: newThreadId,
+				})
+			}
+		} catch (e) {
+			console.error('Error creating summarized new chat:', e)
+			chatThreadsService.openNewThread()
+		} finally {
+			setIsSummarizing(false)
+		}
+	}, [isSummarizing, currentThread, chatThreadsService, accessor, settingsState])
+
 	const inputChatArea = <VoidChatArea
 		featureName='Chat'
 		onSubmit={() => onSubmit()}
@@ -3716,10 +3792,19 @@ export const SidebarChat = () => {
 					</div>
 				</div>
 				<button
-					className='flex-shrink-0 px-2 py-0.5 rounded text-xs bg-loophole-bg-2 hover:bg-loophole-bg-1 text-loophole-fg-1 border border-loophole-border-2 transition-colors'
-					onClick={() => chatThreadsService.addNewThread()}
+					className='flex-shrink-0 px-2 py-0.5 rounded text-xs bg-loophole-bg-2 hover:bg-loophole-bg-1 text-loophole-fg-1 border border-loophole-border-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1'
+					onClick={handleNewChatWithSummary}
+					disabled={isSummarizing}
+					title={isSummarizing ? 'Summarizing conversation...' : 'Start a new chat with a summary of this one'}
 				>
-					New chat
+					{isSummarizing ? (
+						<>
+							<svg className='animate-spin' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2'>
+								<path d='M21 12a9 9 0 1 1-6.219-8.56' />
+							</svg>
+							Summarizing…
+						</>
+					) : 'New chat'}
 				</button>
 			</div>
 		)}
