@@ -3262,7 +3262,7 @@ const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
 		<div style={{
 			margin: '4px 8px 0 8px',
 			borderRadius: 6,
-			overflow: 'hidden',
+			overflow: 'visible',
 			fontSize: 12,
 			background: 'var(--vscode-sideBar-background, var(--vscode-editor-background))',
 			border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
@@ -3358,7 +3358,8 @@ const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
 						listStyle: 'none',
 						margin: 0,
 						padding: '6px 10px 8px 10px',
-						maxHeight: 280,
+						minHeight: 80,  /* show at least ~3 items */
+						maxHeight: 200,
 						overflowY: 'auto',
 						cursor: 'default',
 					}}
