@@ -3,7 +3,7 @@ name: Publish Release
 on:
   push:
     tags:
-      - '[0-9]+.[0-9]+.[0-9]+'   # e.g. 1.121.03429
+      - '[0-9]+.[0-9]+.[0-9]+'   # e.g. 2.0.0, 2.1.3, 3.0.5
   workflow_dispatch:
 
 permissions:
@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}
+      loophole_version: ${{ steps.meta.outputs.loophole_version }}
       release_id: ${{ steps.create.outputs.release_id }}
       upload_url: ${{ steps.create.outputs.upload_url }}
 
@@ -31,7 +32,10 @@ jobs:
       - name: Resolve version & metadata
         id: meta
         run: |
+          # VSCode-compat version (for internal build tooling only — never shown to users)
           VERSION=$(node -p "require('./package.json').version")
+          # Loophole brand version — shown everywhere: UI, artifacts, release title
+          LOOPHOLE_VERSION=$(node -p "require('./product.json').loopholeVersion ?? require('./package.json').version")
 
           # Commits since last tag (for release notes context)
           PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p' || echo "")
@@ -41,19 +45,20 @@ jobs:
             COMMIT_COUNT=$(git rev-list HEAD --count)
           fi
 
-          echo "version=$VERSION"         >> "$GITHUB_OUTPUT"
-          echo "prev_tag=$PREV_TAG"       >> "$GITHUB_OUTPUT"
-          echo "commit_count=$COMMIT_COUNT" >> "$GITHUB_OUTPUT"
-          echo "Resolved version: $VERSION, prev tag: $PREV_TAG"
+          echo "version=$VERSION"                   >> "$GITHUB_OUTPUT"
+          echo "loophole_version=$LOOPHOLE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "prev_tag=$PREV_TAG"                 >> "$GITHUB_OUTPUT"
+          echo "commit_count=$COMMIT_COUNT"          >> "$GITHUB_OUTPUT"
+          echo "Loophole $LOOPHOLE_VERSION (VSCode compat: $VERSION), prev tag: $PREV_TAG"
 
       - name: Build release body
         id: body
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
+          LV="${{ steps.meta.outputs.loophole_version }}"
           PREV_TAG="${{ steps.meta.outputs.prev_tag }}"
 
           cat > release_body.md << BODY
-          ## Loophole IDE v${VERSION}
+          ## Loophole IDE ${LV}
 
           > The AI IDE that thinks while you code.
 
@@ -65,62 +70,62 @@ jobs:
 
           | Type | File |
           |------|------|
-          | User Installer | [LoopholeUserSetup-x64-${VERSION}.exe](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/LoopholeUserSetup-x64-${VERSION}.exe) |
-          | System Installer | [LoopholeSetup-x64-${VERSION}.exe](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/LoopholeSetup-x64-${VERSION}.exe) |
-          | .zip | [Loophole-win32-x64-${VERSION}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-win32-x64-${VERSION}.zip) |
-          | .msi — updates enabled | [Loophole-x64-${VERSION}.msi](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-x64-${VERSION}.msi) |
-          | .msi — updates disabled | [Loophole-x64-updates-disabled-${VERSION}.msi](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-x64-updates-disabled-${VERSION}.msi) |
-          | Remote Host | [loophole-reh-win32-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-win32-x64-${VERSION}.tar.gz) |
-          | Web Host | [loophole-reh-web-win32-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-win32-x64-${VERSION}.tar.gz) |
-          | CLI | [loophole-cli-win32-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-win32-x64-${VERSION}.tar.gz) |
+          | User Installer | [LoopholeUserSetup-x64-${LV}.exe](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/LoopholeUserSetup-x64-${LV}.exe) |
+          | System Installer | [LoopholeSetup-x64-${LV}.exe](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/LoopholeSetup-x64-${LV}.exe) |
+          | .zip | [Loophole-win32-x64-${LV}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-win32-x64-${LV}.zip) |
+          | .msi — updates enabled | [Loophole-x64-${LV}.msi](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-x64-${LV}.msi) |
+          | .msi — updates disabled | [Loophole-x64-updates-disabled-${LV}.msi](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-x64-updates-disabled-${LV}.msi) |
+          | Remote Host | [loophole-reh-win32-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-win32-x64-${LV}.tar.gz) |
+          | Web Host | [loophole-reh-web-win32-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-win32-x64-${LV}.tar.gz) |
+          | CLI | [loophole-cli-win32-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-cli-win32-x64-${LV}.tar.gz) |
 
           #### macOS
 
           | Type | File |
           |------|------|
-          | .dmg (Intel x64) | [Loophole.x64.${VERSION}.dmg](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole.x64.${VERSION}.dmg) |
-          | .zip (Intel x64) | [Loophole-darwin-x64-${VERSION}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-darwin-x64-${VERSION}.zip) |
-          | .dmg (Apple Silicon arm64) | [Loophole.arm64.${VERSION}.dmg](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole.arm64.${VERSION}.dmg) |
-          | .zip (Apple Silicon arm64) | [Loophole-darwin-arm64-${VERSION}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-darwin-arm64-${VERSION}.zip) |
-          | Remote Host (x64) | [loophole-reh-darwin-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-darwin-x64-${VERSION}.tar.gz) |
-          | Web Host (x64) | [loophole-reh-web-darwin-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-darwin-x64-${VERSION}.tar.gz) |
-          | CLI (x64) | [loophole-cli-darwin-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-darwin-x64-${VERSION}.tar.gz) |
-          | Remote Host (arm64) | [loophole-reh-darwin-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-darwin-arm64-${VERSION}.tar.gz) |
-          | Web Host (arm64) | [loophole-reh-web-darwin-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-darwin-arm64-${VERSION}.tar.gz) |
-          | CLI (arm64) | [loophole-cli-darwin-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-darwin-arm64-${VERSION}.tar.gz) |
+          | .dmg (Intel x64) | [Loophole.x64.${LV}.dmg](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole.x64.${LV}.dmg) |
+          | .zip (Intel x64) | [Loophole-darwin-x64-${LV}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-darwin-x64-${LV}.zip) |
+          | .dmg (Apple Silicon arm64) | [Loophole.arm64.${LV}.dmg](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole.arm64.${LV}.dmg) |
+          | .zip (Apple Silicon arm64) | [Loophole-darwin-arm64-${LV}.zip](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-darwin-arm64-${LV}.zip) |
+          | Remote Host (x64) | [loophole-reh-darwin-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-darwin-x64-${LV}.tar.gz) |
+          | Web Host (x64) | [loophole-reh-web-darwin-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-darwin-x64-${LV}.tar.gz) |
+          | CLI (x64) | [loophole-cli-darwin-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-cli-darwin-x64-${LV}.tar.gz) |
+          | Remote Host (arm64) | [loophole-reh-darwin-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-darwin-arm64-${LV}.tar.gz) |
+          | Web Host (arm64) | [loophole-reh-web-darwin-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-darwin-arm64-${LV}.tar.gz) |
+          | CLI (arm64) | [loophole-cli-darwin-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-cli-darwin-arm64-${LV}.tar.gz) |
 
           #### Linux
 
           | Type | File |
           |------|------|
-          | .deb (x64) | [loophole_${VERSION}_amd64.deb](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole_${VERSION}_amd64.deb) |
-          | .rpm (x64) | [loophole-${VERSION}-el8.x86_64.rpm](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-${VERSION}-el8.x86_64.rpm) |
-          | .tar.gz (x64) | [Loophole-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-linux-x64-${VERSION}.tar.gz) |
-          | AppImage (x64) | [Loophole-${VERSION}.glibc2.30-x86_64.AppImage](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-${VERSION}.glibc2.30-x86_64.AppImage) |
-          | AppImage zsync (x64) | [Loophole-${VERSION}.glibc2.30-x86_64.AppImage.zsync](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-${VERSION}.glibc2.30-x86_64.AppImage.zsync) |
-          | Snap (x64) | [loophole_${VERSION}_amd64.snap](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole_${VERSION}_amd64.snap) |
-          | Remote Host (x64) | [loophole-reh-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-linux-x64-${VERSION}.tar.gz) |
-          | Web Host (x64) | [loophole-reh-web-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-linux-x64-${VERSION}.tar.gz) |
-          | CLI (x64) | [loophole-cli-linux-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-linux-x64-${VERSION}.tar.gz) |
-          | .deb (arm64) | [loophole_${VERSION}_arm64.deb](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole_${VERSION}_arm64.deb) |
-          | .rpm (arm64) | [loophole-${VERSION}-el8.aarch64.rpm](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-${VERSION}-el8.aarch64.rpm) |
-          | .tar.gz (arm64) | [Loophole-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/Loophole-linux-arm64-${VERSION}.tar.gz) |
-          | Remote Host (arm64) | [loophole-reh-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-linux-arm64-${VERSION}.tar.gz) |
-          | Web Host (arm64) | [loophole-reh-web-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-linux-arm64-${VERSION}.tar.gz) |
-          | CLI (arm64) | [loophole-cli-linux-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-cli-linux-arm64-${VERSION}.tar.gz) |
+          | .deb (x64) | [loophole_${LV}_amd64.deb](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole_${LV}_amd64.deb) |
+          | .rpm (x64) | [loophole-${LV}-el8.x86_64.rpm](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-${LV}-el8.x86_64.rpm) |
+          | .tar.gz (x64) | [Loophole-linux-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-linux-x64-${LV}.tar.gz) |
+          | AppImage (x64) | [Loophole-${LV}.glibc2.30-x86_64.AppImage](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-${LV}.glibc2.30-x86_64.AppImage) |
+          | AppImage zsync (x64) | [Loophole-${LV}.glibc2.30-x86_64.AppImage.zsync](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-${LV}.glibc2.30-x86_64.AppImage.zsync) |
+          | Snap (x64) | [loophole_${LV}_amd64.snap](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole_${LV}_amd64.snap) |
+          | Remote Host (x64) | [loophole-reh-linux-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-linux-x64-${LV}.tar.gz) |
+          | Web Host (x64) | [loophole-reh-web-linux-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-linux-x64-${LV}.tar.gz) |
+          | CLI (x64) | [loophole-cli-linux-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-cli-linux-x64-${LV}.tar.gz) |
+          | .deb (arm64) | [loophole_${LV}_arm64.deb](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole_${LV}_arm64.deb) |
+          | .rpm (arm64) | [loophole-${LV}-el8.aarch64.rpm](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-${LV}-el8.aarch64.rpm) |
+          | .tar.gz (arm64) | [Loophole-linux-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/Loophole-linux-arm64-${LV}.tar.gz) |
+          | Remote Host (arm64) | [loophole-reh-linux-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-linux-arm64-${LV}.tar.gz) |
+          | Web Host (arm64) | [loophole-reh-web-linux-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-linux-arm64-${LV}.tar.gz) |
+          | CLI (arm64) | [loophole-cli-linux-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-cli-linux-arm64-${LV}.tar.gz) |
 
           #### Alpine (musl libc)
 
           | Type | File |
           |------|------|
-          | Remote Host (x64) | [loophole-reh-alpine-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-alpine-x64-${VERSION}.tar.gz) |
-          | Web Host (x64) | [loophole-reh-web-alpine-x64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-alpine-x64-${VERSION}.tar.gz) |
-          | Remote Host (arm64) | [loophole-reh-alpine-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-alpine-arm64-${VERSION}.tar.gz) |
-          | Web Host (arm64) | [loophole-reh-web-alpine-arm64-${VERSION}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${VERSION}/loophole-reh-web-alpine-arm64-${VERSION}.tar.gz) |
+          | Remote Host (x64) | [loophole-reh-alpine-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-alpine-x64-${LV}.tar.gz) |
+          | Web Host (x64) | [loophole-reh-web-alpine-x64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-alpine-x64-${LV}.tar.gz) |
+          | Remote Host (arm64) | [loophole-reh-alpine-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-alpine-arm64-${LV}.tar.gz) |
+          | Web Host (arm64) | [loophole-reh-web-alpine-arm64-${LV}.tar.gz](https://github.com/$GITHUB_REPOSITORY/releases/download/${LV}/loophole-reh-web-alpine-arm64-${LV}.tar.gz) |
 
           ---
 
-          **Full Changelog:** ${PREV_TAG}...${VERSION}
+          **Full Changelog:** ${PREV_TAG}...${LV}
           BODY
 
           echo "Body written to release_body.md"
@@ -131,21 +136,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ steps.meta.outputs.version }}"
+          LV="${{ steps.meta.outputs.loophole_version }}"
 
-          # Create the release as a draft — it goes live once all builds finish
-          RELEASE_URL=$(gh release create "$VERSION" \
-            --title "${VERSION}" \
+          # Tag and release both use the Loophole version (e.g. 2.0.0)
+          RELEASE_URL=$(gh release create "$LV" \
+            --title "${LV}" \
             --notes-file release_body.md \
             --draft \
             --verify-tag 2>/dev/null || \
-          gh release create "$VERSION" \
-            --title "${VERSION}" \
+          gh release create "$LV" \
+            --title "${LV}" \
             --notes-file release_body.md \
             --draft)
 
-          # Get the release ID for downstream jobs
-          RELEASE_ID=$(gh release view "$VERSION" --json id -q '.id')
+          RELEASE_ID=$(gh release view "$LV" --json id -q '.id')
           echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
           echo "upload_url=$RELEASE_URL" >> "$GITHUB_OUTPUT"
           echo "Created release: $RELEASE_URL (id=$RELEASE_ID)"
@@ -159,7 +163,7 @@ jobs:
     needs: create-release
     uses: ./.github/workflows/publish-build-windows.yml
     with:
-      version: ${{ needs.create-release.outputs.version }}
+      version: ${{ needs.create-release.outputs.loophole_version }}
       release_id: ${{ needs.create-release.outputs.release_id }}
     secrets: inherit
 
@@ -168,7 +172,7 @@ jobs:
     needs: create-release
     uses: ./.github/workflows/publish-build-macos.yml
     with:
-      version: ${{ needs.create-release.outputs.version }}
+      version: ${{ needs.create-release.outputs.loophole_version }}
       release_id: ${{ needs.create-release.outputs.release_id }}
     secrets: inherit
 
@@ -177,7 +181,7 @@ jobs:
     needs: create-release
     uses: ./.github/workflows/publish-build-linux.yml
     with:
-      version: ${{ needs.create-release.outputs.version }}
+      version: ${{ needs.create-release.outputs.loophole_version }}
       release_id: ${{ needs.create-release.outputs.release_id }}
     secrets: inherit
 
@@ -339,10 +343,10 @@ jobs:
       - name: Upload Gofile links to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.create-release.outputs.version }}
+          LV: ${{ needs.create-release.outputs.loophole_version }}
         run: |
           if [ -f "GOFILE_DOWNLOADS.md" ] && [ -s "GOFILE_DOWNLOADS.md" ]; then
-            gh release upload "$VERSION" GOFILE_DOWNLOADS.md --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$LV" GOFILE_DOWNLOADS.md --clobber --repo "$GITHUB_REPOSITORY"
             echo "Uploaded GOFILE_DOWNLOADS.md to release"
           else
             echo "::warning::GOFILE_DOWNLOADS.md is empty or does not exist — skipping upload"
@@ -351,12 +355,12 @@ jobs:
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.create-release.outputs.version }}
+          LV: ${{ needs.create-release.outputs.loophole_version }}
         run: |
-          gh release edit "$VERSION" \
+          gh release edit "$LV" \
             --repo "$GITHUB_REPOSITORY" \
             --draft=false \
             --latest
 
-          echo "Release v$VERSION is now live!"
-          gh release view "$VERSION" --repo "$GITHUB_REPOSITORY"
+          echo "Release $LV is now live!"
+          gh release view "$LV" --repo "$GITHUB_REPOSITORY"
