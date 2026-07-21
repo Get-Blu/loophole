@@ -1,7 +1,16 @@
-<!-- Thank you for submitting a Pull Request. Please:
-* Read our Pull Request guidelines:
-  https://github.com/microsoft/vscode/wiki/How-to-Contribute#pull-requests
-* Associate an issue with the Pull Request.
-* Ensure that the code is up-to-date with the `main` branch.
-* Include a description of the proposed changes and how to test them.
--->
+<!-- Search for existing issues or PRs before submitting. -->
+<!-- Ensure your branch is up-to-date with main before opening a PR. -->
+
+**Related Issue**
+Closes #
+
+**Description**
+A clear description of what this PR changes and why.
+
+**How to Test**
+Steps to verify the change works as expected.
+
+**Checklist**
+- [ ] Code is up-to-date with main
+- [ ] Tested locally
+- [ ] No unrelated changes included
