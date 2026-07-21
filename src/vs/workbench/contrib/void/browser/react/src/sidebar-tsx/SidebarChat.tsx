@@ -3198,14 +3198,12 @@ const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
 
 	if (!Array.isArray(todos) || todos.length === 0) return null
 
-	const completedCount = todos.filter(t => t.status === 'completed').length
-	const totalCount = todos.filter(t => t.status !== 'cancelled').length
+	const visibleTodos = todos.filter(t => t.status !== 'cancelled')
+	const completedCount = visibleTodos.filter(t => t.status === 'completed').length
+	const totalCount = visibleTodos.length
 	const allCompleted = completedCount === totalCount && totalCount > 0
-
-	// Most important todo to show when collapsed — in_progress first, then first pending
 	const activeTodo = todos.find(t => t.status === 'in_progress') ?? todos.find(t => t.status === 'pending')
 
-	// Index to auto-scroll to when expanded
 	const scrollIndex = (() => {
 		const i = todos.findIndex(t => t.status === 'in_progress')
 		if (i !== -1) return i
@@ -3221,85 +3219,151 @@ const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
 		}
 	}, [todos, isCollapsed, scrollIndex])
 
-	// Exact Roo Code icons
-	const getTodoIcon = (status: string) => {
-		if (status === 'completed') return <Check size={12} style={{ marginTop: 2, flexShrink: 0 }} />
-		if (status === 'in_progress') return <ChevronRight size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+	const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
+	// Status dot — green = completed, yellow = in_progress, white/dim = pending
+	const StatusDot = ({ status }: { status: string }) => {
+		const color = status === 'completed'
+			? 'var(--vscode-charts-green, #4ec9b0)'
+			: status === 'in_progress'
+				? 'var(--vscode-charts-yellow, #dcdcaa)'
+				: 'var(--vscode-foreground)'
+		const opacity = status === 'pending' ? 0.3 : 1
 		return (
-			<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' style={{ marginTop: 2, flexShrink: 0, opacity: 0.6 }}>
-				<rect x='3' y='3' width='18' height='18' rx='2' />
-			</svg>
+			<span style={{
+				display: 'inline-flex',
+				alignItems: 'center',
+				justifyContent: 'center',
+				flexShrink: 0,
+				marginTop: 3,
+			}}>
+				{status === 'completed' ? (
+					// Green filled circle with check
+					<svg width='10' height='10' viewBox='0 0 10 10' fill='none'>
+						<circle cx='5' cy='5' r='5' fill='var(--vscode-charts-green, #4ec9b0)' />
+						<path d='M2.5 5l1.8 1.8L7.5 3.5' stroke='var(--vscode-editor-background, #1e1e1e)' strokeWidth='1.4' strokeLinecap='round' strokeLinejoin='round' />
+					</svg>
+				) : status === 'in_progress' ? (
+					// Yellow filled dot
+					<svg width='8' height='8' viewBox='0 0 8 8' fill='none'>
+						<circle cx='4' cy='4' r='4' fill={color} />
+					</svg>
+				) : (
+					// Dim empty circle
+					<svg width='8' height='8' viewBox='0 0 8 8' fill='none'>
+						<circle cx='4' cy='4' r='3.5' stroke={color} strokeWidth='1' opacity={opacity} />
+					</svg>
+				)}
+			</span>
 		)
 	}
 
 	return (
 		<div style={{
-			marginTop: 4,
-			marginLeft: -10,
-			marginRight: -10,
+			margin: '4px 8px 0 8px',
+			borderRadius: 6,
 			overflow: 'hidden',
 			fontSize: 12,
+			background: 'var(--vscode-sideBar-background, var(--vscode-editor-background))',
+			border: '1px solid var(--vscode-widget-border, var(--vscode-panel-border))',
+			opacity: 0.95,
 		}}>
-			{/* Header — exactly Roo Code's header layout */}
+			{/* Header row */}
 			<div
 				onClick={() => setIsCollapsed(c => !c)}
 				style={{
 					display: 'flex',
 					alignItems: 'center',
-					gap: 8,
-					padding: '8px 10px 6px 10px',
+					gap: 7,
+					padding: '7px 10px 6px 10px',
 					cursor: 'pointer',
 					userSelect: 'none',
-					color: activeTodo?.status === 'in_progress' && isCollapsed
-						? 'var(--vscode-charts-yellow)'
-						: 'var(--vscode-foreground)',
+					color: 'var(--vscode-foreground)',
 				}}
 			>
-				{/* ListChecks icon — exactly Roo Code's size-3 */}
-				<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' style={{ flexShrink: 0 }}>
+				{/* Icon */}
+				<svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' style={{ flexShrink: 0, opacity: 0.7 }}>
 					<path d='M9 11l3 3L22 4' /><path d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' />
 				</svg>
 
-				{/* Main text — exactly Roo Code: active task when collapsed, count when expanded */}
-				<span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 400 }}>
-					{isCollapsed
-						? allCompleted
-							? `All done (${completedCount}/${totalCount})`
-							: activeTodo?.content ?? 'Tasks'
-						: `${completedCount}/${totalCount} tasks`
-					}
+				{/* Label */}
+				<span style={{ fontWeight: 500, fontSize: 11, letterSpacing: '0.03em', color: 'var(--vscode-descriptionForeground)', textTransform: 'uppercase', flexShrink: 0 }}>
+					Todo List
 				</span>
 
-				{/* Count badge when collapsed and not done — exactly Roo Code */}
-				{isCollapsed && !allCompleted && (
-					<span style={{ flexShrink: 0, color: 'var(--vscode-descriptionForeground)', fontSize: 11 }}>
-						{completedCount}/{totalCount}
+				{/* Active task preview when collapsed */}
+				{isCollapsed && !allCompleted && activeTodo && (
+					<span style={{
+						flex: 1,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+						color: activeTodo.status === 'in_progress'
+							? 'var(--vscode-charts-yellow, #dcdcaa)'
+							: 'var(--vscode-foreground)',
+						opacity: 0.85,
+					}}>
+						{activeTodo.content}
 					</span>
 				)}
 
-				{/* Chevron — rotates like Roo Code */}
-				<ChevronRight size={12} style={{
+				{allCompleted && isCollapsed && (
+					<span style={{ flex: 1, color: 'var(--vscode-charts-green, #4ec9b0)', opacity: 0.9 }}>
+						All done
+					</span>
+				)}
+
+				{!isCollapsed && <span style={{ flex: 1 }} />}
+
+				{/* Count badge */}
+				<span style={{
+					flexShrink: 0,
+					fontSize: 11,
+					color: allCompleted
+						? 'var(--vscode-charts-green, #4ec9b0)'
+						: 'var(--vscode-descriptionForeground)',
+					fontVariantNumeric: 'tabular-nums',
+				}}>
+					{completedCount}/{totalCount}
+				</span>
+
+				{/* Chevron */}
+				<ChevronRight size={11} style={{
 					flexShrink: 0,
 					color: 'var(--vscode-descriptionForeground)',
 					transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
 					transition: 'transform 0.15s ease',
+					opacity: 0.6,
 				}} />
 			</div>
 
-			{/* Expanded list — exactly Roo Code: max-h-[300px] overflow-y-auto, font-light, gap-2 */}
+			{/* Progress bar */}
+			<div style={{ height: 2, background: 'var(--vscode-widget-border, rgba(255,255,255,0.08))' }}>
+				<div style={{
+					height: '100%',
+					width: `${progressPct}%`,
+					background: allCompleted
+						? 'var(--vscode-charts-green, #4ec9b0)'
+						: 'var(--vscode-charts-yellow, #dcdcaa)',
+					transition: 'width 0.3s ease',
+					borderRadius: '0 1px 1px 0',
+				}} />
+			</div>
+
+			{/* Expanded list */}
 			{!isCollapsed && (
 				<ul
 					ref={ulRef}
 					style={{
 						listStyle: 'none',
-						margin: '8px 0 4px 0',
-						padding: '0 10px',
-						maxHeight: 300,
+						margin: 0,
+						padding: '6px 10px 8px 10px',
+						maxHeight: 280,
 						overflowY: 'auto',
 						cursor: 'default',
 					}}
 				>
-					{todos.map((todo, idx) => (
+					{visibleTodos.map((todo, idx) => (
 						<li
 							key={todo.content}
 							ref={el => { itemRefs.current[idx] = el }}
@@ -3308,18 +3372,25 @@ const TodoPanel = ({ todos }: { todos: TodoItem[] }) => {
 								flexDirection: 'row',
 								gap: 8,
 								alignItems: 'flex-start',
-								minHeight: 20,
-								lineHeight: 1.5,
-								marginBottom: 8,
-								fontWeight: 300,
-								color: todo.status === 'in_progress'
-									? 'var(--vscode-charts-yellow)'
-									: 'var(--vscode-foreground)',
-								opacity: todo.status !== 'in_progress' && todo.status !== 'completed' ? 0.6 : 1,
+								minHeight: 22,
+								lineHeight: '1.5',
+								padding: '2px 0',
+								color: todo.status === 'completed'
+									? 'var(--vscode-foreground)'
+									: todo.status === 'in_progress'
+										? 'var(--vscode-charts-yellow, #dcdcaa)'
+										: 'var(--vscode-foreground)',
+								opacity: todo.status === 'pending' ? 0.45 : 1,
 							}}
 						>
-							{getTodoIcon(todo.status)}
-							<span>{todo.content}</span>
+							<StatusDot status={todo.status} />
+							<span style={{
+								textDecoration: todo.status === 'completed' ? 'line-through' : 'none',
+								opacity: todo.status === 'completed' ? 0.55 : 1,
+								fontSize: 12,
+							}}>
+								{todo.content}
+							</span>
 						</li>
 					))}
 				</ul>
