@@ -3584,6 +3584,27 @@ export const SidebarChat = () => {
 		}
 	}, [onSubmit, onAbort, isRunning])
 
+	// ─── CONTEXT WINDOW WARNING ──────────────────────────────────────────────────
+	const contextWarning = useMemo(() => {
+		if (!currentThread) return null
+		const modelSelection = settingsState.modelSelectionOfFeature['Chat']
+		if (!modelSelection) return null
+		const caps = getModelCapabilities(modelSelection.providerName, modelSelection.modelName, settingsState.overridesOfModel)
+		if (!caps) return null
+		const contextWindow = caps.contextWindow || 128000
+		const cumulativeCount = currentThread.state.cumulativeTokenCount || 0
+		let totalChars = 0
+		for (const m of currentThread.messages) {
+			if (m.role === 'user' && 'content' in m) totalChars += m.content.length
+			else if (m.role === 'assistant' && 'displayContent' in m) totalChars += m.displayContent.length
+			else if (m.role === 'tool' && 'content' in m) totalChars += m.content.length
+		}
+		const estimated = cumulativeCount > 0 ? cumulativeCount + 2000 : Math.ceil(totalChars / 4)
+		const pct = (estimated / contextWindow) * 100
+		if (pct < 70) return null
+		return { pct, estimated, contextWindow, isFull: pct >= 95 }
+	}, [currentThread, settingsState])
+
 	const inputChatArea = <VoidChatArea
 		featureName='Chat'
 		onSubmit={() => onSubmit()}
@@ -3671,6 +3692,38 @@ export const SidebarChat = () => {
 		<div className='px-4'>
 			<CommandBarInChat />
 		</div>
+
+		{/* Context window warning banner */}
+		{contextWarning && (
+			<div className={`mx-2 mb-1 px-3 py-2 rounded text-xs flex items-start gap-2 ${
+				contextWarning.isFull
+					? 'bg-red-500/10 border border-red-500/30 text-red-400'
+					: 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400'
+			}`}>
+				<AlertTriangle size={12} className='mt-0.5 flex-shrink-0' />
+				<div className='flex-1'>
+					<span className='font-medium'>
+						{contextWarning.isFull ? 'Context window full' : 'Context window nearly full'}
+					</span>
+					<span className='text-loophole-fg-3 ml-1'>
+						({contextWarning.pct.toFixed(0)}% used)
+					</span>
+					<div className='mt-1 text-loophole-fg-3'>
+						{contextWarning.isFull
+							? 'Start a new chat to continue. Old messages are being truncated and the AI may lose context.'
+							: 'Approaching the limit. Start a new chat soon to keep responses accurate.'
+						}
+					</div>
+				</div>
+				<button
+					className='flex-shrink-0 px-2 py-0.5 rounded text-xs bg-loophole-bg-2 hover:bg-loophole-bg-1 text-loophole-fg-1 border border-loophole-border-2 transition-colors'
+					onClick={() => chatThreadsService.addNewThread()}
+				>
+					New chat
+				</button>
+			</div>
+		)}
+
 		<div className='px-2 pb-2'>
 			{inputChatArea}
 		</div>
