@@ -307,7 +307,7 @@ function packageTask(type: string, platform: string, arch: string, sourceFolderN
 		const sources = es.merge(src, extensions, extensionsCommonDependencies)
 			.pipe(filter(['**', '!**/*.{js,css}.map'], { dot: true }));
 
-		let version = packageJson.version;
+		let version = (product as any).loopholeVersion ?? packageJson.version;
 		const quality = (product as typeof product & { quality?: string }).quality;
 
 		if (quality && quality !== 'stable') {
