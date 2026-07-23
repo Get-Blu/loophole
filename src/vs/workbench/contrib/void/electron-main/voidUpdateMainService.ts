@@ -75,7 +75,8 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		@ILifecycleMainService private readonly _lifecycleMainService: ILifecycleMainService,
 	) {
 		super();
-		this._cachePath = join(tmpdir(), `loophole-updates-${this._productService.version}`);
+		const _loopholeVersion = (this._productService as any).loopholeVersion ?? this._productService.version;
+		this._cachePath = join(tmpdir(), `loophole-updates-${_loopholeVersion}`);
 
 		// Listen to VS Code update service state changes
 		this._register(this._updateService.onStateChange(state => {
@@ -157,7 +158,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 				url: 'https://api.github.com/repos/loophole-ai/loophole-ide/releases/latest',
 				headers: {
 					'Accept': 'application/vnd.github.v3+json',
-					'User-Agent': `Loophole/${this._productService.version}`
+					'User-Agent': `Loophole/${(this._productService as any).loopholeVersion ?? this._productService.version}`
 				},
 				callSite: 'LoopholeMainUpdateService._checkGitHubReleases'
 			}, CancellationToken.None);
@@ -170,7 +171,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			}
 
 			const latestVersion = release.tag_name.replace(/^v/, '');
-			const myVersion = this._productService.version;
+			const myVersion = (this._productService as any).loopholeVersion ?? this._productService.version;
 
 			this._logService.info(`[LoopholeUpdate] Current: ${myVersion}, Latest: ${latestVersion}`);
 
