@@ -30,7 +30,8 @@ const WEB_FOLDER = path.join(REPO_ROOT, 'remote', 'web');
 
 const commit = getVersion(REPO_ROOT);
 const quality = (product as { quality?: string }).quality;
-const version = (quality && quality !== 'stable') ? `${packageJson.version}-${quality}` : packageJson.version;
+const _baseVersion = (product as any).loopholeVersion ?? packageJson.version;
+const version = (quality && quality !== 'stable') ? `${_baseVersion}-${quality}` : _baseVersion;
 
 // esbuild-based bundle for standalone web
 function runEsbuildBundle(outDir: string, minify: boolean, nls: boolean, sourceMapBaseUrl?: string): Promise<void> {
