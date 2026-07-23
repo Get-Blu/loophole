@@ -28,7 +28,8 @@ const globAsync = promisify(glob);
 const REPO_ROOT = path.dirname(path.dirname(import.meta.dirname));
 const commit = getVersion(REPO_ROOT);
 const quality = (product as { quality?: string }).quality;
-const version = (quality && quality !== 'stable') ? `${packageJson.version}-${quality}` : packageJson.version;
+const _baseVersion = (product as any).loopholeVersion ?? packageJson.version;
+const version = (quality && quality !== 'stable') ? `${_baseVersion}-${quality}` : _baseVersion;
 
 // CLI: transpile [--watch] | bundle [--minify] [--nls] [--out <dir>]
 const command = process.argv[2]; // 'transpile' or 'bundle'
