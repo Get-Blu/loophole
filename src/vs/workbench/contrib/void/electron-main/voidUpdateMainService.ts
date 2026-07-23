@@ -260,27 +260,27 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		let patterns: string[] = [];
 
 		if (platformName === 'win32') {
-			// Windows: look for .exe or .zip
+			// Windows: LoopholeUserSetup-x64-2.x.x.exe / LoopholeSetup-arm64-2.x.x.exe
 			if (archName === 'x64') {
-				patterns = ['win32-x64.exe', 'windows-x64.exe', 'win-x64.exe', 'x64.exe'];
+				patterns = ['LoopholeUserSetup-x64', 'LoopholeSetup-x64', 'UserSetup-x64'];
 			} else if (archName === 'arm64') {
-				patterns = ['win32-arm64.exe', 'windows-arm64.exe', 'arm64.exe'];
+				patterns = ['LoopholeUserSetup-arm64', 'LoopholeSetup-arm64', 'UserSetup-arm64'];
 			} else {
-				patterns = ['win32.exe', 'windows.exe', '.exe'];
+				patterns = ['LoopholeUserSetup', 'LoopholeSetup', '.exe'];
 			}
 		} else if (platformName === 'darwin') {
-			// macOS: look for .dmg or .zip
+			// macOS: Loophole.arm64.2.x.x.dmg / Loophole.x64.2.x.x.dmg
 			if (archName === 'arm64') {
-				patterns = ['darwin-arm64.dmg', 'mac-arm64.dmg', 'darwin-arm64.zip', 'mac-arm64.zip'];
+				patterns = ['Loophole.arm64', 'loophole-arm64', 'arm64.dmg'];
 			} else {
-				patterns = ['darwin.dmg', 'mac.dmg', 'darwin-x64.dmg', 'darwin.zip', 'mac.zip'];
+				patterns = ['Loophole.x64', 'loophole-x64', 'x64.dmg'];
 			}
 		} else if (platformName === 'linux') {
-			// Linux: look for .AppImage, .deb, or .rpm
+			// Linux: Loophole-linux-x64-2.x.x.tar.gz / Loophole-linux-arm64-2.x.x.tar.gz
 			if (archName === 'arm64') {
-				patterns = ['linux-arm64.AppImage', 'arm64.AppImage', 'arm64.deb'];
+				patterns = ['Loophole-linux-arm64', 'linux-arm64', 'arm64.tar.gz'];
 			} else {
-				patterns = ['linux.AppImage', 'x64.AppImage', '.AppImage', 'amd64.deb', 'x64.deb', '.deb'];
+				patterns = ['Loophole-linux-x64', 'linux-x64', 'x64.tar.gz'];
 			}
 		}
 
@@ -296,7 +296,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		// Fallback: return first asset that looks like an installer
 		const fallback = assets.find(a => {
 			const name = a.name.toLowerCase();
-			return name.endsWith('.exe') || name.endsWith('.dmg') || name.endsWith('.AppImage') || name.endsWith('.deb');
+			return name.endsWith('.exe') || name.endsWith('.dmg') || name.endsWith('.tar.gz') || name.endsWith('.appimage') || name.endsWith('.deb');
 		});
 
 		if (fallback) {
