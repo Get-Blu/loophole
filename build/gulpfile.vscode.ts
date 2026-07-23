@@ -277,7 +277,10 @@ function packageTask(platform: string, arch: string, sourceFolderName: string, d
 		const sources = es.merge(src, extensions)
 			.pipe(filter(sourceFilterPattern, { dot: true }));
 
-		let version = packageJson.version;
+		// Use loopholeVersion for display/installer version; packageJson.version stays
+		// at the upstream VSCode base version so extension compatibility is never broken.
+		const displayVersion = (product as any).loopholeVersion ?? packageJson.version;
+		let version = displayVersion;
 		const quality = (product as { quality?: string }).quality;
 
 		if (quality && quality !== 'stable') {
@@ -534,7 +537,8 @@ function patchWin32DependenciesTask(destinationFolderName: string) {
 		])).flatMap(o => o);
 		const packageJson = JSON.parse(await fs.promises.readFile(path.join(cwd, versionedResourcesFolder, 'resources', 'app', 'package.json'), 'utf8'));
 		const product = JSON.parse(await fs.promises.readFile(path.join(cwd, versionedResourcesFolder, 'resources', 'app', 'product.json'), 'utf8'));
-		const baseVersion = packageJson.version.replace(/-.*$/, '');
+		const displayVer = product.loopholeVersion ?? packageJson.version;
+		const baseVersion = displayVer.replace(/-.*$/, '');
 
 		const patchPromises = deps.map<Promise<unknown>>(async dep => {
 			const basename = path.basename(dep);
@@ -544,12 +548,12 @@ function patchWin32DependenciesTask(destinationFolderName: string) {
 				'version-string': {
 					'CompanyName': 'Microsoft Corporation',
 					'FileDescription': product.nameLong,
-					'FileVersion': packageJson.version,
+					'FileVersion': displayVer,
 					'InternalName': basename,
 					'LegalCopyright': 'Copyright (C) 2026 Microsoft. All rights reserved',
 					'OriginalFilename': basename,
 					'ProductName': product.nameLong,
-					'ProductVersion': packageJson.version,
+					'ProductVersion': displayVer,
 				}
 			});
 		});
