@@ -288,7 +288,9 @@ function packageTask(platform: string, arch: string, sourceFolderName: string, d
 		}
 
 		const name = product.nameShort;
-		const packageJsonUpdates: Record<string, unknown> = { name, version };
+		// Keep the bundled package.json version as the upstream VSCode base version
+		// so that any engine/extension checks reading it stay compatible.
+		const packageJsonUpdates: Record<string, unknown> = { name, version: packageJson.version };
 
 		if (platform === 'linux') {
 			packageJsonUpdates.desktopName = `${product.applicationName}.desktop`;
@@ -308,7 +310,11 @@ function packageTask(platform: string, arch: string, sourceFolderName: string, d
 				json.commit = commit;
 				json.date = readISODate(out);
 				json.checksums = checksums;
-				json.version = version;
+				// IMPORTANT: json.version must stay as the upstream VSCode base version
+				// (e.g. 1.121.0) so that productService.version passes extension
+				// compatibility checks. Use loopholeVersion for all display/installer
+				// purposes instead — it is already set in product.json and preserved here.
+				json.version = packageJson.version;
 				json.serverDownloadUrlTemplate = 'https://github.com/loophole-ai/loophole-ide/releases/download//loophole-reh-${os}-${arch}-.tar.gz';
 				return json;
 			}))
