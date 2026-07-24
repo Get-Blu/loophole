@@ -196,12 +196,11 @@ export const defaultModelsOfProvider = {
 		'openrouter/auto',
 	],
 	groq: [
-		'llama-3.3-70b-versatile',
-    		'qwen/qwen3-32b',
-    		'openai/gpt-oss-120b',
-    		'meta-llama/llama-4-scout-17b-16e-instruct', 
-    		'groq/compound',                            
-    		'openai/gpt-oss-20b',   
+	    'openai/gpt-oss-120b',    
+	    'qwen/qwen3.6-27b',     
+	    'groq/compound',   
+	    'llama-3.3-70b-versatile', 
+	    'openai/gpt-oss-20b',   
 	],
 	mistral: [
 		'mistral-large-latest',
