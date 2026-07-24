@@ -98,14 +98,11 @@ export const defaultModelsOfProvider = {
 		'claude-haiku-4-5-20251001'
 	],
 	xAI: [
-		'grok-3',
-		'grok-3-fast',
-		'grok-3-mini',
-		'grok-3-mini-fast',
-		'grok-4.3',
-		'grok-4.3-latest',
-		'grok-4.20-reasoning',
-		'grok-4.1-fast-reasoning',
+	    'grok-4.5',
+	    'grok-4.3',
+	    'grok-4.20-reasoning',
+	    'grok-4.1-fast-reasoning',
+	    'grok-build',
 	],
 	gemini: [
 		'gemini-3.1-pro-preview',
