@@ -525,6 +525,8 @@ const extensiveModelOptionsFallback: LoopholeStaticProviderInfo['modelOptionsFal
 	if (lower.includes('gemini') && (lower.includes('3.1') || lower.includes('3-1'))) return toFallback(geminiModelOptions, 'gemini-3.1-pro')
 	if (lower.includes('gemini') && (lower.includes('2.5') || lower.includes('2-5'))) return toFallback(geminiModelOptions, 'gemini-2.5-pro-exp-03-25')
 
+	if (lower.includes('claude-fable-5') || lower.includes('fable-5')) return toFallback(anthropicModelOptions, 'claude-fable-5')
+	if (lower.includes('claude-sonnet-5') || (lower.includes('claude') && lower.includes('sonnet-5'))) return toFallback(anthropicModelOptions, 'claude-sonnet-5')
 	if (lower.includes('claude-4-6') || lower.includes('claude-4.6')) return toFallback(anthropicModelOptions, 'claude-sonnet-4.6-20260217')
 	if (lower.includes('claude-3-7') || lower.includes('claude-3.7')) return toFallback(anthropicModelOptions, 'claude-3-7-sonnet-20250219')
 	if (lower.includes('claude-3-5') || lower.includes('claude-3.5')) return toFallback(anthropicModelOptions, 'claude-3-5-sonnet-20241022')
@@ -577,6 +579,38 @@ const extensiveModelOptionsFallback: LoopholeStaticProviderInfo['modelOptionsFal
 const anthropicModelOptions = {
 	// --- Dateless IDs (4.6 generation onwards — pinned snapshots, no date suffix) ---
 	// https://platform.claude.com/docs/en/about-claude/models/overview
+	'claude-fable-5': { // Flagship, released June 9 2026. $10/$50, 1M context, 128K output.
+		contextWindow: 1_000_000,
+		reservedOutputTokenSpace: 128_000,
+		cost: { input: 10.00, cache_read: 1.00, cache_write: 12.50, output: 50.00 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'anthropic-style' as const,
+		supportsSystemMessage: 'separated' as const,
+		reasoningCapabilities: {
+			supportsReasoning: true,
+			canTurnOffReasoning: true,
+			canIOReasoning: true,
+			reasoningReservedOutputTokenSpace: 32_768,
+			reasoningSlider: { type: 'budget_slider' as const, min: 1024, max: 32_768, default: 4096 },
+		},
+	},
+	'claude-sonnet-5': { // Released June 30 2026. Intro pricing $2/$10 through Aug 31 2026, then $3/$15. 1M context, 128K output.
+		contextWindow: 1_000_000,
+		reservedOutputTokenSpace: 128_000,
+		cost: { input: 2.00, cache_read: 0.20, cache_write: 2.50, output: 10.00 }, // intro pricing through Aug 31 2026
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'anthropic-style' as const,
+		supportsSystemMessage: 'separated' as const,
+		reasoningCapabilities: {
+			supportsReasoning: true,
+			canTurnOffReasoning: true,
+			canIOReasoning: true,
+			reasoningReservedOutputTokenSpace: 32_768,
+			reasoningSlider: { type: 'budget_slider' as const, min: 1024, max: 32_768, default: 4096 },
+		},
+	},
 	'claude-opus-4-8': { // 1M context, released May 2026
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
@@ -839,8 +873,12 @@ const anthropicSettings: LoopholeStaticProviderInfo = {
 		const lower = modelName.toLowerCase()
 		let fallbackName: keyof typeof anthropicModelOptions | null = null
 
+		// Claude 5.x models
+		if (lower.includes('claude-fable-5') || lower.includes('fable-5')) fallbackName = 'claude-fable-5'
+		else if (lower.includes('claude-sonnet-5') || lower.includes('sonnet-5')) fallbackName = 'claude-sonnet-5'
+
 		// Claude 4.x dateless IDs (4.6 generation onwards — 1M context)
-		if (lower.includes('claude-opus-4-8') || lower.includes('claude-4-8-opus')) fallbackName = 'claude-opus-4-8'
+		else if (lower.includes('claude-opus-4-8') || lower.includes('claude-4-8-opus')) fallbackName = 'claude-opus-4-8'
 		else if (lower.includes('claude-opus-4-7') || lower.includes('claude-4-7-opus')) fallbackName = 'claude-opus-4-7'
 		else if (lower.includes('claude-opus-4-6') || lower.includes('claude-4-6-opus')) fallbackName = 'claude-opus-4-6'
 		else if (lower.includes('claude-sonnet-4-6') || lower.includes('claude-4-6-sonnet')) fallbackName = 'claude-sonnet-4-6'
@@ -870,6 +908,37 @@ const anthropicSettings: LoopholeStaticProviderInfo = {
 // ---------------- OPENAI ----------------
 const openAIModelOptions = { // https://platform.openai.com/docs/pricing
 	// GPT-5.x family — 1_050_000 context (ModelWalk: openai.json)
+	// Released July 9, 2026. All three share 1.05M context / 128K output. Sol=$5/$30, Terra=$2.50/$15, Luna=$1/$6.
+	'gpt-5.6-sol': {
+		contextWindow: 1_050_000,
+		reservedOutputTokenSpace: 128_000,
+		cost: { input: 5.00, output: 30.00, cache_read: 0.50 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'developer-role',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'high' } },
+	},
+	'gpt-5.6-terra': {
+		contextWindow: 1_050_000,
+		reservedOutputTokenSpace: 128_000,
+		cost: { input: 2.50, output: 15.00, cache_read: 0.25 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'developer-role',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'medium' } },
+	},
+	'gpt-5.6-luna': {
+		contextWindow: 1_050_000,
+		reservedOutputTokenSpace: 128_000,
+		cost: { input: 1.00, output: 6.00, cache_read: 0.10 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'openai-style',
+		supportsSystemMessage: 'developer-role',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
+	},
 	'gpt-5.5': {
 		contextWindow: 1_050_000,
 		reservedOutputTokenSpace: 128_000,
@@ -1077,9 +1146,28 @@ const openAISettings: LoopholeStaticProviderInfo = {
 	modelOptionsFallback: (modelName) => {
 		const lower = modelName.toLowerCase()
 		let fallbackName: keyof typeof openAIModelOptions | null = null
-		if (lower.includes('o1')) { fallbackName = 'o1' }
-		if (lower.includes('o3-mini')) { fallbackName = 'o3-mini' }
-		if (lower.includes('gpt-4o')) { fallbackName = 'gpt-4o' }
+		if (lower.includes('gpt-5.6') && lower.includes('sol')) fallbackName = 'gpt-5.6-sol'
+		else if (lower.includes('gpt-5.6') && lower.includes('terra')) fallbackName = 'gpt-5.6-terra'
+		else if (lower.includes('gpt-5.6') && lower.includes('luna')) fallbackName = 'gpt-5.6-luna'
+		else if (lower.includes('gpt-5.6')) fallbackName = 'gpt-5.6-sol'
+		else if (lower.includes('gpt-5.5')) fallbackName = 'gpt-5.5'
+		else if (lower.includes('gpt-5.4') && lower.includes('pro')) fallbackName = 'gpt-5.4-pro'
+		else if (lower.includes('gpt-5.4') && lower.includes('mini')) fallbackName = 'gpt-5.4-mini'
+		else if (lower.includes('gpt-5.4')) fallbackName = 'gpt-5.4'
+		else if (lower.includes('gpt-5.3')) fallbackName = 'gpt-5.3-codex'
+		else if (lower.includes('gpt-oss-120b')) fallbackName = 'gpt-oss-120b'
+		else if (lower.includes('gpt-oss-20b')) fallbackName = 'gpt-oss-20b'
+		else if (lower.includes('o4-mini')) fallbackName = 'o4-mini'
+		else if (lower.includes('o4')) fallbackName = 'o4'
+		else if (lower.includes('o3-mini')) fallbackName = 'o3-mini'
+		else if (lower.includes('o3')) fallbackName = 'o3'
+		else if (lower.includes('o1-mini')) fallbackName = 'o1-mini'
+		else if (lower.includes('o1')) fallbackName = 'o1'
+		else if (lower.includes('gpt-4.1') && lower.includes('mini')) fallbackName = 'gpt-4.1-mini'
+		else if (lower.includes('gpt-4.1') && lower.includes('nano')) fallbackName = 'gpt-4.1-nano'
+		else if (lower.includes('gpt-4.1')) fallbackName = 'gpt-4.1'
+		else if (lower.includes('gpt-4o-mini')) fallbackName = 'gpt-4o-mini'
+		else if (lower.includes('gpt-4o')) fallbackName = 'gpt-4o'
 		if (fallbackName) return { modelName: fallbackName, recognizedModelName: fallbackName, ...openAIModelOptions[fallbackName] }
 		return null
 	},
@@ -1144,6 +1232,26 @@ const xAIModelOptions = {
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: false, canIOReasoning: false, reasoningSlider: { type: 'effort_slider', values: ['low', 'high'], default: 'low' } },
 	},
 	// grok-4.x family — 200_000 context (ModelWalk: xai.json)
+	'grok-4.5': { // Released July 8, 2026. 500K context, $2/$6 per 1M. Configurable reasoning.
+		contextWindow: 500_000,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 2.00, output: 6.00, cache_read: 0.50 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		specialToolFormat: 'openai-style',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
+	},
+	'grok-build': { // grok-build-0.1: 256K context, $1/$2 per 1M. Code-focused agent model.
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 1.00, output: 2.00, cache_read: 0.20 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		specialToolFormat: 'openai-style',
+		reasoningCapabilities: false,
+	},
 	'grok-4.3': {
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 20_000,
@@ -1192,10 +1300,12 @@ const xAISettings: LoopholeStaticProviderInfo = {
 		const lower = modelName.toLowerCase()
 		let fallbackName: keyof typeof xAIModelOptions | null = null
 		if (lower.includes('grok-2')) fallbackName = 'grok-2'
+		else if (lower.includes('grok-4.5')) fallbackName = 'grok-4.5'
 		else if (lower.includes('grok-4')) fallbackName = 'grok-4.3'
+		else if (lower.includes('grok-build')) fallbackName = 'grok-build'
 		else if (lower.includes('grok-3-mini')) fallbackName = 'grok-3-mini'
 		else if (lower.includes('grok-3')) fallbackName = 'grok-3'
-		else if (lower.includes('grok')) fallbackName = 'grok-4.3'
+		else if (lower.includes('grok')) fallbackName = 'grok-4.5'
 		if (fallbackName) return { modelName: fallbackName, recognizedModelName: fallbackName, ...xAIModelOptions[fallbackName] }
 		return null
 	},
@@ -1208,10 +1318,44 @@ const xAISettings: LoopholeStaticProviderInfo = {
 
 // ---------------- GEMINI ----------------
 const geminiModelOptions = { // https://ai.google.dev/gemini-api/docs/pricing
-	'gemini-3.1-pro': {
-		contextWindow: 1_485_760,
-		reservedOutputTokenSpace: 128_000,
-		cost: { input: 1.25, output: 5.00 },
+	// Gemini 3.6 Flash — released July 21 2026. 1M context, 65K output. $1.50/$7.50.
+	'gemini-3.6-flash': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 1.50, output: 7.50, cache_read: 0.15 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'separated',
+		specialToolFormat: 'gemini-style',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 }, reasoningReservedOutputTokenSpace: 32_768 },
+	},
+	// Gemini 3.5 Flash — released May 19 2026. 1M context, 65K output. $1.50/$9.
+	'gemini-3.5-flash': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 1.50, output: 9.00, cache_read: 0.15 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'separated',
+		specialToolFormat: 'gemini-style',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 }, reasoningReservedOutputTokenSpace: 32_768 },
+	},
+	// Gemini 3.5 Flash-Lite — released July 21 2026. 1M context, 65K output. $0.30/$2.50. ~462 t/s.
+	'gemini-3.5-flash-lite': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 0.30, output: 2.50 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'separated',
+		specialToolFormat: 'gemini-style',
+		reasoningCapabilities: false,
+	},
+	// Gemini 2.5 Pro — legacy, retiring Oct 16 2026. 1M context. $1.25/$10 (≤200K); $2.50/$15 above.
+	'gemini-2.5-pro': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 1.25, output: 10.00 },
 		downloadable: false,
 		supportsFIM: false,
 		supportsSystemMessage: 'separated',
@@ -1224,10 +1368,45 @@ const geminiModelOptions = { // https://ai.google.dev/gemini-api/docs/pricing
 			reasoningReservedOutputTokenSpace: 32_768,
 		},
 	},
+	// Gemini 2.5 Flash — legacy, retiring Oct 16 2026. 1M context, $0.15/$1.25.
+	'gemini-2.5-flash': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.15, output: 1.25 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'separated',
+		specialToolFormat: 'gemini-style',
+		reasoningCapabilities: {
+			supportsReasoning: true,
+			canTurnOffReasoning: true,
+			canIOReasoning: true,
+			reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 },
+			reasoningReservedOutputTokenSpace: 32_768,
+		},
+	},
+	// Gemini 3.1 Pro — released Feb 19, 2026. 1M context, 66K output, $2/$12 (up to 200K); $4/$18 above.
+	'gemini-3.1-pro': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 2.00, output: 12.00, cache_read: 0.20 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'separated',
+		specialToolFormat: 'gemini-style',
+		reasoningCapabilities: {
+			supportsReasoning: true,
+			canTurnOffReasoning: true,
+			canIOReasoning: true,
+			reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 },
+			reasoningReservedOutputTokenSpace: 32_768,
+		},
+	},
+	// Gemini 3.1 Flash-Lite — released May 7 2026. 1M context. $0.125/$0.75.
 	'gemini-3.1-flash-lite': {
 		contextWindow: 1_048_576,
 		reservedOutputTokenSpace: 32_768,
-		cost: { input: 0.05, output: 0.20 },
+		cost: { input: 0.125, output: 0.75 },
 		downloadable: false,
 		supportsFIM: false,
 		supportsSystemMessage: 'separated',
@@ -1310,7 +1489,24 @@ const geminiModelOptions = { // https://ai.google.dev/gemini-api/docs/pricing
 
 const geminiSettings: LoopholeStaticProviderInfo = {
 	modelOptions: geminiModelOptions,
-	modelOptionsFallback: (modelName) => { return null },
+	modelOptionsFallback: (modelName) => {
+		const lower = modelName.toLowerCase()
+		let fallbackName: keyof typeof geminiModelOptions | null = null
+		if (lower.includes('gemini') && lower.includes('3.6')) fallbackName = 'gemini-3.6-flash'
+		else if (lower.includes('gemini') && lower.includes('3.5') && lower.includes('lite')) fallbackName = 'gemini-3.5-flash-lite'
+		else if (lower.includes('gemini') && lower.includes('3.5')) fallbackName = 'gemini-3.5-flash'
+		else if (lower.includes('gemini') && lower.includes('3.1') && lower.includes('lite')) fallbackName = 'gemini-3.1-flash-lite'
+		else if (lower.includes('gemini') && lower.includes('3.1')) fallbackName = 'gemini-3.1-pro'
+		else if (lower.includes('gemini') && lower.includes('3')) fallbackName = 'gemini-3-deep-think'
+		else if (lower.includes('gemini') && lower.includes('2.5') && lower.includes('flash')) fallbackName = 'gemini-2.5-flash'
+		else if (lower.includes('gemini') && lower.includes('2.5')) fallbackName = 'gemini-2.5-pro'
+		else if (lower.includes('gemini') && lower.includes('2.0') && lower.includes('lite')) fallbackName = 'gemini-2.0-flash-lite'
+		else if (lower.includes('gemini') && lower.includes('2.0')) fallbackName = 'gemini-2.0-flash'
+		else if (lower.includes('gemini') && lower.includes('1.5') && lower.includes('flash')) fallbackName = 'gemini-1.5-flash'
+		else if (lower.includes('gemini') && lower.includes('1.5')) fallbackName = 'gemini-1.5-pro'
+		if (fallbackName) return { modelName: fallbackName, recognizedModelName: fallbackName, ...geminiModelOptions[fallbackName] }
+		return null
+	},
 }
 
 
@@ -1603,6 +1799,15 @@ const groqModelOptions = { // https://console.groq.com/docs/models, https://groq
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: false,
+	},
+	'qwen/qwen3.6-27b': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 10_000,
+		cost: { input: 0.29, output: 0.39 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 } as const satisfies { [s: string]: LoopholeStaticModelInfo }
 const groqSettings: LoopholeStaticProviderInfo = {
