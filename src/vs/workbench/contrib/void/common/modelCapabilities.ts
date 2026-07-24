@@ -215,15 +215,14 @@ export const defaultModelsOfProvider = {
 	awsBedrock: [],
 	liteLLM: [],
 	cohere: [
-		'command-r-plus',
-		'command-r',
-		'command-a',
-		'command-a-reasoning',
+	    'command-a-plus-05-2026',   
+	    'command-a',
+	    'command-a-reasoning',
 	],
 	perplexity: [
-		'sonar-pro',
-		'sonar',
-		'sonar-reasoning-pro',
+	    'sonar-pro',            
+	    'sonar-reasoning-pro',
+	    'sonar-deep-research',
 	],
 	togetherAI: [
     
