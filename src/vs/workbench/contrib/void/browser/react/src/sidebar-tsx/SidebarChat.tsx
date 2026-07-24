@@ -436,7 +436,6 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 		onChangeOption={onChangeOption}
 		getOptionDisplayName={(val) => iconOfChatMode[val]}
 		getOptionDropdownName={(val) => nameOfChatMode[val]}
-		getOptionDropdownDetail={(val) => detailOfChatMode[val]}
 		getOptionsEqual={(a, b) => a === b}
 		arrowTouchesText={false}
 		showArrow={false}
