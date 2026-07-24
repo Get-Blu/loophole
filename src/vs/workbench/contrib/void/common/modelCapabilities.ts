@@ -225,13 +225,13 @@ export const defaultModelsOfProvider = {
 	    'sonar-deep-research',
 	],
 	togetherAI: [
-    
-   		 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8', 
-    		'deepseek-ai/DeepSeek-V4-Pro', 
-    		'meta-llama/Llama-3.3-70B-Instruct-Turbo', 
-    		'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8', 
-    		'mistralai/Mistral-Small-24B-Instruct-2501', 
-    		'google/gemma-4-31B-it'
+	    'deepseek-ai/DeepSeek-V4-Pro',            
+	    'zai-org/GLM-5.2',                           
+	    'minimax-m3',                    
+	    'moonshotai/Kimi-K2.7-Code',          
+	    'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8',
+	    'google/gemma-4-31B-it',
+	    'openai/gpt-oss-20b',
 	],
 	fireworksAI: [
     		'accounts/fireworks/models/kimi-k2-6-thinking',
