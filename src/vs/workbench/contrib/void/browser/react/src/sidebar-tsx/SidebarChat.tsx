@@ -275,7 +275,9 @@ const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) =
 		<button
 			type="button"
 			className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center cursor-pointer transition-colors ${getColor()} hover:text-loophole-fg-1`}
-			title={title}
+			data-tooltip-id='loophole-tooltip'
+			data-tooltip-content={title}
+			data-tooltip-place='top'
 		>
 			<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 				<circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.3" />
