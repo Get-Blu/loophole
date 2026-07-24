@@ -121,79 +121,73 @@ export const defaultModelsOfProvider = {
 	],
 	lmStudio: [],
 	openRouter: [
-		// Anthropic
-		'anthropic/claude-opus-4.6',
-		'anthropic/claude-opus-4.7',
-		'anthropic/claude-sonnet-4.6',
-		'anthropic/claude-sonnet-4.5',
-		'anthropic/claude-sonnet-4',
-		'anthropic/claude-haiku-4.5',
-		'anthropic/claude-3.5-haiku',
-		// OpenAI
-		'openai/gpt-5.4',
-		'openai/gpt-5.4-pro',
-		'openai/o4-mini-high',
-		'openai/o4-mini',
-		// Google Gemini
-		'google/gemini-3.1-pro-preview',
-		'google/gemini-3-flash-preview',
-		'google/gemini-2.5-pro',
-		'google/gemini-2.5-flash',
-		'google/gemini-2.5-flash-lite',
-		// DeepSeek
-		'deepseek/deepseek-v3.2',
-		'deepseek/deepseek-r1',
-		'deepseek/deepseek-r1:free',
-		// Meta Llama
-		'meta-llama/llama-4-maverick',
-		'meta-llama/llama-4-scout',
-		'meta-llama/llama-3.1-70b-instruct',
-		'meta-llama/llama-3.3-70b-instruct',
-		// xAI Grok
-		'x-ai/grok-4',
-		'x-ai/grok-4.1-fast',
-		'x-ai/grok-3',
-		'x-ai/grok-3-mini',
-		// Mistral
-		'mistralai/mistral-large-2512',
-		'mistralai/mistral-medium-3',
-		'mistralai/mistral-medium-3.1',
-		'mistralai/mistral-small-3.2-24b-instruct',
-		'mistralai/codestral-2508',
-		'mistralai/devstral-small:free',
-		'mistralai/mistral-small-3.1-24b-instruct:free',
-		// Qwen
-		'qwen/qwen3-235b-a22b',
-		'qwen/qwen-2.5-72b-instruct',
-		'qwen/qwen3-32b',
-		'qwen/qwen-2.5-coder-32b-instruct',
-		'qwen/qwen3.6-plus',
-		'qwen/qwen3.5-flash-02-23',
-		// Kimi / Moonshot
-		'moonshotai/kimi-k2.6',
-		'moonshotai/kimi-k2.5',
-		// Perplexity
-		'perplexity/sonar-pro',
-		'perplexity/sonar',
-		// ZhipuAI / GLM
-		'z-ai/glm-5.1',
-		'z-ai/glm-5-turbo',
-		// NVIDIA
-		'nvidia/nemotron-3-nano-30b-a3b:free',
-		'nvidia/nemotron-3-super-120b-a12b:free',
-		'nvidia/nemotron-3-nano-30b-a3b',
-		// MiniMax
-		'minimax/minimax-m2.5',
-		'minimax/minimax-m2.7',
-		'minimax/minimax-m2.5:free',
-		'minimax/minimax-m2',
-		// Inception
-		'inception/mercury-2',
-		// Microsoft
-		'microsoft/phi-4',
-		'microsoft/phi-4-mini-instruct',
-		// Auto
-		'openrouter/auto',
+		
+	    // Anthropic
+	    'anthropic/claude-opus-4-8',
+	    'anthropic/claude-opus-4-7',
+	    'anthropic/claude-sonnet-5',
+	    'anthropic/claude-sonnet-4-6',
+	    'anthropic/claude-haiku-4-5',
+		
+	    // OpenAI
+	    'openai/gpt-5.6-sol',
+	    'openai/gpt-5.6-terra',
+	    'openai/gpt-5.6-luna',
+	    'openai/gpt-5.5',
+	    'openai/gpt-oss-120b',
+	    'openai/gpt-oss-20b',
+		
+	    // Google
+	    'google/gemini-3.5-flash',
+	    'google/gemini-3.1-pro-preview',
+	    'google/gemini-3.1-flash-lite',
+	    'google/gemini-3-flash-preview',
+	    'google/gemma-4-31b-it',
+	    'google/gemma-4-26b-a4b-it',
+		
+	    // DeepSeek
+	    'deepseek/deepseek-v4-pro',
+	    'deepseek/deepseek-v4-flash',
+	    'deepseek/deepseek-r1',
+		
+	    // Meta Llama
+	    'meta-llama/llama-4-maverick',
+	    'meta-llama/llama-4-scout',
+		
+	    // xAI
+	    'x-ai/grok-4.5',
+	    'x-ai/grok-4.3',
+		
+	    // Mistral
+	    'mistralai/mistral-large-latest',
+	    'mistralai/magistral-medium-latest',
+	    'mistralai/mistral-small-latest',
+	    'mistralai/codestral-latest',
+	    'mistralai/devstral-latest',
+		
+	    // Qwen
+	    'qwen/qwen3-coder-480b-a35b',
+	    'qwen/qwen3.7-plus',
+	    'qwen/qwen3.7-max',
+	    'qwen/qwen3-235b-a22b',
+	    'qwen/qwen3-32b',
+	    'qwen/qwen3-coder-480b-a35b:free',
+		
+	    // Moonshot / Kimi
+	    'moonshotai/kimi-k3',
+	    'moonshotai/kimi-k2.6',
+	    'moonshotai/kimi-k2.6:free',
+		
+	    // ZhipuAI / GLM
+	    'z-ai/glm-5.2',
+		
+	    // Xiaomi MiMo
+	    'xiaomi/mimo-v2.5-pro',
+	    'xiaomi/mimo-v2.5',
+	    'xiaomi/mimo-v2-omni',
+		
+	    // Auto
+	    'openrouter/auto',
 	],
 	groq: [
 	    'openai/gpt-oss-120b',    
