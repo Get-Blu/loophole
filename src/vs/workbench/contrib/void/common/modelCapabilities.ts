@@ -460,6 +460,18 @@ const openSourceModelOptions_assumingOAICompat = {
 		reasoningCapabilities: false,
 		contextWindow: 32_000, reservedOutputTokenSpace: 4_096,
 	},
+	'qwen3coder-480b': {
+		supportsFIM: true,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+		contextWindow: 256_000, reservedOutputTokenSpace: 16_384,
+	},
+	'qwen3coder-30b': {
+		supportsFIM: true,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+		contextWindow: 131_072, reservedOutputTokenSpace: 8_192,
+	},
 	'qwq': {
 		supportsFIM: false, // no FIM, yes reasoning
 		supportsSystemMessage: 'system-role',
@@ -555,6 +567,8 @@ const extensiveModelOptionsFallback: LoopholeStaticProviderInfo['modelOptionsFal
 	if (lower.includes('o4') && lower.includes('mini')) return toFallback(openAIModelOptions, 'o4-mini')
 	if (lower.includes('o4')) return toFallback(openAIModelOptions, 'o4')
 
+	if (lower.includes('qwen') && lower.includes('3') && lower.includes('coder') && (lower.includes('480') || lower.includes('a35b'))) return toFallback(openSourceModelOptions_assumingOAICompat, 'qwen3coder-480b')
+	if (lower.includes('qwen') && lower.includes('3') && lower.includes('coder')) return toFallback(openSourceModelOptions_assumingOAICompat, 'qwen3coder-30b')
 	if (lower.includes('qwen') && lower.includes('3')) return toFallback(openSourceModelOptions_assumingOAICompat, 'qwen3')
 	if (lower.includes('qwen') && lower.includes('2.5') && lower.includes('coder')) return toFallback(openSourceModelOptions_assumingOAICompat, 'qwen2.5coder')
 
@@ -1704,6 +1718,15 @@ const ollamaModelOptions = {
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: false,
 	},
+	'qwen3-coder:30b': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0, output: 0 },
+		downloadable: { sizeGb: 18.5 },
+		supportsFIM: true,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
 	'qwq': {
 		contextWindow: 128_000,
 		reservedOutputTokenSpace: 32_000,
@@ -1810,6 +1833,11 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: false },
+	},
+	'qwen/qwen3-coder-480b-a35b': {
+		...openSourceModelOptions_assumingOAICompat['qwen3coder-480b'],
+		cost: { input: 0.50, output: 1.50 },
+		downloadable: false,
 	},
 	'microsoft/phi-4-reasoning-plus:free': { // a 14B model...
 		contextWindow: 32_768,
