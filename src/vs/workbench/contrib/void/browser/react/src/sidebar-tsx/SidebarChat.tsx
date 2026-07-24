@@ -225,9 +225,9 @@ const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) =
 		const cumulativeCount = currentThread.state.cumulativeTokenCount || 0;
 
 		if (cumulativeCount > 0) {
-			// Add overhead for system prompts, tool definitions, etc.
-			// This is a rough estimate for the parts not tracked (user messages, tool results, etc.)
-			return cumulativeCount + 2000;
+			// cumulativeTokenCount holds inputTokens from the latest API response,
+			// which already includes system prompts, tool definitions, and full history.
+			return cumulativeCount;
 		}
 
 		// Fallback: estimate from character count for threads without token counts
@@ -3600,7 +3600,7 @@ export const SidebarChat = () => {
 			else if (m.role === 'assistant' && 'displayContent' in m) totalChars += m.displayContent.length
 			else if (m.role === 'tool' && 'content' in m) totalChars += m.content.length
 		}
-		const estimated = cumulativeCount > 0 ? cumulativeCount + 2000 : Math.ceil(totalChars / 4)
+		const estimated = cumulativeCount > 0 ? cumulativeCount : Math.ceil(totalChars / 4)
 		const pct = (estimated / contextWindow) * 100
 		if (pct < 70) return null
 		return { pct, estimated, contextWindow, isFull: pct >= 95 }
