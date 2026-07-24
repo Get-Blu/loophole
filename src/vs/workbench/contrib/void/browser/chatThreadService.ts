@@ -1214,12 +1214,15 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 
 				this._addMessageToThread(threadId, { role: 'assistant', displayContent: info.fullText, reasoning: info.fullReasoning, anthropicReasoning: info.anthropicReasoning, tokenUsage: info.tokenUsage })
 
-				// Update cumulative token count for the thread
+				// Update context window usage for the thread.
+				// We store inputTokens from the latest request — that IS the current context size,
+				// since the API sends the full history each time. Adding to a running sum would
+				// double-count history and cause the indicator to fill up after just 1-2 messages.
 				if (info.tokenUsage) {
 					const thread = this.state.allThreads[threadId];
 					if (thread) {
 						this._setThreadState(threadId, {
-							cumulativeTokenCount: (thread.state.cumulativeTokenCount || 0) + info.tokenUsage.totalTokens
+							cumulativeTokenCount: info.tokenUsage.inputTokens
 						});
 					}
 				}
