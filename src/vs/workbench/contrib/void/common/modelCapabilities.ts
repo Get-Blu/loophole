@@ -89,12 +89,13 @@ export const defaultModelsOfProvider = {
 		'gpt-4o-mini',
 	],
 	anthropic: [
-		'claude-opus-4-7',
-		'claude-opus-4-6',
-		'claude-opus-4-5-20251101',
-		'claude-sonnet-4-6',
-		'claude-sonnet-4-5-20250929',
-		'claude-haiku-4-5-20251001',
+		'claude-fable-5'
+		'claude-opus-4-8'
+		'claude-opus-4-7'
+		'claude-opus-4-6'
+		'claude-sonnet-5'
+		'claude-sonnet-4-6'
+		'claude-haiku-4-5-20251001'
 	],
 	xAI: [
 		'grok-3',
