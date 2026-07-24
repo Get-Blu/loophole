@@ -78,15 +78,15 @@ export const defaultProviderSettings = {
 
 export const defaultModelsOfProvider = {
 	openAI: [
-		'gpt-5.5',
-		'gpt-5.4',
-		'gpt-5.4-pro',
-		'gpt-5.4-mini',
-		'o3',
-		'o4-mini',
-		'gpt-4.1',
-		'gpt-4.1-mini',
-		'gpt-4o-mini',
+	    'gpt-5.6-sol',
+	    'gpt-5.6-terra',
+	    'gpt-5.6-luna',
+	    'gpt-5.5',
+	    'o3',
+	    'gpt-5.4',
+	    'gpt-5.4-mini',
+	    'gpt-5.3-codex',
+	    'gpt-4.1-nano',
 	],
 	anthropic: [
 		'claude-fable-5'
