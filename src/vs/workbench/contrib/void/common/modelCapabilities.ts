@@ -234,16 +234,13 @@ export const defaultModelsOfProvider = {
 	    'openai/gpt-oss-20b',
 	],
 	fireworksAI: [
-    		'accounts/fireworks/models/kimi-k2-6-thinking',
-    		'accounts/fireworks/models/deepseek-v4-pro',
-  		'accounts/fireworks/models/llama-4-maverick-instruct-fp8',
-   		'accounts/fireworks/models/glm-5-1',
-   		'accounts/fireworks/models/qwen3-coder-480b-a35b-instruct',
-   		'accounts/fireworks/models/llama-v3p3-70b-instruct',
-   		'accounts/fireworks/models/gpt-oss-120b',
-    		'accounts/fireworks/models/deepseek-v3p2',
-    		'accounts/fireworks/models/gemma-4-31b-it-vision',
-    		'accounts/fireworks/models/kimi-k2-5-fast'
+	    'accounts/fireworks/models/glm-5-2',             
+	    'accounts/fireworks/models/deepseek-v4-pro',           
+	    'accounts/fireworks/models/kimi-k2-7',                  
+	    'accounts/fireworks/models/qwen3-coder-480b-a35b-instruct',
+	    'accounts/fireworks/models/kimi-k2-6-thinking',  
+	    'accounts/fireworks/models/gemma-4-31b-it-vision',   
+	    'accounts/fireworks/models/gpt-oss-120b',
 	],
 
 
