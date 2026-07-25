@@ -181,6 +181,7 @@ export const defaultModelsOfProvider = {
 	    'qwen/qwen3.7-max',
 	    'qwen/qwen3-235b-a22b',
 	    'qwen/qwen3-32b',
+	    'qwen/qwen3-coder-480b-a35b',
 		
 	    // Moonshot / Kimi
 	    'moonshotai/kimi-k3',
@@ -530,19 +531,33 @@ const extensiveModelOptionsFallback: LoopholeStaticProviderInfo['modelOptionsFal
 		};
 	}
 
+	if (lower.includes('gemini') && (lower.includes('3.6') || lower.includes('3-6'))) return toFallback(geminiModelOptions, 'gemini-3.6-flash')
+	if (lower.includes('gemini') && (lower.includes('3.5') || lower.includes('3-5')) && (lower.includes('lite') || lower.includes('flash-lite'))) return toFallback(geminiModelOptions, 'gemini-3.5-flash-lite')
+	if (lower.includes('gemini') && (lower.includes('3.5') || lower.includes('3-5'))) return toFallback(geminiModelOptions, 'gemini-3.5-flash')
+	if (lower.includes('gemini') && (lower.includes('3.1') || lower.includes('3-1')) && (lower.includes('lite') || lower.includes('flash-lite'))) return toFallback(geminiModelOptions, 'gemini-3.1-flash-lite')
 	if (lower.includes('gemini') && (lower.includes('3.1') || lower.includes('3-1'))) return toFallback(geminiModelOptions, 'gemini-3.1-pro')
 	if (lower.includes('gemini') && (lower.includes('2.5') || lower.includes('2-5'))) return toFallback(geminiModelOptions, 'gemini-2.5-pro-exp-03-25')
 
 	if (lower.includes('claude-fable-5') || lower.includes('fable-5')) return toFallback(anthropicModelOptions, 'claude-fable-5')
+	if (lower.includes('claude-opus-5') || (lower.includes('claude') && lower.includes('opus-5'))) return toFallback(anthropicModelOptions, 'claude-opus-5')
 	if (lower.includes('claude-sonnet-5') || (lower.includes('claude') && lower.includes('sonnet-5'))) return toFallback(anthropicModelOptions, 'claude-sonnet-5')
+	if (lower.includes('claude-opus-4-8') || lower.includes('claude-4-8')) return toFallback(anthropicModelOptions, 'claude-opus-4-8')
+	if (lower.includes('claude-opus-4-7') || lower.includes('claude-4-7')) return toFallback(anthropicModelOptions, 'claude-opus-4-7')
+	if (lower.includes('claude-opus-4-6') || (lower.includes('claude') && lower.includes('opus-4-6'))) return toFallback(anthropicModelOptions, 'claude-opus-4-6')
+	if (lower.includes('claude-haiku-4-5') || (lower.includes('claude') && lower.includes('haiku-4-5'))) return toFallback(anthropicModelOptions, 'claude-haiku-4-5')
 	if (lower.includes('claude-4-6') || lower.includes('claude-4.6')) return toFallback(anthropicModelOptions, 'claude-sonnet-4.6-20260217')
 	if (lower.includes('claude-3-7') || lower.includes('claude-3.7')) return toFallback(anthropicModelOptions, 'claude-3-7-sonnet-20250219')
 	if (lower.includes('claude-3-5') || lower.includes('claude-3.5')) return toFallback(anthropicModelOptions, 'claude-3-5-sonnet-20241022')
 	if (lower.includes('claude')) return toFallback(anthropicModelOptions, 'claude-sonnet-4.6-20260217')
 
+	if (lower.includes('grok-4.5') || lower.includes('grok4.5')) return toFallback(xAIModelOptions, 'grok-4.5')
+	if (lower.includes('grok-4.20') && lower.includes('non-reasoning')) return toFallback(xAIModelOptions, 'grok-4.20-non-reasoning')
+	if (lower.includes('grok-4.20') || lower.includes('grok4.20')) return toFallback(xAIModelOptions, 'grok-4.20-reasoning')
+	if (lower.includes('grok-4.3') || lower.includes('grok4.3')) return toFallback(xAIModelOptions, 'grok-4.3')
+	if (lower.includes('grok-4') || lower.includes('grok4')) return toFallback(xAIModelOptions, 'grok-4.5')
 	if (lower.includes('grok3') || lower.includes('grok-3')) return toFallback(xAIModelOptions, 'grok-3')
 	if (lower.includes('grok2') || lower.includes('grok-2')) return toFallback(xAIModelOptions, 'grok-2')
-	if (lower.includes('grok')) return toFallback(xAIModelOptions, 'grok-3')
+	if (lower.includes('grok')) return toFallback(xAIModelOptions, 'grok-4.5')
 
 	if (lower.includes('deepseek-v4')) return toFallback(deepseekModelOptions, 'deepseek-v4')
 	if (lower.includes('deepseek-v3')) return toFallback(deepseekModelOptions, 'deepseek-v3-0324')
@@ -556,6 +571,11 @@ const extensiveModelOptionsFallback: LoopholeStaticProviderInfo['modelOptionsFal
 	if (lower.includes('llama3.1')) return toFallback(openSourceModelOptions_assumingOAICompat, 'llama3.1')
 	if (lower.includes('llama')) return toFallback(openSourceModelOptions_assumingOAICompat, 'llama4-scout')
 
+	if (lower.includes('gpt') && (lower.includes('5.6') || lower.includes('5-6')) && lower.includes('sol')) return toFallback(openAIModelOptions, 'gpt-5.6-sol')
+	if (lower.includes('gpt') && (lower.includes('5.6') || lower.includes('5-6')) && lower.includes('terra')) return toFallback(openAIModelOptions, 'gpt-5.6-terra')
+	if (lower.includes('gpt') && (lower.includes('5.6') || lower.includes('5-6')) && lower.includes('luna')) return toFallback(openAIModelOptions, 'gpt-5.6-luna')
+	if (lower.includes('gpt') && (lower.includes('5.6') || lower.includes('5-6'))) return toFallback(openAIModelOptions, 'gpt-5.6-sol')
+	if (lower.includes('gpt') && (lower.includes('5.5') || lower.includes('5-5'))) return toFallback(openAIModelOptions, 'gpt-5.5')
 	if (lower.includes('gpt') && (lower.includes('5.4') || lower.includes('5-4'))) return toFallback(openAIModelOptions, 'gpt-5.4-thinking')
 	if (lower.includes('gpt') && (lower.includes('5.3') || lower.includes('5-3'))) return toFallback(openAIModelOptions, 'gpt-5.3-codex')
 	if (lower.includes('gpt') && (lower.includes('4.1') || lower.includes('4-1'))) return toFallback(openAIModelOptions, 'gpt-4.1')
@@ -1424,6 +1444,23 @@ const geminiModelOptions = { // https://ai.google.dev/gemini-api/docs/pricing
 		},
 	},
 	// Gemini 3.1 Pro — released Feb 19, 2026. 1M context, 66K output, $2/$12 (up to 200K); $4/$18 above.
+	// gemini-3.1-pro-preview is the alias used in defaultModelsOfProvider
+	'gemini-3.1-pro-preview': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 2.00, output: 12.00, cache_read: 0.20 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'separated',
+		specialToolFormat: 'gemini-style',
+		reasoningCapabilities: {
+			supportsReasoning: true,
+			canTurnOffReasoning: true,
+			canIOReasoning: true,
+			reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 },
+			reasoningReservedOutputTokenSpace: 32_768,
+		},
+	},
 	'gemini-3.1-pro': {
 		contextWindow: 1_048_576,
 		reservedOutputTokenSpace: 65_536,
@@ -1743,6 +1780,25 @@ const mistralModelOptions = { // https://mistral.ai/products/la-plateforme#prici
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: false,
 	},
+	// aliases used in defaultModelsOfProvider
+	'devstral-latest': {
+		contextWindow: 131_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0, output: 0 },
+		supportsFIM: false,
+		downloadable: { sizeGb: 14 },
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+	'mistral-small-latest': {
+		contextWindow: 131_000,
+		reservedOutputTokenSpace: 4_096,
+		cost: { input: 0.10, output: 0.30 },
+		supportsFIM: false,
+		downloadable: { sizeGb: 'not-known' },
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
 } as const satisfies { [s: string]: LoopholeStaticModelInfo }
 
 const mistralSettings: LoopholeStaticProviderInfo = {
@@ -1988,7 +2044,7 @@ const ollamaModelOptions = {
 
 } as const satisfies Record<string, LoopholeStaticModelInfo>
 
-export const ollamaRecommendedModels = ['qwen2.5-coder:1.5b', 'llama3.1', 'qwq', 'deepseek-r1', 'devstral:latest'] as const satisfies (keyof typeof ollamaModelOptions)[]
+export const ollamaRecommendedModels = ['qwen2.5-coder:1.5b', 'llama3.1', 'qwq', 'deepseek-r1', 'devstral:latest', 'qwen3-coder:30b'] as const satisfies (keyof typeof ollamaModelOptions)[]
 
 
 const vLLMSettings: LoopholeStaticProviderInfo = {
@@ -2502,6 +2558,211 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: false,
+	},
+
+	// Qwen 3.7
+	'qwen/qwen3.7-plus': {
+		...openSourceModelOptions_assumingOAICompat.qwen3,
+		contextWindow: 256_000, reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.50, output: 1.50 },
+		downloadable: false,
+	},
+	'qwen/qwen3.7-max': {
+		...openSourceModelOptions_assumingOAICompat.qwen3,
+		contextWindow: 256_000, reservedOutputTokenSpace: 16_384,
+		cost: { input: 1.00, output: 3.00 },
+		downloadable: false,
+	},
+
+	// Moonshot / Kimi
+	'moonshotai/kimi-k3': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 1.00, output: 3.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'moonshotai/kimi-k2.7-code': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 16_384,
+		cost: { input: 0.80, output: 2.40 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'moonshotai/kimi-k2.6': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.60, output: 1.80 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+
+	// ZhipuAI / GLM
+	'z-ai/glm-5.2': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.50, output: 1.50 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+
+	// Xiaomi MiMo
+	'xiaomi/mimo-v2.5-pro': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.40, output: 1.20 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'xiaomi/mimo-v2.5': {
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.20, output: 0.60 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+
+	// OpenRouter auto
+	'openrouter/auto': {
+		contextWindow: 1_000_000,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 0, output: 0 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+
+	// Gemini via OpenRouter (uses openai-style, not gemini-style)
+	'google/gemini-3.6-flash': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 1.50, output: 7.50 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 } },
+	},
+	'google/gemini-3.5-flash': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 65_536,
+		cost: { input: 1.50, output: 9.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, reasoningSlider: { type: 'budget_slider', min: 1024, max: 32_768, default: 4096 } },
+	},
+	'google/gemini-3.1-flash-lite': {
+		contextWindow: 1_048_576,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 0.125, output: 0.75 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+
+	// Google Gemma-4
+	'google/gemma-4-31b-it': {
+		...openSourceModelOptions_assumingOAICompat.gemma,
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.10, output: 0.30 },
+		downloadable: false,
+	},
+	'google/gemma-4-26b-a4b-it': {
+		...openSourceModelOptions_assumingOAICompat.gemma,
+		contextWindow: 131_072,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.08, output: 0.24 },
+		downloadable: false,
+	},
+
+	// DeepSeek via OpenRouter (versioned names)
+	'deepseek/deepseek-v4-pro': {
+		...openSourceModelOptions_assumingOAICompat.deepseekCoderV3,
+		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		cost: { input: 0.50, output: 2.19 },
+		downloadable: false,
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'deepseek/deepseek-v4-flash': {
+		...openSourceModelOptions_assumingOAICompat.deepseekCoderV3,
+		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		cost: { input: 0.14, output: 0.55 },
+		downloadable: false,
+		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+
+	// xAI via OpenRouter
+	'x-ai/grok-4.5': {
+		contextWindow: 500_000,
+		reservedOutputTokenSpace: 32_768,
+		cost: { input: 2.00, output: 6.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
+	},
+	'x-ai/grok-4.3': {
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 20_000,
+		cost: { input: 3.00, output: 15.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
+	},
+
+	// Mistral via OpenRouter
+	'mistralai/mistral-large-latest': {
+		...openSourceModelOptions_assumingOAICompat.devstral,
+		contextWindow: 131_000, reservedOutputTokenSpace: 8_192,
+		cost: { input: 2.00, output: 6.00 },
+		downloadable: false,
+		reasoningCapabilities: false,
+	},
+	'mistralai/magistral-medium-latest': {
+		contextWindow: 256_000,
+		reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.30, output: 0.90 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: false, openSourceThinkTags: ['<think>', '</think>'] },
+	},
+	'mistralai/mistral-small-latest': {
+		contextWindow: 131_000,
+		reservedOutputTokenSpace: 4_096,
+		cost: { input: 0.10, output: 0.30 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+	'mistralai/codestral-latest': {
+		...openSourceModelOptions_assumingOAICompat.codestral,
+		contextWindow: 256_000, reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.30, output: 0.90 },
+		downloadable: false,
+	},
+	'mistralai/devstral-latest': {
+		...openSourceModelOptions_assumingOAICompat.devstral,
+		contextWindow: 131_000, reservedOutputTokenSpace: 8_192,
+		cost: { input: 0.10, output: 0.30 },
+		downloadable: false,
 	},
 } as const satisfies { [s: string]: LoopholeStaticModelInfo }
 
