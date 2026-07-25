@@ -1107,7 +1107,7 @@ const openAIModelOptions = { // https://platform.openai.com/docs/pricing
 		reasoningCapabilities: false,
 	},
 	'o1': {
-		contextWindow: 128_000,
+		contextWindow: 200_000,
 		reservedOutputTokenSpace: 100_000,
 		cost: { input: 15.00, cache_read: 7.50, output: 60.00, },
 		downloadable: false,
@@ -1307,6 +1307,16 @@ const xAIModelOptions = {
 		specialToolFormat: 'openai-style',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: false, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'high' } },
 	},
+	'grok-4.20-non-reasoning': { // non-reasoning variant of grok-4.20, same 200k context
+		contextWindow: 200_000,
+		reservedOutputTokenSpace: 20_000,
+		cost: { input: 3.00, output: 15.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		specialToolFormat: 'openai-style',
+		reasoningCapabilities: false,
+	},
 	'grok-4.1-fast-reasoning': {
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 20_000,
@@ -1326,6 +1336,9 @@ const xAISettings: LoopholeStaticProviderInfo = {
 		let fallbackName: keyof typeof xAIModelOptions | null = null
 		if (lower.includes('grok-2')) fallbackName = 'grok-2'
 		else if (lower.includes('grok-4.5')) fallbackName = 'grok-4.5'
+		else if (lower.includes('grok-4.20') && lower.includes('non-reasoning')) fallbackName = 'grok-4.20-non-reasoning'
+		else if (lower.includes('grok-4.20') && lower.includes('reasoning')) fallbackName = 'grok-4.20-reasoning'
+		else if (lower.includes('grok-4.20')) fallbackName = 'grok-4.20-reasoning'
 		else if (lower.includes('grok-4')) fallbackName = 'grok-4.3'
 		else if (lower.includes('grok-build')) fallbackName = 'grok-build'
 		else if (lower.includes('grok-3-mini')) fallbackName = 'grok-3-mini'
@@ -1605,7 +1618,7 @@ const deepseekSettings: LoopholeStaticProviderInfo = {
 
 const mistralModelOptions = { // https://mistral.ai/products/la-plateforme#pricing https://docs.mistral.ai/getting-started/models/models_overview/#premier-models
 	'mistral-large-2411': {
-		contextWindow: 128_000,
+		contextWindow: 131_072,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 2.00, output: 6.00 },
 		supportsFIM: false,
@@ -1623,7 +1636,7 @@ const mistralModelOptions = { // https://mistral.ai/products/la-plateforme#prici
 		reasoningCapabilities: false,
 	},
 	'ministral-14b-latest': {
-		contextWindow: 128_000,
+		contextWindow: 131_072,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.10, output: 0.10 },
 		supportsFIM: false,
@@ -1632,7 +1645,7 @@ const mistralModelOptions = { // https://mistral.ai/products/la-plateforme#prici
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'devstral-small-2-latest': {
-		contextWindow: 128_000,
+		contextWindow: 131_072,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0, output: 0 },
 		supportsFIM: false,
@@ -2031,7 +2044,7 @@ const liteLLMSettings: LoopholeStaticProviderInfo = { // https://docs.litellm.ai
 const openRouterModelOptions_assumingOpenAICompat = {
 	'deepseek/deepseek-v3': {
 		...openSourceModelOptions_assumingOAICompat.deepseekCoderV3,
-		contextWindow: 128_000,
+		contextWindow: 64_000,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.14, output: 0.55 },
 		downloadable: false,
@@ -2040,7 +2053,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 	'deepseek/deepseek-r1': {
 		...openSourceModelOptions_assumingOAICompat.deepseekR1,
 		cost: { input: 0.55, output: 2.19 },
-		contextWindow: 128_000,
+		contextWindow: 64_000,
 		downloadable: false,
 	},
 	'qwen/qwen3-235b-a22b': {
@@ -2130,7 +2143,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: false,
 	},
 	'minimax/m2.5': {
-		contextWindow: 128_000,
+		contextWindow: 204_800,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.10, output: 0.30 },
 		downloadable: false,
@@ -2148,7 +2161,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'zhipuai/glm-5': {
-		contextWindow: 128_000,
+		contextWindow: 256_000,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.50, output: 1.50 },
 		downloadable: false,
@@ -2157,7 +2170,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'z-ai/glm-5.1': { // GLM-5.1 — ZhipuAI's latest flagship reasoning model
-		contextWindow: 128_000,
+		contextWindow: 256_000,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.60, output: 1.80 },
 		downloadable: false,
@@ -2166,7 +2179,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'z-ai/glm-5-turbo': { // GLM-5-Turbo — fast and affordable GLM-5 variant
-		contextWindow: 128_000,
+		contextWindow: 256_000,
 		reservedOutputTokenSpace: 4_096,
 		cost: { input: 0.15, output: 0.45 },
 		downloadable: false,
@@ -2316,7 +2329,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: false,
 	},
 	'deepseek/deepseek-v3.2': {
-		contextWindow: 128_000,
+		contextWindow: 163_840,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.27, output: 1.10 },
 		downloadable: false,
@@ -2337,7 +2350,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 	'deepseek/deepseek-r1:free': {
 		...openSourceModelOptions_assumingOAICompat.deepseekR1,
 		cost: { input: 0, output: 0 },
-		contextWindow: 128_000,
+		contextWindow: 164_000,
 		downloadable: false,
 	},
 	'qwen/qwen3-vl-235b-a22b-thinking': {
@@ -2347,7 +2360,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		downloadable: false,
 	},
 	'mistralai/mistral-large-2411': {
-		contextWindow: 128_000,
+		contextWindow: 131_072,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 2.00, output: 6.00 },
 		downloadable: false,
@@ -2437,7 +2450,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		downloadable: false,
 	},
 	'arcee/trinity-large-preview': {
-		contextWindow: 128_000,
+		contextWindow: 131_000,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.50, output: 1.50 },
 		downloadable: false,
