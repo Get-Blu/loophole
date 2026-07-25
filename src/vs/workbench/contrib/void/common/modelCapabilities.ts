@@ -82,17 +82,19 @@ export const defaultModelsOfProvider = {
 	    'gpt-5.6-terra',
 	    'gpt-5.6-luna',
 	    'gpt-5.5',
-	    'o3',
+	    'gpt-5.4-pro',
 	    'gpt-5.4',
-		'gpt-5.4-pro',
-	    'gpt-5.4-mini',
 	    'gpt-5.3-codex',
+	    'o3',
+	    'gpt-5.4-mini',
+	    'gpt-4o',
+	    'gpt-4o-mini',
 	    'gpt-4.1-nano',
-		'gpt-4o-mini',
-		'gpt-4o',
 	],
+	
 	anthropic: [
 		'claude-fable-5',
+		'claude-opus-5',
 		'claude-opus-4-8',
 		'claude-opus-4-7',
 		'claude-opus-4-6',
@@ -100,36 +102,40 @@ export const defaultModelsOfProvider = {
 		'claude-sonnet-4-6',
 		'claude-haiku-4-5-20251001',
 	],
+	
 	xAI: [
 	    'grok-4.5',
-	    'grok-4.3',
 	    'grok-4.20-reasoning',
-	    'grok-4.1-fast-reasoning',
-	    'grok-build',
+	    'grok-4.3',
+	    'grok-4.20-non-reasoning',
+	    'grok-build-0.1',
 	],
+	
 	gemini: [
-		'gemini-3.6-flash',
 	    'gemini-3.5-flash',
-		'gemini-3.5-flash-lite',
+	    'gemini-3.6-flash',
 	    'gemini-3.1-pro-preview',
-	    'gemini-3.1-flash-lite',
 	    'gemini-2.5-pro',
-	    'gemini-2.5-flash',
+	    'gemini-3.1-flash-lite',
 	],
+	
 	deepseek: [
 		'deepseek-v4-pro',
 		'deepseek-v4-flash',
 	],
+	
 	ollama: [ // autodetected
 	],
 	vLLM: [ // autodetected
 	],
 	lmStudio: [],
+	
 	openRouter: [
 		
 	    // Anthropic
+		'anthropic/claude-fable-5',
+		'anthropic/claude-opus-5',
 	    'anthropic/claude-opus-4-8',
-	    'anthropic/claude-opus-4-7',
 	    'anthropic/claude-sonnet-5',
 	    'anthropic/claude-sonnet-4-6',
 	    'anthropic/claude-haiku-4-5',
@@ -143,10 +149,10 @@ export const defaultModelsOfProvider = {
 	    'openai/gpt-oss-20b',
 		
 	    // Google
+		'google/gemini-3.6-flash',
 	    'google/gemini-3.5-flash',
 	    'google/gemini-3.1-pro-preview',
 	    'google/gemini-3.1-flash-lite',
-	    'google/gemini-3-flash-preview',
 	    'google/gemma-4-31b-it',
 	    'google/gemma-4-26b-a4b-it',
 		
@@ -171,17 +177,15 @@ export const defaultModelsOfProvider = {
 	    'mistralai/devstral-latest',
 		
 	    // Qwen
-	    'qwen/qwen3-coder-480b-a35b',
 	    'qwen/qwen3.7-plus',
 	    'qwen/qwen3.7-max',
 	    'qwen/qwen3-235b-a22b',
 	    'qwen/qwen3-32b',
-	    'qwen/qwen3-coder-480b-a35b:free',
 		
 	    // Moonshot / Kimi
 	    'moonshotai/kimi-k3',
+		'moonshotai/kimi-k2.7-code',
 	    'moonshotai/kimi-k2.6',
-	    'moonshotai/kimi-k2.6:free',
 		
 	    // ZhipuAI / GLM
 	    'z-ai/glm-5.2',
@@ -189,11 +193,11 @@ export const defaultModelsOfProvider = {
 	    // Xiaomi MiMo
 	    'xiaomi/mimo-v2.5-pro',
 	    'xiaomi/mimo-v2.5',
-	    'xiaomi/mimo-v2-omni',
 		
 	    // Auto
 	    'openrouter/auto',
 	],
+	
 	groq: [
 	    'openai/gpt-oss-120b',    
 	    'qwen/qwen3.6-27b',     
@@ -201,6 +205,7 @@ export const defaultModelsOfProvider = {
 	    'llama-3.3-70b-versatile', 
 	    'openai/gpt-oss-20b',   
 	],
+	
 	mistral: [
 	    'mistral-large-latest',
 	    'magistral-medium-latest',
@@ -208,45 +213,48 @@ export const defaultModelsOfProvider = {
 	    'codestral-latest',
 	    'mistral-small-latest',
 	],
+	
 	openAICompatible: [],
 	googleVertex: [],
 	microsoftAzure: [],
 	awsBedrock: [],
 	liteLLM: [],
+	
 	cohere: [
-	    'command-a-plus-05-2026',   
+	    'command-a-plus',   
 	    'command-a',
 	    'command-a-reasoning',
+		'command-r',
 	],
+	
 	perplexity: [
 	    'sonar-pro',            
 	    'sonar-reasoning-pro',
 	    'sonar-deep-research',
 	],
+	
 	togetherAI: [
-	    'deepseek-ai/DeepSeek-V4-Pro',            
-	    'zai-org/GLM-5.2',                           
-	    'minimax-m3',                    
-	    'moonshotai/Kimi-K2.7-Code',          
+	    'deepseek-ai/DeepSeek-V4-Pro',
+	    'zai-org/GLM-5.2',
+	    'MiniMaxAI/MiniMax-M3',   
+	    'moonshotai/Kimi-K2.7-Code',
 	    'Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8',
 	    'google/gemma-4-31B-it',
 	    'openai/gpt-oss-20b',
 	],
+	
 	fireworksAI: [
-	    'accounts/fireworks/models/glm-5-2',             
-	    'accounts/fireworks/models/deepseek-v4-pro',           
-	    'accounts/fireworks/models/kimi-k2-7',                  
-	    'accounts/fireworks/models/qwen3-coder-480b-a35b-instruct',
-	    'accounts/fireworks/models/kimi-k2-6-thinking',  
-	    'accounts/fireworks/models/gemma-4-31b-it-vision',   
 	    'accounts/fireworks/models/gpt-oss-120b',
+	    'accounts/fireworks/models/deepseek-v4-pro',
+	    'accounts/fireworks/models/glm-5p2',          
+	    'accounts/fireworks/models/kimi-k2p7-code',    
+	    'accounts/fireworks/models/kimi-k2-thinking',  
+	    'accounts/fireworks/models/qwen3-coder-480b-a35b-instruct',
+	    'accounts/fireworks/models/gemma-4-31b-it',  
 	],
 
 
 } as const satisfies Record<ProviderName, string[]>
-
-
-
 
 
 export type LoopholeStaticModelInfo = { // not stateful
