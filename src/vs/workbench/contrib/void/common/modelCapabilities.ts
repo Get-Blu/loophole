@@ -603,6 +603,22 @@ const anthropicModelOptions = {
 			reasoningSlider: { type: 'budget_slider' as const, min: 1024, max: 32_768, default: 4096 },
 		},
 	},
+	'claude-opus-5': { // Released July 24 2026. $5/$25, 1M context, 128K output. Thinking on by default.
+		contextWindow: 1_000_000,
+		reservedOutputTokenSpace: 128_000,
+		cost: { input: 5.00, cache_read: 0.50, cache_write: 6.25, output: 25.00 },
+		downloadable: false,
+		supportsFIM: false,
+		specialToolFormat: 'anthropic-style' as const,
+		supportsSystemMessage: 'separated' as const,
+		reasoningCapabilities: {
+			supportsReasoning: true,
+			canTurnOffReasoning: true,
+			canIOReasoning: true,
+			reasoningReservedOutputTokenSpace: 32_768,
+			reasoningSlider: { type: 'budget_slider' as const, min: 1024, max: 32_768, default: 4096 },
+		},
+	},
 	'claude-sonnet-5': { // Released June 30 2026. Intro pricing $2/$10 through Aug 31 2026, then $3/$15. 1M context, 128K output.
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 128_000,
@@ -883,6 +899,7 @@ const anthropicSettings: LoopholeStaticProviderInfo = {
 
 		// Claude 5.x models
 		if (lower.includes('claude-fable-5') || lower.includes('fable-5')) fallbackName = 'claude-fable-5'
+		else if (lower.includes('claude-opus-5') || lower.includes('opus-5')) fallbackName = 'claude-opus-5'
 		else if (lower.includes('claude-sonnet-5') || lower.includes('sonnet-5')) fallbackName = 'claude-sonnet-5'
 
 		// Claude 4.x dateless IDs (4.6 generation onwards — 1M context)
