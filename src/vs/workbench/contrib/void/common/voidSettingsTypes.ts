@@ -1,4 +1,3 @@
-
 /*--------------------------------------------------------------------------------------
  *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
@@ -117,6 +116,9 @@ export const displayInfoOfProviderName = (providerName: ProviderName): DisplayIn
 	else if (providerName === 'fireworksAI') {
 		return { title: 'Fireworks AI', }
 	}
+	else if (providerName === 'inception') {
+		return { title: 'Inception Labs', }
+	}
 
 	throw new Error(`descOfProviderName: Unknown provider name: "${providerName}"`)
 }
@@ -143,6 +145,7 @@ export const subTextMdOfProviderName = (providerName: ProviderName): string => {
 	if (providerName === 'perplexity') return 'Get your [API Key here](https://www.perplexity.ai/settings/api).'
 	if (providerName === 'togetherAI') return 'Get your [API Key here](https://api.together.ai/settings/api-keys).'
 	if (providerName === 'fireworksAI') return 'Get your [API Key here](https://fireworks.ai/account/api-keys).'
+	if (providerName === 'inception') return 'Get your [API Key here](https://docs.inceptionlabs.ai). Mercury Edit 2 is recommended for autocomplete.'
 
 	throw new Error(`subTextMdOfProviderName: Unknown provider name: "${providerName}"`)
 }
@@ -175,7 +178,8 @@ export const displayInfoOfSettingName = (providerName: ProviderName, settingName
 																providerName === 'perplexity' ? 'pplx-...' :
 																	providerName === 'togetherAI' ? 'key-...' :
 																		providerName === 'fireworksAI' ? 'fw_key...' :
-																			'',
+																			providerName === 'inception' ? 'il-...' :
+																				'',
 
 			isPasswordField: true,
 		}
@@ -393,6 +397,12 @@ export const defaultSettingsOfProvider: SettingsOfProvider = {
 		...defaultCustomSettings,
 		...defaultProviderSettings.fireworksAI,
 		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.fireworksAI),
+		_didFillInProviderSettings: undefined,
+	},
+	inception: {
+		...defaultCustomSettings,
+		...defaultProviderSettings.inception,
+		...modelInfoOfDefaultModelNames(defaultModelsOfProvider.inception),
 		_didFillInProviderSettings: undefined,
 	},
 }
