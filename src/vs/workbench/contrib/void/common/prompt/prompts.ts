@@ -11,7 +11,7 @@ import { os } from '../helpers/systemInfo.js';
 import { RawToolParamsObj } from '../sendLLMMessageTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, BuiltinToolResultType, ToolName } from '../toolsServiceTypes.js';
 import { ChatMode, ProviderName } from '../voidSettingsTypes.js';
-import { prompt_anthropic, prompt_gpt, prompt_gemini, prompt_default, prompt_plan_mode, prompt_plan_reminder_anthropic, prompt_deepseek, prompt_xai, prompt_mistral, prompt_groq, prompt_ollama, prompt_vllm, prompt_litellm, prompt_openrouter, prompt_openai_compatible, prompt_lmstudio, prompt_cohere, prompt_perplexity, prompt_togetherai, prompt_fireworksai, prompt_googlevertex, prompt_microsoftazure, prompt_awsbedrock } from './modelPrompts.js';
+import { prompt_anthropic, prompt_gpt, prompt_gemini, prompt_default, prompt_plan_mode, prompt_plan_reminder_anthropic, prompt_deepseek, prompt_xai, prompt_mistral, prompt_groq, prompt_ollama, prompt_vllm, prompt_litellm, prompt_openrouter, prompt_openai_compatible, prompt_lmstudio, prompt_cohere, prompt_perplexity, prompt_togetherai, prompt_fireworksai, prompt_googlevertex, prompt_microsoftazure, prompt_awsbedrock, prompt_inception } from './modelPrompts.js';
 
 // Triple backtick wrapper used throughout the prompts for code blocks
 export const tripleTick = ['```', '```']
@@ -642,6 +642,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 			case 'perplexity':       return prompt_perplexity
 			case 'togetherAI':       return prompt_togetherai
 			case 'fireworksAI':      return prompt_fireworksai
+			case 'inception':        return prompt_inception
 			case 'openRouter':       return prompt_openrouter
 			// Cloud-hosted known models
 			case 'googleVertex':     return prompt_googlevertex    // hosts Gemini
