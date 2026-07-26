@@ -74,6 +74,10 @@ export const defaultProviderSettings = {
 		apiKey: '',
 	},
 
+	inception: { // https://docs.inceptionlabs.ai — Mercury Edit 2 is their autocomplete-optimized model
+		apiKey: '',
+	},
+
 } as const
 
 export const defaultModelsOfProvider = {
@@ -252,6 +256,12 @@ export const defaultModelsOfProvider = {
 	    'accounts/fireworks/models/kimi-k2-thinking',  
 	    'accounts/fireworks/models/qwen3-coder-480b-a35b-instruct',
 	    'accounts/fireworks/models/gemma-4-31b-it',  
+	],
+
+	inception: [
+	    'mercury-edit-2',      // recommended for autocomplete — diffusion FIM model
+	    'mercury-coder-small', // smaller/faster autocomplete model
+	    'mercury-2',           // general chat/reasoning
 	],
 
 
@@ -461,7 +471,7 @@ const openSourceModelOptions_assumingOAICompat = {
 		supportsFIM: true,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
-		contextWindow: 256_000, reservedOutputTokenSpace: 16_384,
+		contextWindow: 262_144, reservedOutputTokenSpace: 16_384,
 	},
 	'qwen3coder-30b': {
 		supportsFIM: true,
@@ -1298,7 +1308,7 @@ const xAIModelOptions = {
 		reasoningCapabilities: false,
 	},
 	'grok-4.3': {
-		contextWindow: 200_000,
+		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 20_000,
 		cost: { input: 3.00, output: 15.00 },
 		downloadable: false,
@@ -1308,7 +1318,7 @@ const xAIModelOptions = {
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
 	},
 	'grok-4.3-latest': {
-		contextWindow: 200_000,
+		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 20_000,
 		cost: { input: 3.00, output: 15.00 },
 		downloadable: false,
@@ -1318,7 +1328,7 @@ const xAIModelOptions = {
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
 	},
 	'grok-4.20-reasoning': {
-		contextWindow: 200_000,
+		contextWindow: 2_000_000,
 		reservedOutputTokenSpace: 20_000,
 		cost: { input: 3.00, output: 15.00 },
 		downloadable: false,
@@ -1327,8 +1337,8 @@ const xAIModelOptions = {
 		specialToolFormat: 'openai-style',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: false, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'high' } },
 	},
-	'grok-4.20-non-reasoning': { // non-reasoning variant of grok-4.20, same 200k context
-		contextWindow: 200_000,
+	'grok-4.20-non-reasoning': { // non-reasoning variant of grok-4.20 — 2M context
+		contextWindow: 2_000_000,
 		reservedOutputTokenSpace: 20_000,
 		cost: { input: 3.00, output: 15.00 },
 		downloadable: false,
@@ -1338,7 +1348,7 @@ const xAIModelOptions = {
 		reasoningCapabilities: false,
 	},
 	'grok-4.1-fast-reasoning': {
-		contextWindow: 200_000,
+		contextWindow: 2_000_000,
 		reservedOutputTokenSpace: 20_000,
 		cost: { input: 3.00, output: 15.00 },
 		downloadable: false,
@@ -1593,7 +1603,7 @@ const deepseekModelOptions = {
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
-		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		contextWindow: 1_048_576, reservedOutputTokenSpace: 32_768,
 		cost: { input: .435, output: .87 },
 		downloadable: false,
 	},
@@ -1601,7 +1611,7 @@ const deepseekModelOptions = {
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
-		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		contextWindow: 1_048_576, reservedOutputTokenSpace: 32_768,
 		cost: { input: .14, output: .28 },
 		downloadable: false,
 	},
@@ -1609,7 +1619,7 @@ const deepseekModelOptions = {
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
-		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		contextWindow: 1_048_576, reservedOutputTokenSpace: 32_768,
 		cost: { input: .27, output: 1.10 },
 		downloadable: false,
 	},
@@ -2226,7 +2236,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'z-ai/glm-5.1': { // GLM-5.1 — ZhipuAI's latest flagship reasoning model
-		contextWindow: 256_000,
+		contextWindow: 204_800,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.60, output: 1.80 },
 		downloadable: false,
@@ -2541,6 +2551,36 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: false,
 	},
+	// Inception Labs models (direct API — https://docs.inceptionlabs.ai)
+	'mercury-edit-2': { // purpose-built for autocomplete/FIM — Continue's recommended autocomplete model
+		contextWindow: 32_000,
+		reservedOutputTokenSpace: 512,
+		cost: { input: 0.00, output: 0.00 }, // check current pricing at inceptionlabs.ai
+		downloadable: false,
+		supportsFIM: true,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+	'mercury-coder-small': { // smaller/faster FIM model
+		contextWindow: 32_000,
+		reservedOutputTokenSpace: 512,
+		cost: { input: 0.00, output: 0.00 },
+		downloadable: false,
+		supportsFIM: true,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+	'mercury-2': { // general chat model from Inception Labs
+		contextWindow: 128_000,
+		reservedOutputTokenSpace: 4_096,
+		cost: { input: 0.00, output: 0.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+
+	// OpenRouter Inception entry (already existed, keeping for completeness)
 	'inception/mercury-2': {
 		contextWindow: 64_000,
 		reservedOutputTokenSpace: 8_192,
@@ -2576,7 +2616,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 
 	// Moonshot / Kimi
 	'moonshotai/kimi-k3': {
-		contextWindow: 256_000,
+		contextWindow: 262_144,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 1.00, output: 3.00 },
 		downloadable: false,
@@ -2585,7 +2625,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'moonshotai/kimi-k2.7-code': {
-		contextWindow: 256_000,
+		contextWindow: 262_144,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 0.80, output: 2.40 },
 		downloadable: false,
@@ -2594,7 +2634,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'moonshotai/kimi-k2.6': {
-		contextWindow: 256_000,
+		contextWindow: 262_144,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.60, output: 1.80 },
 		downloadable: false,
@@ -2605,7 +2645,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 
 	// ZhipuAI / GLM
 	'z-ai/glm-5.2': {
-		contextWindow: 256_000,
+		contextWindow: 1_048_576,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.50, output: 1.50 },
 		downloadable: false,
@@ -2693,14 +2733,14 @@ const openRouterModelOptions_assumingOpenAICompat = {
 	// DeepSeek via OpenRouter (versioned names)
 	'deepseek/deepseek-v4-pro': {
 		...openSourceModelOptions_assumingOAICompat.deepseekCoderV3,
-		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		contextWindow: 1_048_576, reservedOutputTokenSpace: 32_768,
 		cost: { input: 0.50, output: 2.19 },
 		downloadable: false,
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
 	},
 	'deepseek/deepseek-v4-flash': {
 		...openSourceModelOptions_assumingOAICompat.deepseekCoderV3,
-		contextWindow: 1_000_000, reservedOutputTokenSpace: 32_768,
+		contextWindow: 1_048_576, reservedOutputTokenSpace: 32_768,
 		cost: { input: 0.14, output: 0.55 },
 		downloadable: false,
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, openSourceThinkTags: ['<think>', '</think>'] },
@@ -2717,7 +2757,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
 	},
 	'x-ai/grok-4.3': {
-		contextWindow: 200_000,
+		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 20_000,
 		cost: { input: 3.00, output: 15.00 },
 		downloadable: false,
