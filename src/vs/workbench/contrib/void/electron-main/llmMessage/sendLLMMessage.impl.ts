@@ -204,9 +204,14 @@ const newOpenAICompatibleSDK = async ({ settingsOfProvider, providerName, includ
 
 // ------------ SIMULATED FIM (via Chat) ------------
 const sendChatAsFIM = async (params: SendFIMParams_Internal, sendChat: (params: SendChatParams_Internal) => Promise<void>) => {
-	const { messages: { prefix, suffix }, onFinalMessage, onText, onError, separateSystemMessage: systemMessageOverride, ...rest } = params;
+	const { messages: { prefix, suffix, rawFimPrompt }, onFinalMessage, onText, onError, separateSystemMessage: systemMessageOverride, ...rest } = params;
 
-	const prompt = `Complete the code between the FOLLOWING PREFIX and FOLLOWING SUFFIX.
+	// If a pre-built FIM prompt is provided (already contains model-specific FIM tokens),
+	// pass it through directly as a user message so we don't double-encode the template.
+	// Otherwise fall back to the generic chat-as-FIM prompt.
+	const prompt = rawFimPrompt
+		? rawFimPrompt
+		: `Complete the code between the FOLLOWING PREFIX and FOLLOWING SUFFIX.
 Output ONLY the code that goes in the middle. Do not include any explanations, markdown blocks, or surrounding text.
 
 FOLLOWING PREFIX:
@@ -218,7 +223,9 @@ ${suffix}`;
 	await sendChat({
 		...rest,
 		messages: [{ role: 'user', content: prompt }],
-		separateSystemMessage: systemMessageOverride || "You are a helpful coding assistant specialized in code completion. Output ONLY the code to be inserted, without any markdown formatting or explanations.",
+		separateSystemMessage: rawFimPrompt
+			? undefined // model-specific FIM prompts are self-contained; no extra system message needed
+			: (systemMessageOverride || "You are a helpful coding assistant specialized in code completion. Output ONLY the code to be inserted, without any markdown formatting or explanations."),
 		onText,
 		onFinalMessage,
 		onError,
@@ -1032,17 +1039,22 @@ export const sendLLMMessageToProviderImplementation = {
 	},
 	openAICompatible: {
 		sendChat: (params) => _sendOpenAICompatibleChat(params), // using openai's SDK is not ideal (your implementation might not do tools, reasoning, FIM etc correctly), talk to us for a custom integration
-		sendFIM: (params) => _sendOpenAICompatibleFIM(params),
+		// /v1/completions (text completions) is not reliably supported by most openAI-compatible endpoints;
+		// use chat completions via sendChatAsFIM instead so FIM works with Qwen3-Coder and similar models.
+		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
 		list: null,
 	},
 	openRouter: {
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
-		sendFIM: (params) => _sendOpenAICompatibleFIM(params),
+		// OpenRouter does not expose /v1/completions for most models — use chat completions path.
+		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
 		list: null,
 	},
 	vLLM: {
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
-		sendFIM: (params) => _sendOpenAICompatibleFIM(params),
+		// vLLM supports /v1/completions but only for models loaded with the right tokenizer config;
+		// using sendChatAsFIM is safer and works with Qwen3-Coder's rawFimPrompt passthrough.
+		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
 		list: (params) => _openaiCompatibleList(params),
 	},
 	deepseek: {
@@ -1057,14 +1069,15 @@ export const sendLLMMessageToProviderImplementation = {
 	},
 
 	lmStudio: {
-		// lmStudio has no suffix parameter in /completions, so sendFIM might not work
+		// lmStudio has no suffix parameter in /completions — use chat completions path instead.
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
-		sendFIM: (params) => _sendOpenAICompatibleFIM(params),
+		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
 		list: (params) => _openaiCompatibleList(params),
 	},
 	liteLLM: {
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
-		sendFIM: (params) => _sendOpenAICompatibleFIM(params),
+		// liteLLM proxies vary widely; /v1/completions support is inconsistent — use chat completions.
+		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
 		list: null,
 	},
 	googleVertex: {
