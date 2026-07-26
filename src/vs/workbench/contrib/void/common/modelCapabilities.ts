@@ -2900,6 +2900,16 @@ const modelSettingsOfProvider: { [providerName in ProviderName]: LoopholeStaticP
 			input: { includeInPayload: openAICompatIncludeInPayloadReasoning },
 		},
 	},
+	inception: {
+	    modelOptions: {},
+	    modelOptionsFallback: (modelName) =>
+	        extensiveModelOptionsFallback(modelName),
+	    providerReasoningIOSettings: {
+	        input: {
+	            includeInPayload: openAICompatIncludeInPayloadReasoning,
+	        },
+	    },
+	},
 } as const
 
 // ---------------- exports ----------------
