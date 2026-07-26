@@ -46,6 +46,7 @@ const PRICE_PER_MILLION_TOKENS: Record<string, { input: number; output: number }
 	microsoftAzure: { input: 2.5, output: 10.0 },
 	awsBedrock: { input: 2.0, output: 8.0 },
 	cohere: { input: 1.0, output: 2.0 },
+	inception: { input: 0.25, output: 0.75 },
 	perplexity: { input: 1.0, output: 2.0 },
 	togetherAI: { input: 0.8, output: 2.4 },
 	fireworksAI: { input: 0.8, output: 2.4 },
