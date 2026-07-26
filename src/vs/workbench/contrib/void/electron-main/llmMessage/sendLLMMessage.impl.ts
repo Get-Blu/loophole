@@ -192,6 +192,12 @@ const newOpenAICompatibleSDK = async ({ settingsOfProvider, providerName, includ
 		return new OpenAI({ baseURL: 'https://api.fireworks.ai/inference/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
 	}
 
+	else if (providerName === 'inception') {
+		const thisConfig = settingsOfProvider[providerName]
+		// Inception Labs API — OpenAI-compatible. Get API key at: https://docs.inceptionlabs.ai
+		return new OpenAI({ baseURL: 'https://api.inceptionlabs.ai/v1', apiKey: thisConfig.apiKey, ...commonPayloadOpts })
+	}
+
 	else throw new Error(`Loophole providerName was invalid: ${providerName}.`)
 }
 
@@ -1092,6 +1098,12 @@ export const sendLLMMessageToProviderImplementation = {
 		list: null,
 	},
 	fireworksAI: {
+		sendChat: (params) => _sendOpenAICompatibleChat(params),
+		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
+		list: null,
+	},
+	inception: {
+		// Mercury Edit 2 / Mercury Coder are diffusion FIM models — use native FIM endpoint
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
 		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
 		list: null,
