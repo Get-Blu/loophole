@@ -13,7 +13,7 @@ import { ChatMarkdownRender, ChatMessageLocation, getApplyBoxId } from '../markd
 import { URI } from '../../../../../../../base/common/uri.js';
 import { IDisposable } from '../../../../../../../base/common/lifecycle.js';
 import { ErrorDisplay } from './ErrorDisplay.js';
-import { BlockCode, TextAreaFns, LoopholeInputBox2, VoidSlider, LoopholeSwitch, VoidDiffEditor } from '../util/inputs.js';
+import { BlockCode, TextAreaFns, LoopholeCustomDropdownBox, LoopholeInputBox2, VoidSlider, LoopholeSwitch, VoidDiffEditor } from '../util/inputs.js';
 import { ModelDropdown, } from '../void-settings-tsx/ModelDropdown.js';
 import { PastThreadsList } from './SidebarThreadSelector.js';
 import { LOOPHOLE_CTRL_L_ACTION_ID } from '../../../actionIDs.js';
@@ -402,7 +402,14 @@ const nameOfChatMode = {
 	'plan': 'Plan',
 }
 
-// Single plain-language sentence per mode, shown in the info tooltip.
+const detailOfChatMode = {
+	'normal': 'Normal chat',
+	'gather': 'Reads files, but can\'t edit',
+	'agent': 'Edits files and uses tools',
+	'plan': 'Creates .md plans',
+}
+
+// Shown in the ⓘ tooltip on hover of each dropdown row
 const descriptionOfChatMode: Record<ChatMode, string> = {
 	'normal': 'Answers questions about your code. Can\'t read new files or make edits.',
 	'gather': 'Reads and searches across your codebase for context. Can\'t edit files.',
@@ -410,98 +417,39 @@ const descriptionOfChatMode: Record<ChatMode, string> = {
 	'plan': 'Drafts a step-by-step plan as a markdown file before making changes. Won\'t touch code until you approve it.',
 }
 
-const CHAT_MODE_OPTIONS: ChatMode[] = ['normal', 'gather', 'agent', 'plan']
+const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
+	'normal': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Chat</span>,
+	'gather': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Gather</span>,
+	'agent': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Agent</span>,
+	'plan': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Plan</span>,
+}
+
 
 const ChatModeDropdown = ({ className }: { className: string }) => {
 	const accessor = useAccessor()
 
 	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
 	const settingsState = useSettingsState()
-	const selectedMode = settingsState.globalSettings.chatMode
 
-	const [isOpen, setIsOpen] = useState(false)
-	const containerRef = useRef<HTMLDivElement | null>(null)
-
-	// close on outside click / Escape
-	useEffect(() => {
-		if (!isOpen) return
-		const onPointerDown = (e: MouseEvent) => {
-			if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-				setIsOpen(false)
-			}
-		}
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') setIsOpen(false)
-		}
-		document.addEventListener('mousedown', onPointerDown)
-		document.addEventListener('keydown', onKeyDown)
-		return () => {
-			document.removeEventListener('mousedown', onPointerDown)
-			document.removeEventListener('keydown', onKeyDown)
-		}
-	}, [isOpen])
+	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent', 'plan'], [])
 
 	const onChangeOption = useCallback((newVal: ChatMode) => {
 		loopholeSettingsService.setGlobalSetting('chatMode', newVal)
-		setIsOpen(false)
 	}, [loopholeSettingsService])
 
-	return (
-		<div ref={containerRef} className='relative inline-block'>
-			<button
-				type='button'
-				onClick={() => setIsOpen(v => !v)}
-				className={`flex items-center gap-1 cursor-pointer hover:brightness-125 transition-all duration-150 ${className}`}
-			>
-				<span>{nameOfChatMode[selectedMode]}</span>
-				<ChevronRight size={10} className={`transition-transform duration-100 ${isOpen ? '-rotate-90' : 'rotate-90'}`} />
-			</button>
+	return <LoopholeCustomDropdownBox
+		className={className}
+		options={options}
+		selectedOption={settingsState.globalSettings.chatMode}
+		onChangeOption={onChangeOption}
+		getOptionDisplayName={(val) => iconOfChatMode[val]}
+		getOptionDropdownName={(val) => nameOfChatMode[val]}
+		getOptionDropdownDetail={(val) => detailOfChatMode[val]}
+		getOptionsEqual={(a, b) => a === b}
+		arrowTouchesText={false}
+		showArrow={false}
+	/>
 
-			{isOpen && (
-				<div className='absolute bottom-[calc(100%+6px)] left-0 w-[170px] bg-loophole-bg-2 border border-loophole-border-2 rounded-lg shadow-lg p-1.5 z-50'>
-					{CHAT_MODE_OPTIONS.map((mode) => {
-						const isSelected = mode === selectedMode
-						return (
-							<div
-								key={mode}
-								onClick={() => onChangeOption(mode)}
-								className={`
-									group relative flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
-									transition-colors duration-100
-									${isSelected ? 'bg-loophole-bg-3' : 'hover:bg-loophole-bg-1'}
-								`}
-							>
-								<span className={`text-xs flex-1 ${isSelected ? 'text-loophole-fg-1 font-medium' : 'text-loophole-fg-2'}`}>
-									{nameOfChatMode[mode]}
-								</span>
-
-								<div className='relative flex items-center'>
-									<Info
-										size={12}
-										className='text-loophole-fg-4 group-hover:text-loophole-fg-2 transition-colors duration-100'
-									/>
-									{/* tooltip: plain paragraph, shown on hover of this row */}
-									<div className='
-										pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 w-[190px]
-										bg-[#17171a] border border-loophole-border-1 rounded-md px-2.5 py-2
-										text-[11px] leading-snug text-loophole-fg-3
-										opacity-0 group-hover:opacity-100
-										transition-opacity duration-100 z-50 shadow-lg
-									'>
-										{descriptionOfChatMode[mode]}
-									</div>
-								</div>
-
-								{isSelected && (
-									<Check size={12} className='text-loophole-fg-1 flex-shrink-0' />
-								)}
-							</div>
-						)
-					})}
-				</div>
-			)}
-		</div>
-	)
 }
 
 interface VoidChatAreaProps {
