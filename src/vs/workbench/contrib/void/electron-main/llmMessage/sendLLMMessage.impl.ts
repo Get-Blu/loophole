@@ -1116,9 +1116,11 @@ export const sendLLMMessageToProviderImplementation = {
 		list: null,
 	},
 	inception: {
-		// Mercury Edit 2 / Mercury Coder are diffusion FIM models — use native FIM endpoint
+		// Mercury Edit 2 / Mercury Coder are diffusion FIM models.
+		// Inception Labs exposes a standard /v1/completions endpoint (prefix+suffix),
+		// so _sendOpenAICompatibleFIM is the correct path — not the chat wrapper.
 		sendChat: (params) => _sendOpenAICompatibleChat(params),
-		sendFIM: (params) => sendChatAsFIM(params, (p) => _sendOpenAICompatibleChat(p)),
+		sendFIM: (params) => _sendOpenAICompatibleFIM(params),
 		list: null,
 	},
 } satisfies CallFnOfProvider
