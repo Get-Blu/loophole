@@ -803,7 +803,8 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 						prefix: llmPrefix,
 						suffix: llmSuffix,
 						stopTokens: stopTokens,
-					}
+					},
+					modelSelection,
 				}),
 				modelSelection,
 				modelSelectionOptions,
@@ -947,5 +948,3 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 }
 
 registerWorkbenchContribution2(AutocompleteService.ID, AutocompleteService, WorkbenchPhase.BlockRestore);
-
-
