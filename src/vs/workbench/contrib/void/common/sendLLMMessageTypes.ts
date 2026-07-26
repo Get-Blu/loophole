@@ -75,6 +75,14 @@ export type LLMFIMMessage = {
 	prefix: string;
 	suffix: string;
 	stopTokens: string[];
+	/**
+	 * Optional pre-built FIM prompt that already contains the model-specific
+	 * FIM tokens (e.g. <|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>).
+	 * When present, sendChatAsFIM will pass this directly to the model as a
+	 * raw completion request instead of re-building a chat prompt from
+	 * prefix/suffix. This avoids double-encoding the FIM template.
+	 */
+	rawFimPrompt?: string;
 }
 
 
