@@ -527,7 +527,7 @@ export interface IConvertToLLMMessageService {
 	readonly _serviceBrand: undefined;
 	prepareLLMSimpleMessages: (opts: { simpleMessages: SimpleLLMMessage[], systemMessage: string, modelSelection: ModelSelection | null, featureName: FeatureName }) => { messages: LLMChatMessage[], separateSystemMessage: string | undefined }
 	prepareLLMChatMessages: (opts: { chatMessages: ChatMessage[], chatMode: ChatMode, modelSelection: ModelSelection | null }) => Promise<{ messages: LLMChatMessage[], separateSystemMessage: string | undefined }>
-	prepareFIMMessage(opts: { messages: LLMFIMMessage, }): { prefix: string, suffix: string, stopTokens: string[] }
+	prepareFIMMessage(opts: { messages: LLMFIMMessage, modelSelection?: ModelSelection | null }): { prefix: string, suffix: string, stopTokens: string[], rawFimPrompt?: string }
 }
 
 
@@ -786,21 +786,59 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 
 	// --- FIM ---
 
-	prepareFIMMessage: IConvertToLLMMessageService['prepareFIMMessage'] = ({ messages }) => {
+	prepareFIMMessage: IConvertToLLMMessageService['prepareFIMMessage'] = ({ messages, modelSelection }) => {
 		// Get combined AI instructions with the provided aiInstructions as the base
 		const combinedInstructions = this._getCombinedAIInstructions();
 
-		let prefix = `\
-${!combinedInstructions ? '' : `\
+		const instructionsPrefix = !combinedInstructions ? '' : `\
 // Instructions:
 // Do not output an explanation. Try to avoid outputting comments. Only output the middle code.
-${combinedInstructions.split('\n').map(line => `//${line}`).join('\n')}`}
+${combinedInstructions.split('\n').map(line => `//${line}`).join('\n')}
 
-${messages.prefix}`
+`
 
+		const prefix = instructionsPrefix + messages.prefix
 		const suffix = messages.suffix
 		const stopTokens = messages.stopTokens
-		return { prefix, suffix, stopTokens }
+
+		// Build a rawFimPrompt for open-source models served via chat endpoints (openRouter,
+		// openAICompatible, vLLM, lmStudio, liteLLM). These models natively support FIM tokens
+		// in their tokenizer but are accessed via /v1/chat/completions, so we embed the FIM
+		// template directly in the prompt and pass it through as a raw user message.
+		//
+		// Qwen3-Coder (30b & 480b) and Qwen2.5-Coder use the same template as qwen2.5-coder:
+		//   <|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>
+		let rawFimPrompt: string | undefined = undefined
+		if (modelSelection) {
+			const { overridesOfModel } = this.voidSettingsService.state
+			const { modelName } = getModelCapabilities(modelSelection.providerName, modelSelection.modelName, overridesOfModel)
+			const lower = modelName.toLowerCase()
+
+			// Qwen2.5-Coder / Qwen3-Coder: <|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>
+			if (
+				(lower.includes('qwen') && lower.includes('coder')) ||
+				lower.includes('codegemma') ||
+				lower.includes('qwen2.5coder') ||
+				lower.includes('qwen3coder')
+			) {
+				rawFimPrompt = `<|fim_prefix|>${prefix}<|fim_suffix|>${suffix}<|fim_middle|>`
+			}
+			// Starcoder2: <fim_prefix>...<fim_suffix>...<fim_middle>
+			else if (lower.includes('starcoder')) {
+				rawFimPrompt = `<fim_prefix>${prefix}<fim_suffix>${suffix}<fim_middle>`
+			}
+			// Codestral / Mistral FIM models: [SUFFIX]...[PREFIX]...
+			// (Mistral has its own dedicated FIM endpoint so this is only a fallback)
+			else if (lower.includes('codestral')) {
+				rawFimPrompt = `[SUFFIX]${suffix}[PREFIX] ${prefix}`
+			}
+			// DeepSeek-Coder-V2: <｜fim▁begin｜>...<｜fim▁hole｜>...<｜fim▁end｜>
+			else if (lower.includes('deepseek') && lower.includes('coder')) {
+				rawFimPrompt = `<｜fim▁begin｜>${prefix}<｜fim▁hole｜>${suffix}<｜fim▁end｜>`
+			}
+		}
+
+		return { prefix, suffix, stopTokens, rawFimPrompt }
 	}
 
 
