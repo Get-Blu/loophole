@@ -1408,10 +1408,9 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 					return (
 						<div key={optionName + optionDetail + i} className="flex items-center whitespace-nowrap">
 							<div className="w-4" />
-							<span className="flex justify-between w-full">
+							<span className="flex justify-between w-full gap-x-4">
 								<span>{optionName}</span>
-								<span>{optionDetail}</span>
-								<span>______</span>
+        						<span className="opacity-60 text-[10px]">{optionDetail}</span>
 							</span>
 						</div>
 					)
