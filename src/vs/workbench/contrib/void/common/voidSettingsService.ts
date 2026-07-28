@@ -99,10 +99,10 @@ export const modelFilterOfFeatureName: {
 		emptyMessage: null | { message: string, priority: 'always' | 'fallback' }
 	} } = {
 	'Autocomplete': { filter: (o, opts) => getModelCapabilities(o.providerName, o.modelName, opts.overridesOfModel).supportsFIM, emptyMessage: { message: 'No models support FIM', priority: 'always' } },
-	'Chat': { filter: o => true, emptyMessage: null, },
-	'Ctrl+K': { filter: o => true, emptyMessage: null, },
-	'Apply': { filter: o => true, emptyMessage: null, },
-	'SCM': { filter: o => true, emptyMessage: null, },
+	'Chat': { filter: (o, opts) => { const c = getModelCapabilities(o.providerName, o.modelName, opts.overridesOfModel); return !(c.supportsFIM && c.supportsSystemMessage === false); }, emptyMessage: null, },
+	'Ctrl+K': { filter: (o, opts) => { const c = getModelCapabilities(o.providerName, o.modelName, opts.overridesOfModel); return !(c.supportsFIM && c.supportsSystemMessage === false); }, emptyMessage: null, },
+	'Apply': { filter: (o, opts) => { const c = getModelCapabilities(o.providerName, o.modelName, opts.overridesOfModel); return !(c.supportsFIM && c.supportsSystemMessage === false); }, emptyMessage: null, },
+	'SCM': { filter: (o, opts) => { const c = getModelCapabilities(o.providerName, o.modelName, opts.overridesOfModel); return !(c.supportsFIM && c.supportsSystemMessage === false); }, emptyMessage: null, },
 }
 
 
