@@ -2558,7 +2558,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		cost: { input: 0.00, output: 0.00 }, // check current pricing at inceptionlabs.ai
 		downloadable: false,
 		supportsFIM: true,
-		supportsSystemMessage: 'system-role',
+		supportsSystemMessage: false,
 		reasoningCapabilities: false,
 	},
 	'mercury-coder-small': { // smaller/faster FIM model
@@ -2567,7 +2567,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		cost: { input: 0.00, output: 0.00 },
 		downloadable: false,
 		supportsFIM: true,
-		supportsSystemMessage: 'system-role',
+		supportsSystemMessage: false,
 		reasoningCapabilities: false,
 	},
 	'mercury-2': { // general chat model from Inception Labs
