@@ -1,8 +1,6 @@
 /*--------------------------------------------------------------------------------------
  *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
- *
- * Modifications Copyright 2026 Loophole AI. All rights reserved.
  *--------------------------------------------------------------------------------------*/
 
 import { FeatureName, ModelSelectionOptions, OverridesOfModel, ProviderName } from './voidSettingsTypes.js';
@@ -2553,45 +2551,7 @@ const openRouterModelOptions_assumingOpenAICompat = {
 		supportsSystemMessage: 'system-role',
 		reasoningCapabilities: false,
 	},
-	// Inception Labs models (direct API — https://docs.inceptionlabs.ai)
-	'mercury-edit-2': { // purpose-built for autocomplete/FIM — Continue's recommended autocomplete model
-		contextWindow: 32_000,
-		reservedOutputTokenSpace: 512,
-		cost: { input: 0.00, output: 0.00 }, // check current pricing at inceptionlabs.ai
-		downloadable: false,
-		supportsFIM: true,
-		supportsSystemMessage: false,
-		reasoningCapabilities: false,
-	},
-	'mercury-coder-small': { // smaller/faster FIM model
-		contextWindow: 32_000,
-		reservedOutputTokenSpace: 512,
-		cost: { input: 0.00, output: 0.00 },
-		downloadable: false,
-		supportsFIM: true,
-		supportsSystemMessage: false,
-		reasoningCapabilities: false,
-	},
-	'mercury-2': { // general chat model from Inception Labs
-		contextWindow: 128_000,
-		reservedOutputTokenSpace: 4_096,
-		cost: { input: 0.00, output: 0.00 },
-		downloadable: false,
-		supportsFIM: false,
-		supportsSystemMessage: 'system-role',
-		reasoningCapabilities: false,
-	},
 
-	// OpenRouter Inception entry (already existed, keeping for completeness)
-	'inception/mercury-2': {
-		contextWindow: 64_000,
-		reservedOutputTokenSpace: 8_192,
-		cost: { input: 0.20, output: 0.60 },
-		downloadable: false,
-		supportsFIM: false,
-		supportsSystemMessage: 'system-role',
-		reasoningCapabilities: { supportsReasoning: true, canIOReasoning: true, canTurnOffReasoning: true },
-	},
 	'perplexity/llama-3.1-sonar-large-128k-online': {
 		contextWindow: 128_000,
 		reservedOutputTokenSpace: 4_096,
@@ -2850,6 +2810,37 @@ const openRouterSettings: LoopholeStaticProviderInfo = {
 
 // ---------------- model settings of everything above ----------------
 
+// ---------------- INCEPTION LABS ----------------
+const inceptionModelOptions = {
+	'mercury-edit-2': { // purpose-built for autocomplete/FIM
+		contextWindow: 32_000,
+		reservedOutputTokenSpace: 512,
+		cost: { input: 0.00, output: 0.00 },
+		downloadable: false,
+		supportsFIM: true,
+		supportsSystemMessage: false,
+		reasoningCapabilities: false,
+	},
+	'mercury-coder-small': { // smaller/faster FIM autocomplete model
+		contextWindow: 32_000,
+		reservedOutputTokenSpace: 512,
+		cost: { input: 0.00, output: 0.00 },
+		downloadable: false,
+		supportsFIM: true,
+		supportsSystemMessage: false,
+		reasoningCapabilities: false,
+	},
+	'mercury-2': { // general chat/reasoning model
+		contextWindow: 128_000,
+		reservedOutputTokenSpace: 4_096,
+		cost: { input: 0.00, output: 0.00 },
+		downloadable: false,
+		supportsFIM: false,
+		supportsSystemMessage: 'system-role',
+		reasoningCapabilities: false,
+	},
+} as const satisfies { [s: string]: LoopholeStaticModelInfo }
+
 const modelSettingsOfProvider: { [providerName in ProviderName]: LoopholeStaticProviderInfo } = {
 	openAI: openAISettings,
 	anthropic: anthropicSettings,
@@ -2903,7 +2894,7 @@ const modelSettingsOfProvider: { [providerName in ProviderName]: LoopholeStaticP
 		},
 	},
 	inception: {
-	    modelOptions: {},
+	    modelOptions: inceptionModelOptions,
 	    modelOptionsFallback: (modelName) =>
 	        extensiveModelOptionsFallback(modelName),
 	    providerReasoningIOSettings: {
