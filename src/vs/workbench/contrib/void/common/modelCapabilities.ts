@@ -351,7 +351,7 @@ type LoopholeStaticProviderInfo = { // doesn't change (not stateful)
 
 
 const defaultModelOptions = {
-	contextWindow: 128_000,
+	contextWindow: 256_000,
 	reservedOutputTokenSpace: 4_096,
 	cost: { input: 0, output: 0 },
 	downloadable: false,
