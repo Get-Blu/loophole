@@ -1286,8 +1286,16 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 }) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
+	const [measuredWidth, setMeasuredWidth] = useState(0);
 	const measureRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
+
+	// Measure hidden div width after mount/options change
+	useEffect(() => {
+		if (measureRef.current) {
+			setMeasuredWidth(measureRef.current.offsetWidth);
+		}
+	}, [options]);
 
 	// Reset search when closing
 	useEffect(() => {
@@ -1406,11 +1414,11 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 					const optionDetail = getOptionDropdownDetail?.(option) || '';
 
 					return (
-						<div key={optionName + optionDetail + i} className="flex items-center whitespace-nowrap">
-							<div className="w-4" />
-							<span className="flex justify-between w-full gap-x-4">
+						<div key={optionName + optionDetail + i} className="flex items-center px-2 py-1 pr-4 whitespace-nowrap text-xs">
+							<div className="w-4 flex justify-center flex-shrink-0" />
+							<span className="flex justify-between items-center w-full gap-x-4">
 								<span>{optionName}</span>
-        						<span className="opacity-60 text-[10px]">{optionDetail}</span>
+								<span className="opacity-60 text-[10px]">{optionDetail}</span>
 							</span>
 						</div>
 					)
@@ -1457,7 +1465,7 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 							? (refs.reference.current instanceof HTMLElement ? refs.reference.current.offsetWidth : 0)
 							: Math.max(
 								(refs.reference.current instanceof HTMLElement ? refs.reference.current.offsetWidth : 0),
-								(measureRef.current instanceof HTMLElement ? measureRef.current.offsetWidth : 0)
+								measuredWidth
 							))
 					}}
 					onWheel={(e) => e.stopPropagation()}
@@ -2050,5 +2058,3 @@ export const VoidDiffEditor = ({ uri, searchReplaceBlocks, language }: { uri?: a
 		</div>
 	);
 };
-
-
