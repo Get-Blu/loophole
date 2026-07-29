@@ -322,10 +322,16 @@ const postprocessAutocompletion = ({ autocompletionMatchup, autocompletion, pref
 
 	const restOfLineToGenerate = generatedMiddle.slice(startIdx).split(_ln)[0] ?? ''
 	// condition to complete as a single line completion
+	// Allow multi-line when the prefix line ends with block-opening syntax
+	// (e.g. `def foo():`, `if x:`, `function foo() {`, `foo(` etc.)
+	// so that full function/class/block bodies are suggested.
+	const prefixTrimmed = prefixToTheLeftOfCursor.trimEnd()
+	const endsWithBlockOpen = /[:{(,\[]$/.test(prefixTrimmed)
 	if (
 		prefixToTheLeftOfCursor.trim()
 		&& !suffixToTheRightOfCursor.trim()
 		&& restOfLineToGenerate.trim()
+		&& !endsWithBlockOpen  // only clip to single line when NOT opening a block
 	) {
 
 		const rawNewlineIdx = generatedMiddle.slice(startIdx).indexOf(_ln)
@@ -554,6 +560,10 @@ const getCompletionOptions = (prefixAndSuffix: PrefixAndSuffixInfo, relevantCont
 	// TODO add context to prefix
 	// llmPrefix = '\n\n/* Relevant context:\n' + relevantContext + '\n*/\n' + llmPrefix
 
+	// detect if the prefix line ends with block-opening syntax (def foo():, if x:, function bar() {, etc.)
+	const prefixLineTrimmed = prefixToTheLeftOfCursor.trimEnd()
+	const prefixEndsWithBlockOpen = /[:{(,\[]$/.test(prefixLineTrimmed)
+
 	// if we just accepted an autocompletion, predict a multiline completion starting on the next line
 	if (justAcceptedAutocompletion && isLineSuffixEmpty) {
 		const prefixWithNewline = prefix + _ln
@@ -563,6 +573,17 @@ const getCompletionOptions = (prefixAndSuffix: PrefixAndSuffixInfo, relevantCont
 			llmPrefix: prefixWithNewline,
 			llmSuffix: suffix,
 			stopTokens: [`${_ln}${_ln}`] // double newlines
+		}
+	}
+	// if line ends with block-opening syntax, do multi-line starting on next line
+	else if (prefixEndsWithBlockOpen && isLineSuffixEmpty) {
+		const prefixWithNewline = prefix + _ln
+		completionOptions = {
+			predictionType: 'multi-line-start-on-next-line',
+			shouldGenerate: true,
+			llmPrefix: prefixWithNewline,
+			llmSuffix: suffix,
+			stopTokens: [`${_ln}${_ln}`] // stop at blank line (end of block)
 		}
 	}
 	// if the current line is empty, predict a single-line completion
