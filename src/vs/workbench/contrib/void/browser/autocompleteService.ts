@@ -320,27 +320,9 @@ const postprocessAutocompletion = ({ autocompletionMatchup, autocompletion, pref
 		}
 	}
 
-	const restOfLineToGenerate = generatedMiddle.slice(startIdx).split(_ln)[0] ?? ''
-	// condition to complete as a single line completion
-	// Allow multi-line when the prefix line ends with block-opening syntax
-	// (e.g. `def foo():`, `if x:`, `function foo() {`, `foo(` etc.)
-	// so that full function/class/block bodies are suggested.
-	const prefixTrimmed = prefixToTheLeftOfCursor.trimEnd()
-	const endsWithBlockOpen = /[:{(,\[]$/.test(prefixTrimmed)
-	if (
-		prefixToTheLeftOfCursor.trim()
-		&& !suffixToTheRightOfCursor.trim()
-		&& restOfLineToGenerate.trim()
-		&& !endsWithBlockOpen  // only clip to single line when NOT opening a block
-	) {
-
-		const rawNewlineIdx = generatedMiddle.slice(startIdx).indexOf(_ln)
-		if (rawNewlineIdx > -1) {
-			// console.log('p3', startIdx, rawNewlineIdx)
-			const newlineIdx = rawNewlineIdx + startIdx;
-			endIdx = Math.min(endIdx, newlineIdx)
-		}
-	}
+	// Allow multi-line / whole-block suggestions in all cases.
+	// The LLM already uses a double-newline stop token, so it naturally stops at the
+	// end of a logical block. We no longer clip to a single line here.
 
 	// // if a generated line matches with a suffix line, stop
 	// if (suffixLines.length > 1) {
@@ -596,7 +578,8 @@ const getCompletionOptions = (prefixAndSuffix: PrefixAndSuffixInfo, relevantCont
 			stopTokens: allLinebreakSymbols
 		}
 	}
-	// if suffix is 3 or fewer characters, attempt to complete the line ignorning it
+	// if suffix is 3 or fewer characters, attempt to complete the line ignoring it
+	// Use double-newline as stop token so the model can suggest a whole block, not just one line
 	else if (removeAllWhitespace(suffixToTheRightOfCursor).length <= 3) {
 		const suffixLinesIgnoringThisLine = suffixLines.slice(1)
 		const suffixStringIgnoringThisLine = suffixLinesIgnoringThisLine.length === 0 ? '' : _ln + suffixLinesIgnoringThisLine.join(_ln)
@@ -605,17 +588,18 @@ const getCompletionOptions = (prefixAndSuffix: PrefixAndSuffixInfo, relevantCont
 			shouldGenerate: true,
 			llmPrefix: prefix,
 			llmSuffix: suffixStringIgnoringThisLine,
-			stopTokens: allLinebreakSymbols
+			stopTokens: [`${_ln}${_ln}`] // allow multi-line block, stop at blank line
 		}
 	}
 	// else attempt to complete the middle of the line if there is a prefix (the completion looks bad if there is no prefix)
+	// Use double-newline stop token so multiple lines can be suggested when completing mid-file
 	else if (!isLinePrefixEmpty) {
 		completionOptions = {
 			predictionType: 'single-line-fill-middle',
 			shouldGenerate: true,
 			llmPrefix: prefix,
 			llmSuffix: suffix,
-			stopTokens: allLinebreakSymbols
+			stopTokens: [`${_ln}${_ln}`] // allow multi-line block, stop at blank line
 		}
 	} else {
 		completionOptions = {
