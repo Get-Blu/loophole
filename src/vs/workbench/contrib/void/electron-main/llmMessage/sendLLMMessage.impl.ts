@@ -278,7 +278,7 @@ const _sendOpenAICompatibleFIM = async ({ messages: { prefix, suffix, stopTokens
 			.then(async res => {
 				if (!res.ok) {
 					const body = await res.text().catch(() => '')
-					onError({ message: `Inception Labs API error ${res.status}: ${body}`, fullError: { status: res.status } })
+					onError({ message: `Inception Labs API error ${res.status}: ${body}`, fullError: new Error(`HTTP ${res.status}: ${body}`) })
 					return
 				}
 				const json = await res.json()
