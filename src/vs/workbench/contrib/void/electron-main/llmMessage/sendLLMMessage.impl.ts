@@ -251,6 +251,47 @@ const _sendOpenAICompatibleFIM = async ({ messages: { prefix, suffix, stopTokens
 		return
 	}
 
+	// Inception Labs diffusion FIM models (mercury-edit-2, mercury-coder-small) use a
+	// non-standard endpoint: /v1/fim/completions instead of /v1/completions.
+	// The standard OpenAI SDK routes to /v1/completions which returns 404 for these models.
+	if (providerName === 'inception') {
+		const apiKey = settingsOfProvider.inception.apiKey
+		const controller = new AbortController()
+		_setAborter(() => controller.abort())
+
+		fetch('https://api.inceptionlabs.ai/v1/fim/completions', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify({
+				model: modelName,
+				prompt: prefix,
+				suffix: suffix,
+				stop: stopTokens,
+				max_tokens: 500,
+				stream: false,
+			}),
+			signal: controller.signal,
+		})
+			.then(async res => {
+				if (!res.ok) {
+					const body = await res.text().catch(() => '')
+					onError({ message: `Inception Labs API error ${res.status}: ${body}`, fullError: { status: res.status } })
+					return
+				}
+				const json = await res.json()
+				const fullText: string = json?.choices?.[0]?.text ?? ''
+				onFinalMessage({ fullText, fullReasoning: '', anthropicReasoning: null })
+			})
+			.catch(error => {
+				if (error?.name === 'AbortError') return
+				onError({ message: error + '', fullError: error })
+			})
+		return
+	}
+
 	const openai = await newOpenAICompatibleSDK({ providerName, settingsOfProvider, includeInPayload: additionalOpenAIPayload })
 	openai.completions
 		.create({
@@ -258,7 +299,7 @@ const _sendOpenAICompatibleFIM = async ({ messages: { prefix, suffix, stopTokens
 			prompt: prefix,
 			suffix: suffix,
 			stop: stopTokens,
-			max_tokens: 300,
+			max_tokens: 500,
 		})
 		.then(async response => {
 			const fullText = response.choices[0]?.text
