@@ -268,9 +268,13 @@ export const defaultModelsOfProvider = {
 } as const satisfies Record<ProviderName, string[]>
 
 
+export type ModelTag = 'recommended' | 'fast' | 'cheap' | 'powerful' | 'free' | 'slow'
+
 export type LoopholeStaticModelInfo = { // not stateful
 	// Loophole uses the information below to know how to handle each model.
 	// for some examples, see openAIModelOptions and anthropicModelOptions (below).
+
+	tags?: ModelTag[];
 
 	contextWindow: number; // input tokens
 	reservedOutputTokenSpace: number | null; // reserve this much space in the context window for output, defaults to 4096 if null
@@ -666,6 +670,7 @@ const anthropicModelOptions = {
 		},
 	},
 	'claude-opus-4-8': { // 1M context, released May 2026
+		tags: ['powerful'],
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 5.00, cache_read: 0.50, cache_write: 6.25, output: 25.00 },
@@ -714,6 +719,7 @@ const anthropicModelOptions = {
 		},
 	},
 	'claude-sonnet-4-6': { // 1M context
+		tags: ['recommended', 'fast'],
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 3.00, cache_read: 0.30, cache_write: 3.75, output: 15.00 },
@@ -763,6 +769,7 @@ const anthropicModelOptions = {
 		},
 	},
 	'claude-haiku-4-5-20251001': { // 200k context — was falling through to 128k default, now fixed
+		tags: ['fast', 'cheap'],
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 1.00, cache_read: 0.10, cache_write: 1.25, output: 5.00 },
@@ -774,6 +781,7 @@ const anthropicModelOptions = {
 	},
 	// alias without date (claude-haiku-4-5 → same as above)
 	'claude-haiku-4-5': {
+		tags: ['fast', 'cheap'],
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 1.00, cache_read: 0.10, cache_write: 1.25, output: 5.00 },
@@ -965,6 +973,7 @@ const openAIModelOptions = { // https://platform.openai.com/docs/pricing
 	// GPT-5.x family — 1_050_000 context (ModelWalk: openai.json)
 	// Released July 9, 2026. All three share 1.05M context / 128K output. Sol=$5/$30, Terra=$2.50/$15, Luna=$1/$6.
 	'gpt-5.6-sol': {
+		tags: ['fast'],
 		contextWindow: 1_050_000,
 		reservedOutputTokenSpace: 128_000,
 		cost: { input: 5.00, output: 30.00, cache_read: 0.50 },
@@ -975,6 +984,7 @@ const openAIModelOptions = { // https://platform.openai.com/docs/pricing
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'high' } },
 	},
 	'gpt-5.6-terra': {
+		tags: ['powerful'],
 		contextWindow: 1_050_000,
 		reservedOutputTokenSpace: 128_000,
 		cost: { input: 2.50, output: 15.00, cache_read: 0.25 },
@@ -1174,6 +1184,7 @@ const openAIModelOptions = { // https://platform.openai.com/docs/pricing
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: false, canIOReasoning: false, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
 	},
 	'gpt-4o-mini': {
+		tags: ['fast', 'cheap'],
 		contextWindow: 128_000,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 0.15, cache_read: 0.075, output: 0.60, },
@@ -1719,6 +1730,7 @@ const mistralModelOptions = { // https://mistral.ai/products/la-plateforme#prici
 		reasoningCapabilities: false,
 	},
 	'codestral-latest': {
+		tags: ['recommended', 'free'],
 		contextWindow: 256_000,
 		reservedOutputTokenSpace: 8_192,
 		cost: { input: 0.30, output: 0.90 },
@@ -2813,6 +2825,7 @@ const openRouterSettings: LoopholeStaticProviderInfo = {
 // ---------------- INCEPTION LABS ----------------
 const inceptionModelOptions = {
 	'mercury-edit-2': { // purpose-built for autocomplete/FIM
+		tags: ['recommended'],
 		contextWindow: 32_000,
 		reservedOutputTokenSpace: 512,
 		cost: { input: 0.00, output: 0.00 },
@@ -2822,6 +2835,7 @@ const inceptionModelOptions = {
 		reasoningCapabilities: false,
 	},
 	'mercury-coder-small': { // smaller/faster FIM autocomplete model
+		tags: ['fast', 'cheap'],
 		contextWindow: 32_000,
 		reservedOutputTokenSpace: 512,
 		cost: { input: 0.00, output: 0.00 },
