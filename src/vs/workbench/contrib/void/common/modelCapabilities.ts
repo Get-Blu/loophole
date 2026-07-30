@@ -116,11 +116,12 @@ export const defaultModelsOfProvider = {
 	],
 	
 	gemini: [
-	    'gemini-3.5-flash',
 	    'gemini-3.6-flash',
+	    'gemini-3.5-flash',
+	    'gemini-3.5-flash-lite',
 	    'gemini-3.1-pro-preview',
-	    'gemini-2.5-pro',
 	    'gemini-3.1-flash-lite',
+	    'gemini-2.5-pro',
 	],
 	
 	deepseek: [
@@ -559,10 +560,10 @@ const extensiveModelOptionsFallback: LoopholeStaticProviderInfo['modelOptionsFal
 	if (lower.includes('claude-opus-4-7') || lower.includes('claude-4-7')) return toFallback(anthropicModelOptions, 'claude-opus-4-7')
 	if (lower.includes('claude-opus-4-6') || (lower.includes('claude') && lower.includes('opus-4-6'))) return toFallback(anthropicModelOptions, 'claude-opus-4-6')
 	if (lower.includes('claude-haiku-4-5') || (lower.includes('claude') && lower.includes('haiku-4-5'))) return toFallback(anthropicModelOptions, 'claude-haiku-4-5')
-	if (lower.includes('claude-4-6') || lower.includes('claude-4.6')) return toFallback(anthropicModelOptions, 'claude-sonnet-4.6-20260217')
+	if (lower.includes('claude-4-6') || lower.includes('claude-4.6')) return toFallback(anthropicModelOptions, 'claude-sonnet-4-6-20260217')
 	if (lower.includes('claude-3-7') || lower.includes('claude-3.7')) return toFallback(anthropicModelOptions, 'claude-3-7-sonnet-20250219')
 	if (lower.includes('claude-3-5') || lower.includes('claude-3.5')) return toFallback(anthropicModelOptions, 'claude-3-5-sonnet-20241022')
-	if (lower.includes('claude')) return toFallback(anthropicModelOptions, 'claude-sonnet-4.6-20260217')
+	if (lower.includes('claude')) return toFallback(anthropicModelOptions, 'claude-sonnet-4-6-20260217')
 
 	if (lower.includes('grok-4.5') || lower.includes('grok4.5')) return toFallback(xAIModelOptions, 'grok-4.5')
 	if (lower.includes('grok-4.20') && lower.includes('non-reasoning')) return toFallback(xAIModelOptions, 'grok-4.20-non-reasoning')
@@ -705,7 +706,7 @@ const anthropicModelOptions = {
 	'claude-opus-4-6': { // 1M context
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
-		cost: { input: 15.00, cache_read: 1.50, cache_write: 18.75, output: 75.00 },
+		cost: { input: 5.00, cache_read: 0.50, cache_write: 6.25, output: 25.00 },
 		downloadable: false,
 		supportsFIM: false,
 		specialToolFormat: 'anthropic-style' as const,
@@ -771,7 +772,7 @@ const anthropicModelOptions = {
 	'claude-haiku-4-5-20251001': { // 200k context — was falling through to 128k default, now fixed
 		tags: ['fast', 'cheap'],
 		contextWindow: 200_000,
-		reservedOutputTokenSpace: 16_384,
+		reservedOutputTokenSpace: 64_000,
 		cost: { input: 1.00, cache_read: 0.10, cache_write: 1.25, output: 5.00 },
 		downloadable: false,
 		supportsFIM: false,
@@ -783,7 +784,7 @@ const anthropicModelOptions = {
 	'claude-haiku-4-5': {
 		tags: ['fast', 'cheap'],
 		contextWindow: 200_000,
-		reservedOutputTokenSpace: 16_384,
+		reservedOutputTokenSpace: 64_000,
 		cost: { input: 1.00, cache_read: 0.10, cache_write: 1.25, output: 5.00 },
 		downloadable: false,
 		supportsFIM: false,
@@ -808,7 +809,7 @@ const anthropicModelOptions = {
 		},
 
 	},
-	'claude-opus-4.6-20260205': {
+	'claude-opus-4-6-20260205': {
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 15.00, cache_read: 1.50, cache_write: 18.75, output: 75.00 },
@@ -825,7 +826,7 @@ const anthropicModelOptions = {
 		},
 
 	},
-	'claude-sonnet-4.6-20260217': {
+	'claude-sonnet-4-6-20260217': {
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 3.00, cache_read: 0.30, cache_write: 3.75, output: 15.00 },
@@ -1308,7 +1309,7 @@ const xAIModelOptions = {
 		specialToolFormat: 'openai-style',
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: true, canIOReasoning: true, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
 	},
-	'grok-build': { // grok-build-0.1: 256K context, $1/$2 per 1M. Code-focused agent model.
+	'grok-build-0.1': { // 256K context, $1/$2 per 1M. Code-focused agent model.
 		contextWindow: 256_000,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 1.00, output: 2.00, cache_read: 0.20 },
@@ -1321,7 +1322,7 @@ const xAIModelOptions = {
 	'grok-4.3': {
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 20_000,
-		cost: { input: 3.00, output: 15.00 },
+		cost: { input: 1.25, output: 2.50 },
 		downloadable: false,
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
@@ -1331,7 +1332,7 @@ const xAIModelOptions = {
 	'grok-4.3-latest': {
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 20_000,
-		cost: { input: 3.00, output: 15.00 },
+		cost: { input: 1.25, output: 2.50 },
 		downloadable: false,
 		supportsFIM: false,
 		supportsSystemMessage: 'system-role',
@@ -1381,7 +1382,7 @@ const xAISettings: LoopholeStaticProviderInfo = {
 		else if (lower.includes('grok-4.20') && lower.includes('reasoning')) fallbackName = 'grok-4.20-reasoning'
 		else if (lower.includes('grok-4.20')) fallbackName = 'grok-4.20-reasoning'
 		else if (lower.includes('grok-4')) fallbackName = 'grok-4.3'
-		else if (lower.includes('grok-build')) fallbackName = 'grok-build'
+		else if (lower.includes('grok-build')) fallbackName = 'grok-build-0.1'
 		else if (lower.includes('grok-3-mini')) fallbackName = 'grok-3-mini'
 		else if (lower.includes('grok-3')) fallbackName = 'grok-3'
 		else if (lower.includes('grok')) fallbackName = 'grok-4.5'
