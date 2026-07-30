@@ -21,51 +21,166 @@ import { isWindows } from '../../../../base/common/platform.js';
 import { ILoopholeSettingsService } from '../common/voidSettingsService.js';
 import { FeatureName } from '../common/voidSettingsTypes.js';
 import { IConvertToLLMMessageService } from './convertToLLMMessageService.js';
-// import { IContextGatheringService } from './contextGatheringService.js';
 
 export const IAutocompleteService = createDecorator<IAutocompleteService>('AutocompleteService');
-
 
 const allLinebreakSymbols = ['\r\n', '\n']
 const _ln = isWindows ? allLinebreakSymbols[0] : allLinebreakSymbols[1]
 
-// The extension this was called from is here - https://github.com/voideditor/void/blob/autocomplete/extensions/void/src/extension/extension.ts
+// ─── Constants (mirrors Continue's approach) ──────────────────────────────────
+
+const DEBOUNCE_TIME = 700          // ms to wait after last keystroke before firing
+const MIN_PREFIX_CHARS = 3         // non-whitespace chars required on current line
+const TIMEOUT_TIME = 60_000
+const MAX_CACHE_SIZE = 20
+const MAX_PENDING_REQUESTS = 2
+const MAX_COMPLETION_LINES = 50    // hard safety cap; Continue uses similar limits
+
+/** Patterns whose presence on a line signals the LLM has gone off the rails */
+const LINES_TO_STOP_AT = [
+	'# End of file.',
+	'<STOP EDITING HERE',
+	'<|/updated_code|>',
+	'```',
+	'diff --git',
+]
+
+/** English prose phrases that should never appear at the start of a code completion */
+const ENGLISH_START_PHRASES = [
+	'here is', 'here\'s', 'sure', 'certainly', 'of course',
+	'i will', 'i\'ll', 'the following', 'this code', 'this function',
+	'this is', 'note that', 'please', 'you can', 'you\'ll',
+]
+
+/** English prose phrases that signal a post-code explanation has started */
+const ENGLISH_POST_PHRASES = [
+	'explanation:', 'note:', 'this code', 'the above', 'in this',
+	'as you can see', 'this will', 'here we', 'we use', 'the function',
+]
+
+/** Code keywords that can end in `:` but are NOT English sentences */
+const CODE_KEYWORDS_ENDING_IN_COLON = [
+	'if', 'else', 'elif', 'for', 'while', 'try', 'except',
+	'finally', 'with', 'class', 'def', 'case', 'default',
+]
 
 
-/*
-A summary of autotab:
+// ─── Continue-style stream post-processing ────────────────────────────────────
+// These operate on the *completed* string rather than a live async generator,
+// because our architecture delivers the full text in onFinalMessage. The logic
+// is identical in spirit to Continue's StreamTransformPipeline.
 
-Postprocessing
--one common problem for all models is outputting unbalanced parentheses
-we solve this by trimming all extra closing parentheses from the generated string
-in future, should make sure parentheses are always balanced
+function isEnglishFirstLine(line: string): boolean {
+	const l = line.trim().toLowerCase()
+	if (l.endsWith(':') && !CODE_KEYWORDS_ENDING_IN_COLON.some(k => l.startsWith(k))) return true
+	return ENGLISH_START_PHRASES.some(p => l.startsWith(p))
+}
 
--another problem is completing the middle of a string, eg. "const [x, CURSOR] = useState()"
-we complete up to first matchup character
-but should instead complete the whole line / block (difficult because of parenthesis accuracy)
+function isEnglishPostLine(line: string): boolean {
+	const l = line.toLowerCase()
+	return ENGLISH_POST_PHRASES.some(p => l.startsWith(p))
+}
 
--too much info is bad. usually we want to show the user 1 line, and have a preloaded response afterwards
-this should happen automatically with caching system
-should break preloaded responses into \n\n chunks
+/**
+ * Apply a Continue-style multi-stage filter pipeline to the raw LLM output.
+ * Returns the cleaned completion string.
+ *
+ * Stages (in order, matching Continue's StreamTransformPipeline):
+ *  1. Stop at suffix overlap – avoids echoing code already in the file
+ *  2. Strip leading empty lines
+ *  3. Filter English prose at the start
+ *  4. Stop at LINES_TO_STOP_AT patterns (```, diff --git, etc.)
+ *  5. Stop at repeating lines (hallucination loop detector, max 3 repeats)
+ *  6. Stop at double blank line (natural block boundary)
+ *  7. Filter English prose at the end
+ *  8. Hard cap on number of lines
+ *  9. Stop when a line exactly matches the first non-empty line below the cursor
+ */
+function applyStreamFilterPipeline(
+	rawText: string,
+	suffix: string,
+	lineBelowCursor: string,
+): string {
+	// --- Stage 1: stop at suffix overlap ---
+	// If the LLM starts repeating what's already in the suffix, cut there.
+	const trimmedSuffix = suffix.trimStart()
+	if (trimmedSuffix.length > 10) {
+		// Find the first line of the suffix that's non-trivial
+		const suffixFirstLine = trimmedSuffix.split(_ln)[0].trim()
+		if (suffixFirstLine.length > 5) {
+			const overlapIdx = rawText.indexOf(suffixFirstLine)
+			if (overlapIdx > 0) {
+				rawText = rawText.slice(0, overlapIdx)
+			}
+		}
+	}
 
-Preprocessing
-- we don't generate if cursor is at end / beginning of a line (no spaces)
-- we generate 1 line if there is text to the right of cursor
-- we generate 1 line if variable declaration
-- (in many cases want to show 1 line but generate multiple)
+	const rawLines = rawText.split(_ln)
+	const outputLines: string[] = []
 
-State
-- cache based on prefix (and do some trimming first)
-- when press tab on one line, should have an immediate followup response
-to do this, show autocompletes before they're fully finished
-- [todo] remove each autotab when accepted
-!- [todo] provide type information
+	// --- Stage 2 & 3: skip leading blank lines and English prose ---
+	let startIdx = 0
+	for (let i = 0; i < rawLines.length; i++) {
+		if (rawLines[i].trim() === '') continue
+		if (isEnglishFirstLine(rawLines[i])) { startIdx = i + 1; continue }
+		startIdx = i
+		break
+	}
 
-Details
--generated results are trimmed up to 1 leading/trailing space
--prefixes are cached up to 1 trailing newline
--
-*/
+	// --- Stages 4–9: process remaining lines ---
+	let prevLine: string | undefined
+	let repeatCount = 0
+	let blankLineCount = 0
+
+	for (let i = startIdx; i < rawLines.length; i++) {
+		const line = rawLines[i]
+
+		// Stage 4: stop at garbage-signal patterns
+		if (LINES_TO_STOP_AT.some(pat => line.includes(pat))) break
+
+		// Stage 5: stop on repeating lines (hallucination loop)
+		if (line === prevLine) {
+			repeatCount++
+			if (repeatCount >= 3) break
+		} else {
+			repeatCount = 1
+		}
+		prevLine = line
+
+		// Stage 6: stop at double blank line (end of logical block)
+		if (line.trim() === '') {
+			blankLineCount++
+			if (blankLineCount >= 2) break
+		} else {
+			blankLineCount = 0
+		}
+
+		// Stage 7: stop at English post-explanation
+		if (isEnglishPostLine(line)) break
+
+		// Stage 8: hard line cap
+		if (outputLines.length >= MAX_COMPLETION_LINES) break
+
+		// Stage 9: stop if we reach a line that already exists below the cursor
+		if (
+			lineBelowCursor.trim() !== '' &&
+			line.trim() !== '' &&
+			line.trim() === lineBelowCursor.trim()
+		) break
+
+		outputLines.push(line)
+	}
+
+	// Remove trailing blank lines
+	while (outputLines.length > 0 && outputLines[outputLines.length - 1].trim() === '') {
+		outputLines.pop()
+	}
+
+	return outputLines.join(_ln)
+}
+
+
+// ─── LRU Cache ────────────────────────────────────────────────────────────────
 
 class LRUCache<K, V> {
 	public items: Map<K, V>;
@@ -75,7 +190,6 @@ class LRUCache<K, V> {
 
 	constructor(maxSize: number, disposeCallback?: (value: V, key?: K) => void) {
 		if (maxSize <= 0) throw new Error('Cache size must be greater than 0');
-
 		this.items = new Map();
 		this.keyOrder = [];
 		this.maxSize = maxSize;
@@ -83,71 +197,48 @@ class LRUCache<K, V> {
 	}
 
 	set(key: K, value: V): void {
-		// If key exists, remove it from the order list
 		if (this.items.has(key)) {
 			this.keyOrder = this.keyOrder.filter(k => k !== key);
-		}
-		// If cache is full, remove least recently used item
-		else if (this.items.size >= this.maxSize) {
-			const key = this.keyOrder[0];
-			const value = this.items.get(key);
-
-			// Call dispose callback if it exists
-			if (this.disposeCallback && value !== undefined) {
-				this.disposeCallback(value, key);
-			}
-
-			this.items.delete(key);
+		} else if (this.items.size >= this.maxSize) {
+			const oldKey = this.keyOrder[0];
+			const oldValue = this.items.get(oldKey);
+			if (this.disposeCallback && oldValue !== undefined) this.disposeCallback(oldValue, oldKey);
+			this.items.delete(oldKey);
 			this.keyOrder.shift();
 		}
-
-		// Add new item
 		this.items.set(key, value);
 		this.keyOrder.push(key);
 	}
 
 	delete(key: K): boolean {
 		const value = this.items.get(key);
-
 		if (value !== undefined) {
-			// Call dispose callback if it exists
-			if (this.disposeCallback) {
-				this.disposeCallback(value, key);
-			}
-
+			if (this.disposeCallback) this.disposeCallback(value, key);
 			this.items.delete(key);
 			this.keyOrder = this.keyOrder.filter(k => k !== key);
 			return true;
 		}
-
 		return false;
 	}
 
 	clear(): void {
-		// Call dispose callback for all items if it exists
 		if (this.disposeCallback) {
-			for (const [key, value] of this.items.entries()) {
-				this.disposeCallback(value, key);
-			}
+			for (const [key, value] of this.items.entries()) this.disposeCallback(value, key);
 		}
-
 		this.items.clear();
 		this.keyOrder = [];
 	}
 
-	get size(): number {
-		return this.items.size;
-	}
-
-	has(key: K): boolean {
-		return this.items.has(key);
-	}
+	get size(): number { return this.items.size; }
+	has(key: K): boolean { return this.items.has(key); }
 }
+
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AutocompletionPredictionType =
 	| 'single-line-fill-middle'
 	| 'single-line-redo-suffix'
-	// | 'multi-line-start-here'
 	| 'multi-line-start-on-next-line'
 	| 'do-not-predict'
 
@@ -167,276 +258,13 @@ type Autocompletion = {
 	_newlineCount: number,
 }
 
-const DEBOUNCE_TIME = 500
-const TIMEOUT_TIME = 60000
-const MAX_CACHE_SIZE = 20
-const MAX_PENDING_REQUESTS = 2
-
-// postprocesses the result
-const processStartAndEndSpaces = (result: string) => {
-
-	// trim all whitespace except for a single leading/trailing space
-	// return result.trim()
-
-	[result,] = extractCodeFromRegular({ text: result, recentlyAddedTextLen: result.length })
-
-	const hasLeadingSpace = result.startsWith(' ');
-	const hasTrailingSpace = result.endsWith(' ');
-
-	return (hasLeadingSpace ? ' ' : '')
-		+ result.trim()
-		+ (hasTrailingSpace ? ' ' : '');
-
-}
-
-
-// trims the end of the prefix to improve cache hit rate
-const removeLeftTabsAndTrimEnds = (s: string): string => {
-	const trimmedString = s.trimEnd();
-	const trailingEnd = s.slice(trimmedString.length);
-
-	// keep only a single trailing newline
-	if (trailingEnd.includes(_ln)) {
-		s = trimmedString + _ln;
-	}
-
-	s = s.replace(/^\s+/gm, ''); // remove left tabs
-
-	return s;
-}
-
-
-
-const removeAllWhitespace = (str: string): string => str.replace(/\s+/g, '');
-
-
-
-function getIsSubsequence({ of, subsequence }: { of: string, subsequence: string }): [boolean, string] {
-	if (subsequence.length === 0) return [true, ''];
-	if (of.length === 0) return [false, ''];
-
-	let subsequenceIndex = 0;
-	let lastMatchChar = '';
-
-	for (let i = 0; i < of.length; i++) {
-		if (of[i] === subsequence[subsequenceIndex]) {
-			lastMatchChar = of[i];
-			subsequenceIndex++;
-		}
-		if (subsequenceIndex === subsequence.length) {
-			return [true, lastMatchChar];
-		}
-	}
-
-	return [false, lastMatchChar];
-}
-
-
-function getStringUpToUnbalancedClosingParenthesis(s: string, prefix: string): string {
-
-	const pairs: Record<string, string> = { ')': '(', '}': '{', ']': '[' };
-
-	// process all bracets in prefix
-	let stack: string[] = []
-	const firstOpenIdx = prefix.search(/[[({]/);
-	if (firstOpenIdx !== -1) {
-		const brackets = prefix.slice(firstOpenIdx).split('').filter(c => '()[]{}'.includes(c));
-
-		for (const bracket of brackets) {
-			if (bracket === '(' || bracket === '{' || bracket === '[') {
-				stack.push(bracket);
-			} else {
-				if (stack.length > 0 && stack[stack.length - 1] === pairs[bracket]) {
-					stack.pop();
-				} else {
-					stack.push(bracket);
-				}
-			}
-		}
-	}
-
-	// iterate through each character
-	for (let i = 0; i < s.length; i++) {
-		const char = s[i];
-
-		if (char === '(' || char === '{' || char === '[') { stack.push(char); }
-		else if (char === ')' || char === '}' || char === ']') {
-			if (stack.length === 0 || stack.pop() !== pairs[char]) { return s.substring(0, i); }
-		}
-	}
-	return s;
-}
-
-
-// further trim the autocompletion
-const postprocessAutocompletion = ({ autocompletionMatchup, autocompletion, prefixAndSuffix }: { autocompletionMatchup: AutocompletionMatchupBounds, autocompletion: Autocompletion, prefixAndSuffix: PrefixAndSuffixInfo }) => {
-
-	const { prefix, prefixToTheLeftOfCursor, suffixToTheRightOfCursor } = prefixAndSuffix
-
-	const generatedMiddle = autocompletion.insertText
-
-	let startIdx = autocompletionMatchup.startIdx
-	let endIdx = generatedMiddle.length // exclusive bounds
-
-	// const naiveReturnValue = generatedMiddle.slice(startIdx)
-	// console.log('naiveReturnValue: ', JSON.stringify(naiveReturnValue))
-	// return [{ insertText: naiveReturnValue, }]
-
-	// do postprocessing for better ux
-	// this is a bit hacky but may change a lot
-
-	// if there is space at the start of the completion and user has added it, remove it
-	const charToLeftOfCursor = prefixToTheLeftOfCursor.slice(-1)[0] || ''
-	const userHasAddedASpace = charToLeftOfCursor === ' ' || charToLeftOfCursor === '\t'
-	const rawFirstNonspaceIdx = generatedMiddle.slice(startIdx).search(/[^\t ]/)
-	if (rawFirstNonspaceIdx > -1 && userHasAddedASpace) {
-		const firstNonspaceIdx = rawFirstNonspaceIdx + startIdx;
-		// console.log('p0', startIdx, rawFirstNonspaceIdx)
-		startIdx = Math.max(startIdx, firstNonspaceIdx)
-	}
-
-	// if user is on a blank line and the generation starts with newline(s), remove them
-	const numStartingNewlines = generatedMiddle.slice(startIdx).match(new RegExp(`^${_ln}+`))?.[0].length || 0;
-	if (
-		!prefixToTheLeftOfCursor.trim()
-		&& !suffixToTheRightOfCursor.trim()
-		&& numStartingNewlines > 0
-	) {
-		// console.log('p1', numStartingNewlines)
-		startIdx += numStartingNewlines
-	}
-
-	// if the generated FIM text matches with the suffix on the current line, stop
-	if (autocompletion.type === 'single-line-fill-middle' && suffixToTheRightOfCursor.trim()) { // completing in the middle of a line
-		// complete until there is a match
-		const rawMatchIndex = generatedMiddle.slice(startIdx).lastIndexOf(suffixToTheRightOfCursor.trim()[0])
-		if (rawMatchIndex > -1) {
-			// console.log('p2', rawMatchIndex, startIdx, suffixToTheRightOfCursor.trim()[0], 'AAA', generatedMiddle.slice(startIdx))
-			const matchIdx = rawMatchIndex + startIdx;
-			const matchChar = generatedMiddle[matchIdx]
-			if (`{}()[]<>\`'"`.includes(matchChar)) {
-				endIdx = Math.min(endIdx, matchIdx)
-			}
-		}
-	}
-
-	// Allow multi-line / whole-block suggestions in all cases.
-	// The LLM already uses a double-newline stop token, so it naturally stops at the
-	// end of a logical block. We no longer clip to a single line here.
-
-	// // if a generated line matches with a suffix line, stop
-	// if (suffixLines.length > 1) {
-	// 	console.log('4')
-	// 	const lines = []
-	// 	for (const generatedLine of generatedLines) {
-	// 		if (suffixLines.slice(0, 10).some(suffixLine =>
-	// 			generatedLine.trim() !== '' && suffixLine.trim() !== ''
-	// 			&& generatedLine.trim().startsWith(suffixLine.trim())
-	// 		)) break;
-	// 		lines.push(generatedLine)
-	// 	}
-	// 	endIdx = lines.join('\n').length // this is hacky, remove or refactor in future
-	// }
-
-	// console.log('pFinal', startIdx, endIdx)
-	let completionStr = generatedMiddle.slice(startIdx, endIdx)
-
-	// filter out unbalanced parentheses
-	completionStr = getStringUpToUnbalancedClosingParenthesis(completionStr, prefix)
-	// console.log('originalCompletionStr: ', JSON.stringify(generatedMiddle.slice(startIdx)))
-	// console.log('finalCompletionStr: ', JSON.stringify(completionStr))
-
-
-	return completionStr
-
-}
-
-// returns the text in the autocompletion to display, assuming the prefix is already matched
-const toInlineCompletions = ({ autocompletionMatchup, autocompletion, prefixAndSuffix, position, debug }: { autocompletionMatchup: AutocompletionMatchupBounds, autocompletion: Autocompletion, prefixAndSuffix: PrefixAndSuffixInfo, position: Position, debug?: boolean }): { insertText: string, range: Range }[] => {
-
-	let trimmedInsertText = postprocessAutocompletion({ autocompletionMatchup, autocompletion, prefixAndSuffix, })
-	let rangeToReplace: Range = new Range(position.lineNumber, position.column, position.lineNumber, position.column)
-
-	// handle special cases
-
-	// if we redid the suffix, replace the suffix
-	if (autocompletion.type === 'single-line-redo-suffix') {
-
-		const oldSuffix = prefixAndSuffix.suffixToTheRightOfCursor
-		const newSuffix = autocompletion.insertText
-
-		const [isSubsequence, lastMatchingChar] = getIsSubsequence({ // check that the old text contains the same brackets + symbols as the new text
-			subsequence: removeAllWhitespace(oldSuffix), // old suffix
-			of: removeAllWhitespace(newSuffix), // new suffix
-		})
-		if (isSubsequence) {
-			rangeToReplace = new Range(position.lineNumber, position.column, position.lineNumber, Number.MAX_SAFE_INTEGER)
-		}
-		else {
-
-			const lastMatchupIdx = trimmedInsertText.lastIndexOf(lastMatchingChar)
-			trimmedInsertText = trimmedInsertText.slice(0, lastMatchupIdx + 1)
-			const numCharsToReplace = oldSuffix.lastIndexOf(lastMatchingChar) + 1
-			rangeToReplace = new Range(position.lineNumber, position.column, position.lineNumber, position.column + numCharsToReplace)
-			// console.log('show____', trimmedInsertText, rangeToReplace)
-		}
-	}
-
-	return [{
-		insertText: trimmedInsertText,
-		range: rangeToReplace,
-	}]
-
-}
-
-
-
-
-
-// returns whether this autocompletion is in the cache
-// const doesPrefixMatchAutocompletion = ({ prefix, autocompletion }: { prefix: string, autocompletion: Autocompletion }): boolean => {
-
-// 	const originalPrefix = autocompletion.prefix
-// 	const generatedMiddle = autocompletion.result
-// 	const originalPrefixTrimmed = trimPrefix(originalPrefix)
-// 	const currentPrefixTrimmed = trimPrefix(prefix)
-
-// 	if (currentPrefixTrimmed.length < originalPrefixTrimmed.length) {
-// 		return false
-// 	}
-
-// 	const isMatch = (originalPrefixTrimmed + generatedMiddle).startsWith(currentPrefixTrimmed)
-// 	return isMatch
-
-// }
-
-
-type PrefixAndSuffixInfo = { prefix: string, suffix: string, prefixLines: string[], suffixLines: string[], prefixToTheLeftOfCursor: string, suffixToTheRightOfCursor: string }
-const getPrefixAndSuffixInfo = (model: ITextModel, position: Position): PrefixAndSuffixInfo => {
-
-	const fullText = model.getValue(EndOfLinePreference.LF);
-
-	const cursorOffset = model.getOffsetAt(position)
-	const prefix = fullText.substring(0, cursorOffset)
-	const suffix = fullText.substring(cursorOffset)
-
-
-	const prefixLines = prefix.split(_ln)
-	const suffixLines = suffix.split(_ln)
-
-	const prefixToTheLeftOfCursor = prefixLines.slice(-1)[0] ?? ''
-	const suffixToTheRightOfCursor = suffixLines[0] ?? ''
-
-	return { prefix, suffix, prefixLines, suffixLines, prefixToTheLeftOfCursor, suffixToTheRightOfCursor }
-
-}
-
-const getIndex = (str: string, line: number, char: number) => {
-	return str.split(_ln).slice(0, line).join(_ln).length + (line > 0 ? 1 : 0) + char;
-}
-const getLastLine = (s: string): string => {
-	const matches = s.match(new RegExp(`[^${_ln}]*$`))
-	return matches ? matches[0] : ''
+type PrefixAndSuffixInfo = {
+	prefix: string,
+	suffix: string,
+	prefixLines: string[],
+	suffixLines: string[],
+	prefixToTheLeftOfCursor: string,
+	suffixToTheRightOfCursor: string,
 }
 
 type AutocompletionMatchupBounds = {
@@ -444,76 +272,6 @@ type AutocompletionMatchupBounds = {
 	startCharacter: number,
 	startIdx: number,
 }
-// returns the startIdx of the match if there is a match, or undefined if there is no match
-// all results are wrt `autocompletion.result`
-const getAutocompletionMatchup = ({ prefix, autocompletion }: { prefix: string, autocompletion: Autocompletion }): AutocompletionMatchupBounds | undefined => {
-
-	const trimmedCurrentPrefix = removeLeftTabsAndTrimEnds(prefix)
-	const trimmedCompletionPrefix = removeLeftTabsAndTrimEnds(autocompletion.prefix)
-	const trimmedCompletionMiddle = removeLeftTabsAndTrimEnds(autocompletion.insertText)
-
-	// console.log('@result: ', JSON.stringify(autocompletion.insertText))
-	// console.log('@trimmedCurrentPrefix: ', JSON.stringify(trimmedCurrentPrefix))
-	// console.log('@trimmedCompletionPrefix: ', JSON.stringify(trimmedCompletionPrefix))
-	// console.log('@trimmedCompletionMiddle: ', JSON.stringify(trimmedCompletionMiddle))
-
-	if (trimmedCurrentPrefix.length < trimmedCompletionPrefix.length) { // user must write text beyond the original prefix at generation time
-		// console.log('@undefined1')
-		return undefined
-	}
-
-	if ( // check that completion starts with the prefix
-		!(trimmedCompletionPrefix + trimmedCompletionMiddle)
-			.startsWith(trimmedCurrentPrefix)
-	) {
-		// console.log('@undefined2')
-		return undefined
-	}
-
-	// reverse map to find position wrt `autocompletion.result`
-	const lineStart =
-		trimmedCurrentPrefix.split(_ln).length -
-		trimmedCompletionPrefix.split(_ln).length;
-
-	if (lineStart < 0) {
-		// console.log('@undefined3')
-
-		console.error('Error: No line found.');
-		return undefined;
-	}
-	const currentPrefixLine = getLastLine(trimmedCurrentPrefix)
-	const completionPrefixLine = lineStart === 0 ? getLastLine(trimmedCompletionPrefix) : ''
-	const completionMiddleLine = autocompletion.insertText.split(_ln)[lineStart]
-	const fullCompletionLine = completionPrefixLine + completionMiddleLine
-
-	// console.log('currentPrefixLine', currentPrefixLine)
-	// console.log('completionPrefixLine', completionPrefixLine)
-	// console.log('completionMiddleLine', completionMiddleLine)
-
-	const charMatchIdx = fullCompletionLine.indexOf(currentPrefixLine)
-	if (charMatchIdx < 0) {
-		// console.log('@undefined4', charMatchIdx)
-
-		console.error('Warning: Found character with negative index. This should never happen.')
-		return undefined
-	}
-
-	const character = (charMatchIdx +
-		currentPrefixLine.length
-		- completionPrefixLine.length
-	)
-
-	const startIdx = getIndex(autocompletion.insertText, lineStart, character)
-
-	return {
-		startLine: lineStart,
-		startCharacter: character,
-		startIdx,
-	}
-
-
-}
-
 
 type CompletionOptions = {
 	predictionType: AutocompletionPredictionType,
@@ -522,98 +280,329 @@ type CompletionOptions = {
 	llmSuffix: string,
 	stopTokens: string[],
 }
-const getCompletionOptions = (prefixAndSuffix: PrefixAndSuffixInfo, relevantContext: string, justAcceptedAutocompletion: boolean): CompletionOptions => {
+
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const removeAllWhitespace = (str: string): string => str.replace(/\s+/g, '')
+
+const processStartAndEndSpaces = (result: string) => {
+	[result,] = extractCodeFromRegular({ text: result, recentlyAddedTextLen: result.length })
+	const hasLeadingSpace = result.startsWith(' ');
+	const hasTrailingSpace = result.endsWith(' ');
+	return (hasLeadingSpace ? ' ' : '') + result.trim() + (hasTrailingSpace ? ' ' : '');
+}
+
+const removeLeftTabsAndTrimEnds = (s: string): string => {
+	const trimmedString = s.trimEnd();
+	const trailingEnd = s.slice(trimmedString.length);
+	if (trailingEnd.includes(_ln)) s = trimmedString + _ln;
+	s = s.replace(/^\s+/gm, '');
+	return s;
+}
+
+function getIsSubsequence({ of: ofStr, subsequence }: { of: string, subsequence: string }): [boolean, string] {
+	if (subsequence.length === 0) return [true, '']
+	if (ofStr.length === 0) return [false, '']
+	let subIdx = 0, lastMatchChar = ''
+	for (let i = 0; i < ofStr.length; i++) {
+		if (ofStr[i] === subsequence[subIdx]) { lastMatchChar = ofStr[i]; subIdx++ }
+		if (subIdx === subsequence.length) return [true, lastMatchChar]
+	}
+	return [false, lastMatchChar]
+}
+
+function getStringUpToUnbalancedClosingParenthesis(s: string, prefix: string): string {
+	const pairs: Record<string, string> = { ')': '(', '}': '{', ']': '[' };
+	let stack: string[] = []
+	const firstOpenIdx = prefix.search(/[[({]/);
+	if (firstOpenIdx !== -1) {
+		const brackets = prefix.slice(firstOpenIdx).split('').filter(c => '()[]{}'.includes(c));
+		for (const bracket of brackets) {
+			if ('({['.includes(bracket)) stack.push(bracket)
+			else if (stack.length > 0 && stack[stack.length - 1] === pairs[bracket]) stack.pop()
+			else stack.push(bracket)
+		}
+	}
+	for (let i = 0; i < s.length; i++) {
+		const char = s[i]
+		if ('({['.includes(char)) stack.push(char)
+		else if (')}]'.includes(char)) {
+			if (stack.length === 0 || stack.pop() !== pairs[char]) return s.substring(0, i)
+		}
+	}
+	return s
+}
+
+const getPrefixAndSuffixInfo = (model: ITextModel, position: Position): PrefixAndSuffixInfo => {
+	const fullText = model.getValue(EndOfLinePreference.LF);
+	const cursorOffset = model.getOffsetAt(position)
+	const prefix = fullText.substring(0, cursorOffset)
+	const suffix = fullText.substring(cursorOffset)
+	const prefixLines = prefix.split(_ln)
+	const suffixLines = suffix.split(_ln)
+	const prefixToTheLeftOfCursor = prefixLines.slice(-1)[0] ?? ''
+	const suffixToTheRightOfCursor = suffixLines[0] ?? ''
+	return { prefix, suffix, prefixLines, suffixLines, prefixToTheLeftOfCursor, suffixToTheRightOfCursor }
+}
+
+const getIndex = (str: string, line: number, char: number) =>
+	str.split(_ln).slice(0, line).join(_ln).length + (line > 0 ? 1 : 0) + char
+
+const getLastLine = (s: string): string => s.match(new RegExp(`[^${_ln}]*$`))?.[0] ?? ''
+
+/** Returns the first non-empty line below the cursor (like Continue's getLineBelowCursor) */
+const getLineBelowCursor = (suffixLines: string[]): string => {
+	for (let i = 1; i < suffixLines.length; i++) {
+		if (suffixLines[i].trim() !== '') return suffixLines[i]
+	}
+	return ''
+}
+
+
+// ─── Autocomplete trigger logic (mirrors Continue's shouldCompleteMultiline) ──
+
+const getCompletionOptions = (
+	prefixAndSuffix: PrefixAndSuffixInfo,
+	_relevantContext: string,
+	justAcceptedAutocompletion: boolean,
+): CompletionOptions => {
 
 	let { prefix, suffix, prefixToTheLeftOfCursor, suffixToTheRightOfCursor, suffixLines, prefixLines } = prefixAndSuffix
 
-	// trim prefix and suffix to not be very large
+	// Trim context window to avoid sending massive prompts
 	suffixLines = suffix.split(_ln).slice(0, 25)
 	prefixLines = prefix.split(_ln).slice(-25)
 	prefix = prefixLines.join(_ln)
 	suffix = suffixLines.join(_ln)
 
-	let completionOptions: CompletionOptions
-
-	// if line is empty, do multiline completion
 	const isLineEmpty = !prefixToTheLeftOfCursor.trim() && !suffixToTheRightOfCursor.trim()
 	const isLinePrefixEmpty = removeAllWhitespace(prefixToTheLeftOfCursor).length === 0
 	const isLineSuffixEmpty = removeAllWhitespace(suffixToTheRightOfCursor).length === 0
 
-	// TODO add context to prefix
-	// llmPrefix = '\n\n/* Relevant context:\n' + relevantContext + '\n*/\n' + llmPrefix
+	// ── Mirror Continue: don't trigger on single-line comments ──────────────
+	const trimmedLeft = prefixToTheLeftOfCursor.trimStart()
+	const isSingleLineComment =
+		trimmedLeft.startsWith('//') ||
+		trimmedLeft.startsWith('#') ||
+		trimmedLeft.startsWith('--') ||
+		trimmedLeft.startsWith('*')
+	if (isSingleLineComment && !justAcceptedAutocompletion) {
+		return { predictionType: 'do-not-predict', shouldGenerate: false, llmPrefix: prefix, llmSuffix: suffix, stopTokens: [] }
+	}
 
-	// detect if the prefix line ends with block-opening syntax (def foo():, if x:, function bar() {, etc.)
+	// ── Require minimum typed content (avoids garbage on blank/short lines) ─
+	const currentLinePrefixChars = removeAllWhitespace(prefixToTheLeftOfCursor).length
+	if (!justAcceptedAutocompletion && currentLinePrefixChars < MIN_PREFIX_CHARS && !isLineEmpty) {
+		return { predictionType: 'do-not-predict', shouldGenerate: false, llmPrefix: prefix, llmSuffix: suffix, stopTokens: [] }
+	}
+
+	// ── Suppress blank-line completions (like Continue: no mid-line if suffix starts with \n) ─
+	if (isLineEmpty && !justAcceptedAutocompletion) {
+		return { predictionType: 'do-not-predict', shouldGenerate: false, llmPrefix: prefix, llmSuffix: suffix, stopTokens: [] }
+	}
+
+	// ── Detect block-opening syntax (def foo():, if x:, function bar() {, …) ─
 	const prefixLineTrimmed = prefixToTheLeftOfCursor.trimEnd()
 	const prefixEndsWithBlockOpen = /[:{(,\[]$/.test(prefixLineTrimmed)
 
-	// if we just accepted an autocompletion, predict a multiline completion starting on the next line
-	if (justAcceptedAutocompletion && isLineSuffixEmpty) {
-		const prefixWithNewline = prefix + _ln
-		completionOptions = {
-			predictionType: 'multi-line-start-on-next-line',
-			shouldGenerate: true,
-			llmPrefix: prefixWithNewline,
-			llmSuffix: suffix,
-			stopTokens: [`${_ln}${_ln}`] // double newlines
-		}
-	}
-	// if line ends with block-opening syntax, do multi-line starting on next line
-	else if (prefixEndsWithBlockOpen && isLineSuffixEmpty) {
-		const prefixWithNewline = prefix + _ln
-		completionOptions = {
-			predictionType: 'multi-line-start-on-next-line',
-			shouldGenerate: true,
-			llmPrefix: prefixWithNewline,
-			llmSuffix: suffix,
-			stopTokens: [`${_ln}${_ln}`] // stop at blank line (end of block)
-		}
-	}
-	// if the current line is empty, predict a single-line completion
-	else if (isLineEmpty) {
-		completionOptions = {
+	// ── Mid-line completion: Continue style — single-line stop ───────────────
+	// If there's meaningful content to the right of the cursor, stay single-line.
+	if (!isLineSuffixEmpty && suffixToTheRightOfCursor.trim().length > 3) {
+		return {
 			predictionType: 'single-line-fill-middle',
 			shouldGenerate: true,
 			llmPrefix: prefix,
 			llmSuffix: suffix,
-			stopTokens: allLinebreakSymbols
+			stopTokens: allLinebreakSymbols,   // single line, like Continue for mid-line
 		}
 	}
-	// if suffix is 3 or fewer characters, attempt to complete the line ignoring it
-	// Use double-newline as stop token so the model can suggest a whole block, not just one line
-	else if (removeAllWhitespace(suffixToTheRightOfCursor).length <= 3) {
+
+	// ── Post-accept chained completion ───────────────────────────────────────
+	if (justAcceptedAutocompletion && isLineSuffixEmpty) {
+		return {
+			predictionType: 'multi-line-start-on-next-line',
+			shouldGenerate: true,
+			llmPrefix: prefix + _ln,
+			llmSuffix: suffix,
+			stopTokens: [`${_ln}${_ln}`],
+		}
+	}
+
+	// ── Block-opening → multi-line from next line ────────────────────────────
+	if (prefixEndsWithBlockOpen && isLineSuffixEmpty) {
+		return {
+			predictionType: 'multi-line-start-on-next-line',
+			shouldGenerate: true,
+			llmPrefix: prefix + _ln,
+			llmSuffix: suffix,
+			stopTokens: [`${_ln}${_ln}`],
+		}
+	}
+
+	// ── Empty line (only reachable when justAccepted) ────────────────────────
+	if (isLineEmpty) {
+		return {
+			predictionType: 'single-line-fill-middle',
+			shouldGenerate: true,
+			llmPrefix: prefix,
+			llmSuffix: suffix,
+			stopTokens: allLinebreakSymbols,
+		}
+	}
+
+	// ── Short/no suffix → multi-line block completion ────────────────────────
+	if (removeAllWhitespace(suffixToTheRightOfCursor).length <= 3) {
 		const suffixLinesIgnoringThisLine = suffixLines.slice(1)
-		const suffixStringIgnoringThisLine = suffixLinesIgnoringThisLine.length === 0 ? '' : _ln + suffixLinesIgnoringThisLine.join(_ln)
-		completionOptions = {
+		const suffixStringIgnoringThisLine = suffixLinesIgnoringThisLine.length === 0
+			? ''
+			: _ln + suffixLinesIgnoringThisLine.join(_ln)
+		return {
 			predictionType: 'single-line-redo-suffix',
 			shouldGenerate: true,
 			llmPrefix: prefix,
 			llmSuffix: suffixStringIgnoringThisLine,
-			stopTokens: [`${_ln}${_ln}`] // allow multi-line block, stop at blank line
+			stopTokens: [`${_ln}${_ln}`],
 		}
 	}
-	// else attempt to complete the middle of the line if there is a prefix (the completion looks bad if there is no prefix)
-	// Use double-newline stop token so multiple lines can be suggested when completing mid-file
-	else if (!isLinePrefixEmpty) {
-		completionOptions = {
+
+	// ── Non-empty line prefix, some suffix → complete the line ───────────────
+	if (!isLinePrefixEmpty) {
+		return {
 			predictionType: 'single-line-fill-middle',
 			shouldGenerate: true,
 			llmPrefix: prefix,
 			llmSuffix: suffix,
-			stopTokens: [`${_ln}${_ln}`] // allow multi-line block, stop at blank line
-		}
-	} else {
-		completionOptions = {
-			predictionType: 'do-not-predict',
-			shouldGenerate: false,
-			llmPrefix: prefix,
-			llmSuffix: suffix,
-			stopTokens: []
+			stopTokens: [`${_ln}${_ln}`],
 		}
 	}
 
-	return completionOptions
-
+	return { predictionType: 'do-not-predict', shouldGenerate: false, llmPrefix: prefix, llmSuffix: suffix, stopTokens: [] }
 }
+
+
+// ─── Post-processing ──────────────────────────────────────────────────────────
+
+const postprocessAutocompletion = ({
+	autocompletionMatchup, autocompletion, prefixAndSuffix,
+}: {
+	autocompletionMatchup: AutocompletionMatchupBounds,
+	autocompletion: Autocompletion,
+	prefixAndSuffix: PrefixAndSuffixInfo,
+}) => {
+	const { prefix, suffix, prefixToTheLeftOfCursor, suffixToTheRightOfCursor, suffixLines } = prefixAndSuffix
+	const generatedMiddle = autocompletion.insertText
+	let startIdx = autocompletionMatchup.startIdx
+	let endIdx = generatedMiddle.length
+
+	// Strip leading space if user already typed one
+	const charToLeft = prefixToTheLeftOfCursor.slice(-1)[0] || ''
+	const userTypedSpace = charToLeft === ' ' || charToLeft === '\t'
+	const rawFirstNonspaceIdx = generatedMiddle.slice(startIdx).search(/[^\t ]/)
+	if (rawFirstNonspaceIdx > -1 && userTypedSpace) {
+		startIdx = Math.max(startIdx, rawFirstNonspaceIdx + startIdx)
+	}
+
+	// Strip leading newlines on blank lines
+	const numStartingNewlines = generatedMiddle.slice(startIdx).match(new RegExp(`^${_ln}+`))?.[0].length || 0;
+	if (!prefixToTheLeftOfCursor.trim() && !suffixToTheRightOfCursor.trim() && numStartingNewlines > 0) {
+		startIdx += numStartingNewlines
+	}
+
+	// Mid-line: stop before the first matching suffix character
+	if (autocompletion.type === 'single-line-fill-middle' && suffixToTheRightOfCursor.trim()) {
+		const rawMatchIndex = generatedMiddle.slice(startIdx).lastIndexOf(suffixToTheRightOfCursor.trim()[0])
+		if (rawMatchIndex > -1) {
+			const matchIdx = rawMatchIndex + startIdx
+			const matchChar = generatedMiddle[matchIdx]
+			if (`{}()[]<>\`'"`.includes(matchChar)) {
+				endIdx = Math.min(endIdx, matchIdx)
+			}
+		}
+	}
+
+	let completionStr = generatedMiddle.slice(startIdx, endIdx)
+
+	// ── Apply the Continue-style stream filter pipeline ──────────────────────
+	const lineBelowCursor = getLineBelowCursor(suffixLines)
+	completionStr = applyStreamFilterPipeline(completionStr, suffix, lineBelowCursor)
+
+	// Filter unbalanced parentheses
+	completionStr = getStringUpToUnbalancedClosingParenthesis(completionStr, prefix)
+
+	return completionStr
+}
+
+
+const getAutocompletionMatchup = ({
+	prefix, autocompletion,
+}: {
+	prefix: string,
+	autocompletion: Autocompletion,
+}): AutocompletionMatchupBounds | undefined => {
+	const trimmedCurrentPrefix = removeLeftTabsAndTrimEnds(prefix)
+	const trimmedCompletionPrefix = removeLeftTabsAndTrimEnds(autocompletion.prefix)
+	const trimmedCompletionMiddle = removeLeftTabsAndTrimEnds(autocompletion.insertText)
+
+	if (trimmedCurrentPrefix.length < trimmedCompletionPrefix.length) return undefined
+	if (!(trimmedCompletionPrefix + trimmedCompletionMiddle).startsWith(trimmedCurrentPrefix)) return undefined
+
+	const lineStart =
+		trimmedCurrentPrefix.split(_ln).length -
+		trimmedCompletionPrefix.split(_ln).length
+
+	if (lineStart < 0) { console.error('Error: No line found.'); return undefined }
+
+	const currentPrefixLine = getLastLine(trimmedCurrentPrefix)
+	const completionPrefixLine = lineStart === 0 ? getLastLine(trimmedCompletionPrefix) : ''
+	const completionMiddleLine = autocompletion.insertText.split(_ln)[lineStart]
+	const fullCompletionLine = completionPrefixLine + completionMiddleLine
+
+	const charMatchIdx = fullCompletionLine.indexOf(currentPrefixLine)
+	if (charMatchIdx < 0) { console.error('Warning: Found character with negative index.'); return undefined }
+
+	const character = charMatchIdx + currentPrefixLine.length - completionPrefixLine.length
+	const startIdx = getIndex(autocompletion.insertText, lineStart, character)
+
+	return { startLine: lineStart, startCharacter: character, startIdx }
+}
+
+
+const toInlineCompletions = ({
+	autocompletionMatchup, autocompletion, prefixAndSuffix, position,
+}: {
+	autocompletionMatchup: AutocompletionMatchupBounds,
+	autocompletion: Autocompletion,
+	prefixAndSuffix: PrefixAndSuffixInfo,
+	position: Position,
+	debug?: boolean,
+}): { insertText: string, range: Range }[] => {
+
+	let trimmedInsertText = postprocessAutocompletion({ autocompletionMatchup, autocompletion, prefixAndSuffix })
+	let rangeToReplace: Range = new Range(position.lineNumber, position.column, position.lineNumber, position.column)
+
+	if (autocompletion.type === 'single-line-redo-suffix') {
+		const oldSuffix = prefixAndSuffix.suffixToTheRightOfCursor
+		const newSuffix = autocompletion.insertText
+		const [isSubsequence, lastMatchingChar] = getIsSubsequence({
+			subsequence: removeAllWhitespace(oldSuffix),
+			of: removeAllWhitespace(newSuffix),
+		})
+		if (isSubsequence) {
+			rangeToReplace = new Range(position.lineNumber, position.column, position.lineNumber, Number.MAX_SAFE_INTEGER)
+		} else {
+			const lastMatchupIdx = trimmedInsertText.lastIndexOf(lastMatchingChar)
+			trimmedInsertText = trimmedInsertText.slice(0, lastMatchupIdx + 1)
+			const numCharsToReplace = oldSuffix.lastIndexOf(lastMatchingChar) + 1
+			rangeToReplace = new Range(position.lineNumber, position.column, position.lineNumber, position.column + numCharsToReplace)
+		}
+	}
+
+	return [{ insertText: trimmedInsertText, range: rangeToReplace }]
+}
+
+
+// ─── Service ──────────────────────────────────────────────────────────────────
 
 export interface IAutocompleteService {
 	readonly _serviceBrand: undefined;
@@ -622,18 +611,13 @@ export interface IAutocompleteService {
 export class AutocompleteService extends Disposable implements IAutocompleteService {
 
 	static readonly ID = 'void.autocompleteService'
-
 	_serviceBrand: undefined;
 
 	private _autocompletionId: number = 0;
 	private _autocompletionsOfDocument: { [docUriStr: string]: LRUCache<number, Autocompletion> } = {}
-
 	private _lastCompletionStart = 0
 	private _lastCompletionAccept = 0
-	// private _lastPrefix: string = ''
 
-	// used internally by vscode
-	// fires after every keystroke and returns the completion to show
 	async _provideInlineCompletionItems(
 		model: ITextModel,
 		position: Position,
@@ -643,144 +627,78 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 		if (!isEnabled) return []
 
 		const testMode = false
-
 		const docUriStr = model.uri.fsPath;
-
 		const prefixAndSuffix = getPrefixAndSuffixInfo(model, position)
 		const { prefix, suffix } = prefixAndSuffix
 
-		// initialize cache if it doesnt exist
-		// note that whenever an autocompletion is accepted, it is removed from cache
 		if (!this._autocompletionsOfDocument[docUriStr]) {
 			this._autocompletionsOfDocument[docUriStr] = new LRUCache<number, Autocompletion>(
 				MAX_CACHE_SIZE,
 				(autocompletion: Autocompletion) => {
-					if (autocompletion.requestId)
-						this._llmMessageService.abort(autocompletion.requestId)
+					if (autocompletion.requestId) this._llmMessageService.abort(autocompletion.requestId)
 				}
 			)
 		}
-		// this._lastPrefix = prefix
 
-		// print all pending autocompletions
-		// let _numPending = 0
-		// this._autocompletionsOfDocument[docUriStr].items.forEach((a: Autocompletion) => { if (a.status === 'pending') _numPending += 1 })
-		// console.log('@numPending: ' + _numPending)
-
-		// get autocompletion from cache
-		let cachedAutocompletion: Autocompletion | undefined = undefined
-		let autocompletionMatchup: AutocompletionMatchupBounds | undefined = undefined
+		// ── Cache lookup ─────────────────────────────────────────────────────
+		let cachedAutocompletion: Autocompletion | undefined
+		let autocompletionMatchup: AutocompletionMatchupBounds | undefined
 		for (const autocompletion of this._autocompletionsOfDocument[docUriStr].items.values()) {
-			// if the user's change matches with the autocompletion
 			autocompletionMatchup = getAutocompletionMatchup({ prefix, autocompletion })
-			if (autocompletionMatchup !== undefined) {
-				cachedAutocompletion = autocompletion
-				break;
-			}
+			if (autocompletionMatchup !== undefined) { cachedAutocompletion = autocompletion; break }
 		}
 
-		// if there is a cached autocompletion, return it
 		if (cachedAutocompletion && autocompletionMatchup) {
-
-			console.log('AA')
-
-
-			// console.log('id: ' + cachedAutocompletion.id)
-
 			if (cachedAutocompletion.status === 'finished') {
-				console.log('A1')
-
-				const inlineCompletions = toInlineCompletions({ autocompletionMatchup, autocompletion: cachedAutocompletion, prefixAndSuffix, position, debug: true })
-				return inlineCompletions
-
+				return toInlineCompletions({ autocompletionMatchup, autocompletion: cachedAutocompletion, prefixAndSuffix, position })
 			} else if (cachedAutocompletion.status === 'pending') {
-				console.log('A2')
-
 				try {
 					await cachedAutocompletion.llmPromise;
-					const inlineCompletions = toInlineCompletions({ autocompletionMatchup, autocompletion: cachedAutocompletion, prefixAndSuffix, position })
-					return inlineCompletions
-
+					return toInlineCompletions({ autocompletionMatchup, autocompletion: cachedAutocompletion, prefixAndSuffix, position })
 				} catch (e) {
 					this._autocompletionsOfDocument[docUriStr].delete(cachedAutocompletion.id)
 					console.error('Error creating autocompletion (1): ' + e)
 				}
-
-			} else if (cachedAutocompletion.status === 'error') {
-				console.log('A3')
-			} else {
-				console.log('A4')
 			}
-
 			return []
 		}
 
-		// else if no more typing happens, then go forwards with the request
-
-		// wait DEBOUNCE_TIME for the user to stop typing
+		// ── Debounce (UUID-style: Continue's AutocompleteDebouncer) ──────────
 		const thisTime = Date.now()
-
 		const justAcceptedAutocompletion = thisTime - this._lastCompletionAccept < 500
-
 		this._lastCompletionStart = thisTime
-		const didTypingHappenDuringDebounce = await new Promise((resolve, reject) =>
-			setTimeout(() => {
-				if (this._lastCompletionStart === thisTime) {
-					resolve(false)
-				} else {
-					resolve(true)
-				}
-			}, DEBOUNCE_TIME)
+
+		const didTypingHappenDuringDebounce = await new Promise<boolean>(resolve =>
+			setTimeout(() => resolve(this._lastCompletionStart !== thisTime), DEBOUNCE_TIME)
 		)
+		if (didTypingHappenDuringDebounce) return []
 
-		// if more typing happened, then do not go forwards with the request
-		if (didTypingHappenDuringDebounce) {
-			return []
-		}
-
-
-		// if there are too many pending requests, cancel the oldest one
+		// ── Pending request management ───────────────────────────────────────
 		let numPending = 0
-		let oldestPending: Autocompletion | undefined = undefined
+		let oldestPending: Autocompletion | undefined
 		for (const autocompletion of this._autocompletionsOfDocument[docUriStr].items.values()) {
 			if (autocompletion.status === 'pending') {
-				numPending += 1
-				if (oldestPending === undefined) {
-					oldestPending = autocompletion
-				}
+				numPending++
+				if (!oldestPending) oldestPending = autocompletion
 				if (numPending >= MAX_PENDING_REQUESTS) {
-					// cancel the oldest pending request and remove it from cache
 					this._autocompletionsOfDocument[docUriStr].delete(oldestPending.id)
 					break
 				}
 			}
 		}
 
-
-		// gather relevant context from the code around the user's selection and definitions
-		// const relevantSnippetsList = await this._contextGatheringService.readCachedSnippets(model, position, 3);
-		// const relevantSnippetsList = this._contextGatheringService.getCachedSnippets();
-		// const relevantSnippets = relevantSnippetsList.map((text) => `${text}`).join('\n-------------------------------\n')
-		// console.log('@@---------------------\n' + relevantSnippets)
 		const relevantContext = ''
-
-		const { shouldGenerate, predictionType, llmPrefix, llmSuffix, stopTokens } = getCompletionOptions(prefixAndSuffix, relevantContext, justAcceptedAutocompletion)
+		const { shouldGenerate, predictionType, llmPrefix, llmSuffix, stopTokens } =
+			getCompletionOptions(prefixAndSuffix, relevantContext, justAcceptedAutocompletion)
 
 		if (!shouldGenerate) return []
+		if (testMode && this._autocompletionId !== 0) return []
 
-		if (testMode && this._autocompletionId !== 0) { // TODO remove this
-			return []
-		}
-
-
-
-		// create a new autocompletion and add it to cache
+		// ── Create new autocompletion ────────────────────────────────────────
 		const newAutocompletion: Autocompletion = {
 			id: this._autocompletionId++,
-			prefix: prefix, // the actual prefix and suffix
-			suffix: suffix,
-			llmPrefix: llmPrefix, // the prefix and suffix the llm sees
-			llmSuffix: llmSuffix,
+			prefix, suffix,
+			llmPrefix, llmSuffix,
 			startTime: Date.now(),
 			endTime: undefined,
 			type: predictionType,
@@ -796,62 +714,31 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 		const featureName: FeatureName = 'Autocomplete'
 		const overridesOfModel = this._settingsService.state.overridesOfModel
 		const modelSelection = this._settingsService.state.modelSelectionOfFeature[featureName]
-		const modelSelectionOptions = modelSelection ? this._settingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName] : undefined
+		const modelSelectionOptions = modelSelection
+			? this._settingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName]
+			: undefined
 
-		// set parameters of `newAutocompletion` appropriately
 		newAutocompletion.llmPromise = new Promise((resolve, reject) => {
-
 			const requestId = this._llmMessageService.sendLLMMessage({
 				messagesType: 'FIMMessage',
 				messages: this._convertToLLMMessageService.prepareFIMMessage({
-					messages: {
-						prefix: llmPrefix,
-						suffix: llmSuffix,
-						stopTokens: stopTokens,
-					},
+					messages: { prefix: llmPrefix, suffix: llmSuffix, stopTokens },
 					modelSelection,
 				}),
 				modelSelection,
 				modelSelectionOptions,
 				overridesOfModel,
 				logging: { loggingName: 'Autocomplete' },
-				onText: () => { }, // unused in FIMMessage
-				// onText: async ({ fullText, newText }) => {
-
-				// 	newAutocompletion.insertText = fullText
-
-				// 	// count newlines in newText
-				// 	const numNewlines = newText.match(/\n|\r\n/g)?.length || 0
-				// 	newAutocompletion._newlineCount += numNewlines
-
-				// 	// if too many newlines, resolve up to last newline
-				// 	if (newAutocompletion._newlineCount > 10) {
-				// 		const lastNewlinePos = fullText.lastIndexOf('\n')
-				// 		newAutocompletion.insertText = fullText.substring(0, lastNewlinePos)
-				// 		resolve(newAutocompletion.insertText)
-				// 		return
-				// 	}
-
-				// 	// if (!getAutocompletionMatchup({ prefix: this._lastPrefix, autocompletion: newAutocompletion })) {
-				// 	// 	reject('LLM response did not match user\'s text.')
-				// 	// }
-				// },
+				onText: () => {},
 				onFinalMessage: ({ fullText }) => {
-
-					// console.log('____res: ', JSON.stringify(newAutocompletion.insertText))
-
 					newAutocompletion.endTime = Date.now()
 					newAutocompletion.status = 'finished'
-					const [text, _] = extractCodeFromRegular({ text: fullText, recentlyAddedTextLen: 0 })
+					const [text] = extractCodeFromRegular({ text: fullText, recentlyAddedTextLen: 0 })
 					newAutocompletion.insertText = processStartAndEndSpaces(text)
-
-					// handle special case for predicting starting on the next line, add a newline character
 					if (newAutocompletion.type === 'multi-line-start-on-next-line') {
 						newAutocompletion.insertText = _ln + newAutocompletion.insertText
 					}
-
 					resolve(newAutocompletion.insertText)
-
 				},
 				onError: ({ message }) => {
 					newAutocompletion.endTime = Date.now()
@@ -862,35 +749,22 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 			})
 			newAutocompletion.requestId = requestId
 
-			// if the request hasnt resolved in TIMEOUT_TIME seconds, reject it
 			setTimeout(() => {
-				if (newAutocompletion.status === 'pending') {
-					reject('Timeout receiving message to LLM.')
-				}
+				if (newAutocompletion.status === 'pending') reject('Timeout receiving message to LLM.')
 			}, TIMEOUT_TIME)
-
 		})
 
-
-
-		// add autocompletion to cache
 		this._autocompletionsOfDocument[docUriStr].set(newAutocompletion.id, newAutocompletion)
 
-		// show autocompletion
 		try {
 			await newAutocompletion.llmPromise
-			// console.log('id: ' + newAutocompletion.id)
-
-			const autocompletionMatchup: AutocompletionMatchupBounds = { startIdx: 0, startLine: 0, startCharacter: 0 }
-			const inlineCompletions = toInlineCompletions({ autocompletionMatchup, autocompletion: newAutocompletion, prefixAndSuffix, position })
-			return inlineCompletions
-
+			const matchup: AutocompletionMatchupBounds = { startIdx: 0, startLine: 0, startCharacter: 0 }
+			return toInlineCompletions({ autocompletionMatchup: matchup, autocompletion: newAutocompletion, prefixAndSuffix, position })
 		} catch (e) {
 			this._autocompletionsOfDocument[docUriStr].delete(newAutocompletion.id)
 			console.error('Error creating autocompletion (2): ' + e)
 			return []
 		}
-
 	}
 
 	constructor(
@@ -899,20 +773,16 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 		@IEditorService private readonly _editorService: IEditorService,
 		@IModelService private readonly _modelService: IModelService,
 		@ILoopholeSettingsService private readonly _settingsService: ILoopholeSettingsService,
-		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService
-		// @IContextGatheringService private readonly _contextGatheringService: IContextGatheringService,
+		@IConvertToLLMMessageService private readonly _convertToLLMMessageService: IConvertToLLMMessageService,
 	) {
 		super()
 
 		this._register(this._langFeatureService.inlineCompletionsProvider.register('*', {
-			provideInlineCompletions: async (model, position, context, token) => {
+			provideInlineCompletions: async (model, position, _context, _token) => {
 				const items = await this._provideInlineCompletionItems(model, position)
-
-				// console.log('item: ', items?.[0]?.insertText)
-				return { items: items, }
+				return { items }
 			},
-			handleItemDidShow: (_completions, _item, updatedInsertText) => {
-				// get the `docUriStr` and the `position` of the cursor
+			handleItemDidShow: (_completions, _item, _updatedInsertText) => {
 				const activePane = this._editorService.activeEditorPane;
 				if (!activePane) return;
 				const control = activePane.getControl();
@@ -925,31 +795,19 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 				if (!model) return;
 				const docUriStr = resource.fsPath;
 				if (!this._autocompletionsOfDocument[docUriStr]) return;
-
-				const { prefix, } = getPrefixAndSuffixInfo(model, position)
-
-				// go through cached items and remove matching ones
-				// autocompletion.prefix + autocompletion.insertedText ~== insertedText
+				const { prefix } = getPrefixAndSuffixInfo(model, position)
 				this._autocompletionsOfDocument[docUriStr].items.forEach((autocompletion: Autocompletion) => {
-
-					// we can do this more efficiently, I just didn't want to deal with all of the edge cases
 					const matchup = removeAllWhitespace(prefix) === removeAllWhitespace(autocompletion.prefix + autocompletion.insertText)
-
 					if (matchup) {
 						console.log('ACCEPT', autocompletion.id)
 						this._lastCompletionAccept = Date.now()
 						this._autocompletionsOfDocument[docUriStr].delete(autocompletion.id);
 					}
 				});
-
 			},
-			disposeInlineCompletions: (_completions, _reason) => {
-				// nothing to dispose — completions are managed by the LRU cache
-			},
+			disposeInlineCompletions: (_completions, _reason) => {},
 		}))
 	}
-
-
 }
 
 registerWorkbenchContribution2(AutocompleteService.ID, AutocompleteService, WorkbenchPhase.BlockRestore);
