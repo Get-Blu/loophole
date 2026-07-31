@@ -269,7 +269,7 @@ export const defaultModelsOfProvider = {
 } as const satisfies Record<ProviderName, string[]>
 
 
-export type ModelTag = 'recommended' | 'fast' | 'cheap' | 'powerful' | 'free' | 'slow'
+export type ModelTag = 'recommended' | 'fast' | 'cheap' | 'powerful' | 'free' | 'slow' | 'beast'
 
 export type LoopholeStaticModelInfo = { // not stateful
 	// Loophole uses the information below to know how to handle each model.
