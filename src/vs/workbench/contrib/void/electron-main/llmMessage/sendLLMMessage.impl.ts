@@ -204,33 +204,40 @@ const newOpenAICompatibleSDK = async ({ settingsOfProvider, providerName, includ
 
 // ------------ SIMULATED FIM (via Chat) ------------
 const sendChatAsFIM = async (params: SendFIMParams_Internal, sendChat: (params: SendChatParams_Internal) => Promise<void>) => {
-	const { messages: { prefix, suffix, rawFimPrompt }, onFinalMessage, onText, onError, separateSystemMessage: systemMessageOverride, ...rest } = params;
+	const { messages: { prefix, suffix, rawFimPrompt }, onFinalMessage, onText, onError, separateSystemMessage: systemMessageOverride, overridesOfModel, ...rest } = params;
 
 	// If a pre-built FIM prompt is provided (already contains model-specific FIM tokens),
 	// pass it through directly as a user message so we don't double-encode the template.
-	// Otherwise fall back to the generic chat-as-FIM prompt.
+	// Otherwise use a tight Continue-style FIM prompt.
 	const prompt = rawFimPrompt
 		? rawFimPrompt
-		: `Complete the code between the FOLLOWING PREFIX and FOLLOWING SUFFIX.
-Output ONLY the code that goes in the middle. Do not include any explanations, markdown blocks, or surrounding text.
+		: `${prefix}<FILL_HERE>${suffix}`;
 
-FOLLOWING PREFIX:
-${prefix}
-
-FOLLOWING SUFFIX:
-${suffix}`;
+	// Wrap onFinalMessage to strip any accidental markdown fences the model may still emit.
+	// The stream filter pipeline in autocompleteService handles most of this, but we add a
+	// fast-path strip here at the source so no downstream consumer ever sees raw markdown.
+	const wrappedOnFinalMessage: OnFinalMessage = ({ fullText, fullReasoning, anthropicReasoning }) => {
+		let cleaned = fullText
+		// Strip leading ```language or ``` fences
+		cleaned = cleaned.replace(/^```[^\n]*\n?/, '').replace(/\n?```\s*$/, '')
+		onFinalMessage({ fullText: cleaned, fullReasoning, anthropicReasoning })
+	}
 
 	await sendChat({
 		...rest,
+		overridesOfModel,
 		messages: [{ role: 'user', content: prompt }],
 		separateSystemMessage: rawFimPrompt
 			? undefined // model-specific FIM prompts are self-contained; no extra system message needed
-			: (systemMessageOverride || "You are a helpful coding assistant specialized in code completion. Output ONLY the code to be inserted, without any markdown formatting or explanations."),
+			: (systemMessageOverride || "You are a code completion engine. The user message contains a code snippet with <FILL_HERE> marking where code must be inserted. Output ONLY the exact code to replace <FILL_HERE>. No explanations, no markdown, no surrounding context — just the raw code fragment."),
 		onText,
-		onFinalMessage,
+		onFinalMessage: wrappedOnFinalMessage,
 		onError,
 		chatMode: null,
 		mcpTools: undefined,
+		// Signal that this is a FIM call so _sendOpenAICompatibleChat can apply autocomplete-specific
+		// sampling params (temperature=0, capped max_tokens). We pass it via the unused chatMode slot
+		// indirectly — instead we set it via overridesOfModel sentinel below (see _sendOpenAICompatibleChat).
 	});
 }
 
@@ -405,14 +412,21 @@ const _sendOpenAICompatibleChat = async ({ messages, onText, onFinalMessage, onE
 		// Required to select the model
 		(openai as AzureOpenAI).deploymentName = modelName;
 	}
+	// When chatMode is null we are doing FIM-via-chat (autocomplete).
+	// Use deterministic, low-token settings like Continue does (temperature=0, capped tokens).
+	const fimOverrides: Partial<OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming> =
+		chatMode === null
+			? { temperature: 0.01, max_tokens: 256 }
+			: {}
+
 	const options: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 		model: modelName,
 		messages: messages as any,
 		stream: true,
 		stream_options: { include_usage: true },
 		...nativeToolsObj,
-		...additionalOpenAIPayload
-		// max_completion_tokens: maxTokens,
+		...additionalOpenAIPayload,
+		...fimOverrides,  // FIM overrides applied last so they always win
 	}
 
 	// open source models - manually parse think tokens
@@ -640,14 +654,18 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 		dangerouslyAllowBrowser: true
 	});
 
+	// FIM-via-chat: use deterministic low-token settings (same as Continue's approach)
+	const anthropicFimOverrides = chatMode === null
+		? { temperature: 0.01 as const, max_tokens: 256 }
+		: { max_tokens: maxTokens ?? 4_096 }
+
 	const stream = anthropic.messages.stream({
 		system: separateSystemMessage ?? undefined,
 		messages: sanitizedMessages as any,
 		model: modelName,
-		max_tokens: maxTokens ?? 4_096, // anthropic requires this
+		...anthropicFimOverrides, // anthropic requires max_tokens; FIM caps at 256
 		...includeInPayload,
 		...nativeToolsObj,
-
 	})
 
 	// manually parse out tool results if XML
