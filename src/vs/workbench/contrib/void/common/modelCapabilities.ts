@@ -623,6 +623,7 @@ const anthropicModelOptions = {
 	// --- Dateless IDs (4.6 generation onwards — pinned snapshots, no date suffix) ---
 	// https://platform.claude.com/docs/en/about-claude/models/overview
 	'claude-fable-5': { // Flagship, released June 9 2026. $10/$50, 1M context, 128K output.
+		tags: ['beast'],
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 128_000,
 		cost: { input: 10.00, cache_read: 1.00, cache_write: 12.50, output: 50.00 },
