@@ -175,7 +175,6 @@ function applyStreamFilterPipeline(
 	const rawLines = rawText.split(_ln)
 	const outputLines: string[] = []
 
-	let firstRealLineIdx = 0
 	let isFirstRealLine = true
 
 	for (let i = 0; i < rawLines.length; i++) {
@@ -183,7 +182,6 @@ function applyStreamFilterPipeline(
 
 		// Stage 3: skip LINES_TO_REMOVE_BEFORE_START (before first real code)
 		if (isFirstRealLine && LINES_TO_REMOVE_BEFORE_START.some(p => line.trimStart().startsWith(p))) {
-			firstRealLineIdx = i + 1
 			continue
 		}
 
@@ -195,13 +193,11 @@ function applyStreamFilterPipeline(
 
 		// Skip leading blank lines before first real content
 		if (isFirstRealLine && line.trim() === '') {
-			firstRealLineIdx = i + 1
 			continue
 		}
 
 		// Skip leading English prose (Continue: ENGLISH_START_PHRASES)
 		if (isFirstRealLine && isEnglishFirstLine(line)) {
-			firstRealLineIdx = i + 1
 			continue
 		}
 
