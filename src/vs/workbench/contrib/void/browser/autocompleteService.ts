@@ -27,35 +27,53 @@ export const IAutocompleteService = createDecorator<IAutocompleteService>('Autoc
 const allLinebreakSymbols = ['\r\n', '\n']
 const _ln = isWindows ? allLinebreakSymbols[0] : allLinebreakSymbols[1]
 
-// ─── Constants (mirrors Continue's approach) ──────────────────────────────────
+// ─── Constants (mirrors Continue's approach exactly) ──────────────────────────
 
-const DEBOUNCE_TIME = 700          // ms to wait after last keystroke before firing
-const MIN_PREFIX_CHARS = 3         // non-whitespace chars required on current line
+const DEBOUNCE_TIME = 350          // Continue default: 350ms
+const MIN_PREFIX_CHARS = 3
 const TIMEOUT_TIME = 60_000
 const MAX_CACHE_SIZE = 20
 const MAX_PENDING_REQUESTS = 2
-const MAX_COMPLETION_LINES = 50    // hard safety cap; Continue uses similar limits
+const MAX_COMPLETION_LINES = 50
 
-/** Patterns whose presence on a line signals the LLM has gone off the rails */
+// Exact copies from Continue's lineStream.ts
 const LINES_TO_STOP_AT = [
 	'# End of file.',
 	'<STOP EDITING HERE',
 	'<|/updated_code|>',
 	'```',
-	'diff --git',
 ]
 
-/** English prose phrases that should never appear at the start of a code completion */
+// Lines to remove before the first real code line (Continue: LINES_TO_REMOVE_BEFORE_START)
+const LINES_TO_REMOVE_BEFORE_START = [
+	'<COMPLETION>',
+	'[CODE]',
+	'<START EDITING HERE>',
+	'{{FILL_HERE}}',
+	'<FILL_HERE>',   // our own sentinel, strip if echoed
+]
+
+// Prefixes to strip from the very first line (Continue: PREFIXES_TO_SKIP)
+const PREFIXES_TO_SKIP = ['<COMPLETION>']
+
+// Exact copies from Continue's lineStream.ts
 const ENGLISH_START_PHRASES = [
-	'here is', 'here\'s', 'sure', 'certainly', 'of course',
-	'i will', 'i\'ll', 'the following', 'this code', 'this function',
-	'this is', 'note that', 'please', 'you can', 'you\'ll',
+	'here is',
+	'here\'s',
+	'sure, here',
+	'sure thing',
+	'sure!',
+	'to fill',
+	'certainly',
+	'of course',
+	'the code should',
 ]
 
-/** English prose phrases that signal a post-code explanation has started */
 const ENGLISH_POST_PHRASES = [
-	'explanation:', 'note:', 'this code', 'the above', 'in this',
-	'as you can see', 'this will', 'here we', 'we use', 'the function',
+	'explanation:',
+	'here is',
+	'here\'s how',
+	'the above',
 ]
 
 /** Code keywords that can end in `:` but are NOT English sentences */
@@ -66,9 +84,9 @@ const CODE_KEYWORDS_ENDING_IN_COLON = [
 
 
 // ─── Continue-style stream post-processing ────────────────────────────────────
-// These operate on the *completed* string rather than a live async generator,
-// because our architecture delivers the full text in onFinalMessage. The logic
-// is identical in spirit to Continue's StreamTransformPipeline.
+// Ported from Continue's StreamTransformPipeline + postprocessCompletion.
+// Runs on the completed string (our arch) but applies the same logic Continue
+// applies to the live generator.
 
 function isEnglishFirstLine(line: string): boolean {
 	const l = line.trim().toLowerCase()
@@ -81,92 +99,142 @@ function isEnglishPostLine(line: string): boolean {
 	return ENGLISH_POST_PHRASES.some(p => l.startsWith(p))
 }
 
+/** Continue: rewritesLineAbove — don't complete if we'd just repeat the line above */
+function rewritesLineAbove(completion: string, prefix: string): boolean {
+	const lineAbove = prefix.split('\n').filter(l => l.trim().length > 0).slice(-1)[0]
+	if (!lineAbove) return false
+	const firstLineOfCompletion = completion.split('\n').find(l => l.trim().length > 0)
+	if (!firstLineOfCompletion) return false
+	// "repeated" = >50% LCS overlap (simplified: startsWith after trim)
+	const a = lineAbove.trim(), b = firstLineOfCompletion.trim()
+	return a.length > 4 && b.startsWith(a)
+}
+
+/** Continue: isExtremeRepetition — catch infinite hallucination loops */
+function isExtremeRepetition(completion: string): boolean {
+	const lines = completion.split('\n')
+	if (lines.length < 6) return false
+	for (let freq = 1; freq < 3; freq++) {
+		const anchor = lines[0]
+		let matchCount = 0
+		for (let i = 0; i < lines.length; i += freq) {
+			if (lines[i] === anchor) matchCount++
+		}
+		if (matchCount * freq > 8 || (matchCount * freq) / lines.length > 0.8) return true
+	}
+	return false
+}
+
+/** Continue: removeBackticks */
+function removeBackticks(completion: string): string {
+	const lines = completion.split('\n')
+	let startIdx = 0, endIdx = lines.length
+	if (lines[0]?.trim().startsWith('```')) startIdx = 1
+	if (lines.length > startIdx && /^`+$/.test(lines[lines.length - 1]?.trim() ?? '')) endIdx = lines.length - 1
+	if (startIdx > 0 || endIdx < lines.length) return lines.slice(startIdx, endIdx).join('\n')
+	return completion
+}
+
 /**
- * Apply a Continue-style multi-stage filter pipeline to the raw LLM output.
- * Returns the cleaned completion string.
+ * Full Continue-compatible filter pipeline applied to the completed string.
  *
- * Stages (in order, matching Continue's StreamTransformPipeline):
- *  1. Stop at suffix overlap – avoids echoing code already in the file
- *  2. Strip leading empty lines
- *  3. Filter English prose at the start
- *  4. Stop at LINES_TO_STOP_AT patterns (```, diff --git, etc.)
- *  5. Stop at repeating lines (hallucination loop detector, max 3 repeats)
- *  6. Stop at double blank line (natural block boundary)
- *  7. Filter English prose at the end
- *  8. Hard cap on number of lines
- *  9. Stop when a line exactly matches the first non-empty line below the cursor
+ * Matches Continue's StreamTransformPipeline stages:
+ *  0. removeBackticks (postprocessCompletion)
+ *  1. stopAtStartOf suffix (charStream)
+ *  2. skipPrefixes — strip PREFIXES_TO_SKIP from first line
+ *  3. Skip LINES_TO_REMOVE_BEFORE_START
+ *  4. stopAtLines — LINES_TO_STOP_AT
+ *  5. stopAtLinesExact — lineBelowCursor exact match
+ *  6. stopAtRepeatingLines — max 3 repeats
+ *  7. avoidEmptyComments (skip comment-only blank lines)
+ *  8. noDoubleNewLine — stop at first blank line (single-line mode)
+ *  9. English post-phrase stop
+ * 10. stopAtSimilarLine — fuzzy match with line below cursor
+ * 11. Hard line cap
+ * 12. isExtremeRepetition / rewritesLineAbove → return ''
  */
 function applyStreamFilterPipeline(
 	rawText: string,
 	suffix: string,
 	lineBelowCursor: string,
+	prefix: string,
 ): string {
-	// --- Stage 1: stop at suffix overlap ---
-	// If the LLM starts repeating what's already in the suffix, cut there.
+	// Stage 0: strip backtick fences (Continue: removeBackticks in postprocessCompletion)
+	rawText = removeBackticks(rawText)
+
+	// Stage 1: stop at suffix overlap (Continue: stopAtStartOf suffix in charStream)
 	const trimmedSuffix = suffix.trimStart()
 	if (trimmedSuffix.length > 10) {
-		// Find the first line of the suffix that's non-trivial
 		const suffixFirstLine = trimmedSuffix.split(_ln)[0].trim()
 		if (suffixFirstLine.length > 5) {
 			const overlapIdx = rawText.indexOf(suffixFirstLine)
-			if (overlapIdx > 0) {
-				rawText = rawText.slice(0, overlapIdx)
-			}
+			if (overlapIdx > 0) rawText = rawText.slice(0, overlapIdx)
 		}
 	}
 
 	const rawLines = rawText.split(_ln)
 	const outputLines: string[] = []
 
-	// --- Stage 2 & 3: skip leading blank lines and English prose ---
-	let startIdx = 0
+	let firstRealLineIdx = 0
+	let isFirstRealLine = true
+
 	for (let i = 0; i < rawLines.length; i++) {
-		if (rawLines[i].trim() === '') continue
-		if (isEnglishFirstLine(rawLines[i])) { startIdx = i + 1; continue }
-		startIdx = i
-		break
-	}
+		let line = rawLines[i]
 
-	// --- Stages 4–9: process remaining lines ---
-	let prevLine: string | undefined
-	let repeatCount = 0
-	let blankLineCount = 0
+		// Stage 3: skip LINES_TO_REMOVE_BEFORE_START (before first real code)
+		if (isFirstRealLine && LINES_TO_REMOVE_BEFORE_START.some(p => line.trimStart().startsWith(p))) {
+			firstRealLineIdx = i + 1
+			continue
+		}
 
-	for (let i = startIdx; i < rawLines.length; i++) {
-		const line = rawLines[i]
+		// Stage 2: strip PREFIXES_TO_SKIP from first line
+		if (isFirstRealLine) {
+			const match = PREFIXES_TO_SKIP.find(p => line.startsWith(p))
+			if (match) line = line.slice(match.length)
+		}
 
-		// Stage 4: stop at garbage-signal patterns
+		// Skip leading blank lines before first real content
+		if (isFirstRealLine && line.trim() === '') {
+			firstRealLineIdx = i + 1
+			continue
+		}
+
+		// Skip leading English prose (Continue: ENGLISH_START_PHRASES)
+		if (isFirstRealLine && isEnglishFirstLine(line)) {
+			firstRealLineIdx = i + 1
+			continue
+		}
+
+		if (line.trim() !== '') isFirstRealLine = false
+
+		// Stage 4: stopAtLines
 		if (LINES_TO_STOP_AT.some(pat => line.includes(pat))) break
 
-		// Stage 5: stop on repeating lines (hallucination loop)
+		// Stage 5: stopAtLinesExact — exact match with line below cursor
+		if (lineBelowCursor !== '' && line === lineBelowCursor) break
+
+		// Stage 6: stopAtRepeatingLines (max 3)
+		const prevLine = outputLines[outputLines.length - 1]
 		if (line === prevLine) {
-			repeatCount++
-			if (repeatCount >= 3) break
-		} else {
-			repeatCount = 1
-		}
-		prevLine = line
-
-		// Stage 6: stop at double blank line (end of logical block)
-		if (line.trim() === '') {
-			blankLineCount++
-			if (blankLineCount >= 2) break
-		} else {
-			blankLineCount = 0
+			const prevPrev = outputLines[outputLines.length - 2]
+			if (line === prevPrev) break // 3 identical in a row
 		}
 
-		// Stage 7: stop at English post-explanation
+		// Stage 8: noDoubleNewLine — first blank line stops stream
+		if (line.trim() === '' && outputLines.length > 0) break
+
+		// Stage 9: English post-phrase
 		if (isEnglishPostLine(line)) break
 
-		// Stage 8: hard line cap
-		if (outputLines.length >= MAX_COMPLETION_LINES) break
-
-		// Stage 9: stop if we reach a line that already exists below the cursor
+		// Stage 10: stopAtSimilarLine — fuzzy: trimmed equality with line below
 		if (
 			lineBelowCursor.trim() !== '' &&
 			line.trim() !== '' &&
 			line.trim() === lineBelowCursor.trim()
 		) break
+
+		// Stage 11: hard line cap
+		if (outputLines.length >= MAX_COMPLETION_LINES) break
 
 		outputLines.push(line)
 	}
@@ -176,7 +244,14 @@ function applyStreamFilterPipeline(
 		outputLines.pop()
 	}
 
-	return outputLines.join(_ln)
+	const result = outputLines.join(_ln)
+
+	// Stage 12: postprocessCompletion guards (Continue)
+	if (result.trim().length === 0) return ''
+	if (rewritesLineAbove(result, prefix)) return ''
+	if (isExtremeRepetition(result)) return ''
+
+	return result
 }
 
 
@@ -525,7 +600,7 @@ const postprocessAutocompletion = ({
 
 	// ── Apply the Continue-style stream filter pipeline ──────────────────────
 	const lineBelowCursor = getLineBelowCursor(suffixLines)
-	completionStr = applyStreamFilterPipeline(completionStr, suffix, lineBelowCursor)
+	completionStr = applyStreamFilterPipeline(completionStr, suffix, lineBelowCursor, prefix)
 
 	// Filter unbalanced parentheses
 	completionStr = getStringUpToUnbalancedClosingParenthesis(completionStr, prefix)
@@ -733,8 +808,35 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 				onFinalMessage: ({ fullText }) => {
 					newAutocompletion.endTime = Date.now()
 					newAutocompletion.status = 'finished'
-					const [text] = extractCodeFromRegular({ text: fullText, recentlyAddedTextLen: 0 })
-					newAutocompletion.insertText = processStartAndEndSpaces(text)
+
+					let rawText = fullText
+
+					// 1. Strip markdown fences (```language\n...\n```) that slipped through
+					const [extracted] = extractCodeFromRegular({ text: rawText, recentlyAddedTextLen: 0 })
+					rawText = extracted
+
+					// 2. Strip <FILL_HERE> sentinel if the model echoed it back
+					rawText = rawText.replace(/<FILL_HERE>/g, '')
+
+					// 3. If the model echoed the full prefix before the completion, strip it.
+					//    This happens when a chat model repeats the whole prompt in its reply.
+					const trimmedPrefix = llmPrefix.trimEnd()
+					if (rawText.startsWith(trimmedPrefix) && trimmedPrefix.length > 20) {
+						rawText = rawText.slice(trimmedPrefix.length)
+					}
+
+					// 4. If the model started echoing the suffix, cut before it.
+					const trimmedSuffix = llmSuffix.trimStart()
+					if (trimmedSuffix.length > 10) {
+						const suffixIdx = rawText.indexOf(trimmedSuffix)
+						if (suffixIdx > 0) rawText = rawText.slice(0, suffixIdx)
+					}
+
+					// 5. Apply Continue-style stream filter pipeline (stop tokens, repeat detection, etc.)
+					const lineBelowCursor = getLineBelowCursor(prefix.split(_ln).concat(rawText.split(_ln)))
+					rawText = applyStreamFilterPipeline(rawText, suffix, lineBelowCursor, prefix)
+
+					newAutocompletion.insertText = processStartAndEndSpaces(rawText)
 					if (newAutocompletion.type === 'multi-line-start-on-next-line') {
 						newAutocompletion.insertText = _ln + newAutocompletion.insertText
 					}
