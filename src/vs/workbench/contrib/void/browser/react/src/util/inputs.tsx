@@ -1257,6 +1257,7 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 	onChangeOption,
 	getOptionDropdownName,
 	getOptionDropdownDetail,
+	getOptionDropdownExtra,
 	getOptionDisplayName,
 	getOptionsEqual,
 	className,
@@ -1273,6 +1274,7 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 	onChangeOption: (newValue: T) => void;
 	getOptionDropdownName: (option: T) => string;
 	getOptionDropdownDetail?: (option: T) => string;
+	getOptionDropdownExtra?: (option: T, isSelected: boolean) => React.ReactNode;
 	getOptionDisplayName: (option: T) => React.ReactNode;
 	getOptionsEqual: (a: T, b: T) => boolean;
 	className?: string;
@@ -1524,9 +1526,10 @@ export const LoopholeCustomDropdownBox = <T extends NonNullable<any>>({
 												</svg>
 											)}
 										</div>
-										<span className="flex justify-between items-center w-full gap-x-4">
-											<span>{optionName}</span>
-											<span className={`opacity-60 text-[10px] ${thisOptionIsSelected ? 'text-white' : ''}`}>{optionDetail}</span>
+										<span className="flex items-center w-full gap-x-2">
+											<span className="flex-shrink-0">{optionName}</span>
+											{getOptionDropdownExtra?.(option, thisOptionIsSelected)}
+											<span className={`ml-auto opacity-60 text-[10px] flex-shrink-0 ${thisOptionIsSelected ? 'text-white' : ''}`}>{optionDetail}</span>
 										</span>
 									</div>
 								);
