@@ -285,10 +285,6 @@ const prepareOpenAIOrAnthropicMessages = ({
 	// ================ trim ================
 	messages = messages.map(m => ({ ...m, content: m.role !== 'tool' ? m.content.trim() : m.content }))
 
-	type MesType = (typeof messages)[0]
-
-	// ================ fit into context ================
-
 	// ================ fit into context (Continue-style oldest-first trimming) ================
 	//
 	// Strategy (mirrors Continue's compileChatMessages):
@@ -812,7 +808,7 @@ class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMess
 
 	prepareFIMMessage: IConvertToLLMMessageService['prepareFIMMessage'] = ({ messages, modelSelection }) => {
 		// Get combined AI instructions filtered to the file being completed
-		const fimFilePath = messages.uri?.fsPath;
+		const fimFilePath = this.editorService.activeEditor?.resource?.fsPath;
 		const combinedInstructions = this._getCombinedAIInstructions(fimFilePath);
 
 		const instructionsPrefix = !combinedInstructions ? '' : `\
