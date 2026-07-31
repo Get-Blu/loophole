@@ -124,6 +124,7 @@ export type ThreadType = {
 	messages: ChatMessage[];
 	filesWithUserChanges: Set<string>;
 	todos: import('../common/toolsServiceTypes.js').TodoItem[]; // per-thread todo list managed by todo_write tool
+	llmCompactionSummary?: string | null; // LLM-generated summary, null = currently generating, undefined = not yet triggered
 
 	// this doesn't need to go in a state object, but feels right
 	state: {
@@ -1516,38 +1517,137 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	// ─── CONTEXT COMPACTION ──────────────────────────────────────────────────────
 	// Returns a summary prompt to inject when conversation is near context limit.
 	// Called by the system prompt builder before sending each LLM message.
+	// ─── Compaction: LLM-generated summary (mirrors Continue's conversationCompaction) ───
+	//
+	// When the conversation exceeds the threshold we:
+	//  1. Return the cached LLM summary immediately if one exists.
+	//  2. Fire-and-forget an async LLM call to generate a fresh summary.
+	//     While it is generating we return the fast todo-based fallback so the
+	//     system message is never empty.
+	//  3. Once the LLM summary arrives we store it on the thread and it replaces
+	//     the fallback on the next turn.
+	//
+	// This keeps getCompactionSummary() synchronous (no API change) while still
+	// delivering a rich LLM-authored summary, exactly like Continue does.
+
+	private readonly _COMPACTION_CHAR_THRESHOLD = 280_000 // ~70k tokens @ 4 chars/token
+
+	private _todoFallbackSummary(thread: ThreadType): string {
+		const todos = thread.todos ?? []
+		const completed = todos.filter(t => t.status === 'completed').map(t => `- ${t.content}`)
+		const pending = todos.filter(t => t.status === 'pending' || t.status === 'in_progress').map(t => `- ${t.content}`)
+		const lines = [
+			'[CONTEXT COMPACTION NOTICE: This conversation is long. Here is a summary of progress so far:]',
+			'',
+			'## Completed',
+			...(completed.length ? completed : ['(none yet)']),
+			'',
+			'## Still To Do',
+			...(pending.length ? pending : ['(none)']),
+			'',
+			'[Continue from where you left off. Do not repeat completed work.]',
+		]
+		return lines.join('\n')
+	}
+
+	private async _generateLLMCompactionSummary(threadId: string): Promise<void> {
+		const thread = this.state.allThreads[threadId]
+		if (!thread) return
+
+		// Collect a condensed transcript of the conversation (user + assistant turns only,
+		// truncated to avoid blowing the context of the summarisation call itself).
+		const MAX_TRANSCRIPT_CHARS = 60_000
+		const transcript: string[] = []
+		let transcriptLen = 0
+		for (const m of thread.messages) {
+			if (m.role !== 'user' && m.role !== 'assistant') continue
+			const content = ('displayContent' in m ? m.displayContent : '') as string ?? ''
+			const role = m.role === 'user' ? 'User' : 'Assistant'
+			const line = `${role}: ${content.slice(0, 2000)}`
+			if (transcriptLen + line.length > MAX_TRANSCRIPT_CHARS) break
+			transcript.push(line)
+			transcriptLen += line.length
+		}
+
+		const prompt = [
+			'Summarise the following conversation between a user and an AI coding assistant.',
+			'Focus on: what the user asked for, what files were changed, what decisions were made, and what still needs to be done.',
+			'Be concise (under 400 words). Use bullet points. Do not add commentary.',
+			'',
+			'CONVERSATION:',
+			transcript.join('\n'),
+		].join('\n')
+
+		const { modelSelection, modelSelectionOptions } = this._currentModelSelectionProps()
+		if (!modelSelection) return
+
+		await new Promise<void>(resolve => {
+			this._llmMessageService.sendLLMMessage({
+				messagesType: 'chatMessages',
+				chatMode: 'normal',
+				messages: [{ role: 'system', content: 'You are a concise technical assistant.' }, { role: 'user', content: prompt }],
+				modelSelection,
+				modelSelectionOptions,
+				overridesOfModel: this._settingsService.state.overridesOfModel,
+				separateSystemMessage: undefined,
+				logging: { loggingName: 'Compaction summary', loggingExtras: { threadId } },
+				onText: () => {},
+				onFinalMessage: ({ fullText }) => {
+					// Cache the summary on the thread object
+					const currentThread = this.state.allThreads[threadId]
+					if (!currentThread) { resolve(); return }
+					const lines = [
+						'[CONTEXT COMPACTION NOTICE: This conversation is long. Here is an AI-generated summary:]',
+						'',
+						fullText.trim(),
+						'',
+						'[Continue from where you left off. Do not repeat completed work.]',
+					]
+					const newSummary = lines.join('\n')
+					this._setState({
+						allThreads: {
+							...this.state.allThreads,
+							[threadId]: { ...currentThread, llmCompactionSummary: newSummary }
+						}
+					})
+					resolve()
+				},
+				onError: () => { resolve() },
+				onAbort: () => { resolve() },
+			})
+		})
+	}
+
 	private _getCompactionSummary(threadId: string): string | null {
 		const thread = this.state.allThreads[threadId]
 		if (!thread) return null
 
-		// Estimate token usage: ~4 chars per token
 		const totalChars = thread.messages.reduce((sum, m) => {
 			if ('displayContent' in m) return sum + ((m.displayContent as string)?.length ?? 0)
 			if ('content' in m) return sum + ((m.content as string)?.length ?? 0)
 			return sum
 		}, 0)
-		const estimatedTokens = Math.ceil(totalChars / 4)
 
-		// Trigger compaction at 70k tokens (rough proxy for 70% of 100k context)
-		if (estimatedTokens < 70_000) return null
+		if (totalChars < this._COMPACTION_CHAR_THRESHOLD) return null
 
-		// Summarize what's been done so far from completed todos
-		const todos = thread.todos ?? []
-		const completedTodos = todos.filter(t => t.status === 'completed').map(t => `- ${t.content}`)
-		const pendingTodos = todos.filter(t => t.status === 'pending' || t.status === 'in_progress').map(t => `- ${t.content}`)
+		// Return cached LLM summary if available
+		if (thread.llmCompactionSummary) return thread.llmCompactionSummary
 
-		const lines = [
-			'[CONTEXT COMPACTION NOTICE: This conversation is long. Here is a summary of progress so far:]',
-			'',
-			'## Completed',
-			...( completedTodos.length ? completedTodos : ['(none yet)']),
-			'',
-			'## Still To Do',
-			...(pendingTodos.length ? pendingTodos : ['(none)']),
-			'',
-			'[Continue from where you left off. Do not repeat completed work.]',
-		]
-		return lines.join('\n')
+		// Trigger async LLM summarisation (fire-and-forget) if not already running
+		// llmCompactionSummary === null means a generation is already in flight
+		if (thread.llmCompactionSummary === undefined) {
+			// Mark as in-flight synchronously so we don't fire duplicate requests
+			this._setState({
+				allThreads: {
+					...this.state.allThreads,
+					[threadId]: { ...thread, llmCompactionSummary: null }
+				}
+			})
+			this._generateLLMCompactionSummary(threadId).catch(() => {})
+		}
+
+		// While LLM summary is generating, return the fast todo-based fallback
+		return this._todoFallbackSummary(thread)
 	}
 
 	private _addCheckpoint(threadId: string, checkpoint: CheckpointEntry) {
