@@ -720,7 +720,7 @@ const anthropicModelOptions = {
 		},
 	},
 	'claude-sonnet-4-6': { // 1M context
-		tags: ['recommended', 'fast'],
+		tags: ['recommended'],
 		contextWindow: 1_000_000,
 		reservedOutputTokenSpace: 32_768,
 		cost: { input: 3.00, cache_read: 0.30, cache_write: 3.75, output: 15.00 },
@@ -770,7 +770,7 @@ const anthropicModelOptions = {
 		},
 	},
 	'claude-haiku-4-5-20251001': { // 200k context — was falling through to 128k default, now fixed
-		tags: ['fast', 'cheap'],
+		tags: ['cheap'],
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 64_000,
 		cost: { input: 1.00, cache_read: 0.10, cache_write: 1.25, output: 5.00 },
@@ -782,7 +782,7 @@ const anthropicModelOptions = {
 	},
 	// alias without date (claude-haiku-4-5 → same as above)
 	'claude-haiku-4-5': {
-		tags: ['fast', 'cheap'],
+		tags: ['fast',],
 		contextWindow: 200_000,
 		reservedOutputTokenSpace: 64_000,
 		cost: { input: 1.00, cache_read: 0.10, cache_write: 1.25, output: 5.00 },
@@ -1185,7 +1185,7 @@ const openAIModelOptions = { // https://platform.openai.com/docs/pricing
 		reasoningCapabilities: { supportsReasoning: true, canTurnOffReasoning: false, canIOReasoning: false, reasoningSlider: { type: 'effort_slider', values: ['low', 'medium', 'high'], default: 'low' } },
 	},
 	'gpt-4o-mini': {
-		tags: ['fast', 'cheap'],
+		tags: ['cheap'],
 		contextWindow: 128_000,
 		reservedOutputTokenSpace: 16_384,
 		cost: { input: 0.15, cache_read: 0.075, output: 0.60, },
@@ -2836,7 +2836,7 @@ const inceptionModelOptions = {
 		reasoningCapabilities: false,
 	},
 	'mercury-coder-small': { // smaller/faster FIM autocomplete model
-		tags: ['fast', 'cheap'],
+		tags: ['fast'],
 		contextWindow: 32_000,
 		reservedOutputTokenSpace: 512,
 		cost: { input: 0.00, output: 0.00 },
