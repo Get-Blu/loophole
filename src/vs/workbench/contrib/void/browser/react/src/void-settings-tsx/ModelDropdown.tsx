@@ -50,6 +50,11 @@ const getCleanModelName = (modelName: string): string => {
 
 // ── Tag icons
 const TagIcons: Record<ModelTag, JSX.Element> = {
+	beast:(
+		<svg viewBox="0 0 12 12" fill="none" style={{ width: 9, height: 9, flexShrink: 0, opacity: 0.8 }}>
+        	<path d="M6 1C5.5 2.5 4 3 4 5c0 1.5 1 2.5 2 3C8 7.5 9 6.5 9 5c0-2-1.5-2.5-2-4zM4.5 6.5C4.5 7.5 5.2 8.5 6 9c.8-.5 1.5-1.5 1.5-2.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    	</svg>	
+	),
 	recommended: (
 		<svg viewBox="0 0 12 12" fill="none" style={{ width: 9, height: 9, flexShrink: 0, opacity: 0.8 }}>
 			<path d="M6 1l1.3 2.6L10 4.1l-2 2 .5 2.8L6 7.5l-2.5 1.4.5-2.8-2-2 2.7-.5L6 1z" fill="currentColor" />
