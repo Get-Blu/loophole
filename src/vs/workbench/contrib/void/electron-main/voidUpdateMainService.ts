@@ -75,8 +75,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 		@ILifecycleMainService private readonly _lifecycleMainService: ILifecycleMainService,
 	) {
 		super();
-		const _loopholeVersion = (this._productService as any).loopholeVersion ?? this._productService.version;
-		this._cachePath = join(tmpdir(), `loophole-updates-${_loopholeVersion}`);
+		this._cachePath = join(tmpdir(), `loophole-updates`);
 
 		// Listen to VS Code update service state changes
 		this._register(this._updateService.onStateChange(state => {
@@ -101,13 +100,18 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			return { message: null } as const;
 		}
 
-		// First try VS Code's built-in update service (works on Windows with updateUrl configured)
+		// Always use VS Code's built-in update service which reads from updateUrl in product.json.
+		// It handles download, background install via Inno Setup, and the ready mutex automatically.
 		const vscodeState = this._updateService.state.type;
-		if (vscodeState === StateType.Ready || vscodeState === StateType.Downloaded ||
-			vscodeState === StateType.Downloading || vscodeState === StateType.AvailableForDownload) {
+		if (vscodeState !== StateType.Disabled) {
+			// Trigger a fresh check when user explicitly asks and service is idle
+			if (explicit && (vscodeState === StateType.Idle || vscodeState === StateType.Uninitialized)) {
+				this._updateService.checkForUpdates(true);
+			}
 			return this._getResponseFromVSCodeState(explicit);
 		}
 
+		// Fallback to GitHub releases only if the built-in service is disabled
 		return await this._checkGitHubReleases(explicit);
 	}
 
@@ -392,8 +396,14 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 	}
 
 	async quitAndInstall(): Promise<void> {
+		// If VS Code's built-in update service is active, let it handle quit+install.
+		// It uses Inno Setup's background install + mutex flow (the correct approach).
+		if (this._updateService.state.type !== StateType.Disabled) {
+			await this._updateService.quitAndInstall();
+			return;
+		}
+
 		if (!this._useGitHubUpdates || !this._currentUpdate?.downloadPath) {
-			// Fall back to VS Code's update service
 			await this._updateService.quitAndInstall();
 			return;
 		}
@@ -411,26 +421,24 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 			// Create a batch script that waits for the app to close, then runs installer
 			const batchScriptLines = [
 				'@echo off',
-				':: Wait for Loophole to close (check every 500ms for up to 10 seconds)',
+				':: Wait for Loophole to close',
 				'set /a attempts=0',
 				':waitloop',
 				'set /a attempts+=1',
-				'if %attempts% gtr 20 goto runinstaller',
-				'ping -n 1 127.0.0.1 >nul 2>&1',
-				':: Check if loophole is still running',
+				'if %attempts% gtr 40 goto runinstaller',
+				'ping -n 2 127.0.0.1 >nul 2>&1',
 				'tasklist /FI "IMAGENAME eq loophole.exe" 2>nul | find /I "loophole.exe" >nul',
 				'if %errorlevel% equ 0 goto waitloop',
 				'',
 				':runinstaller',
-				':: Run installer after app closes',
-				`"${installerPath}" /verysilent /mergetasks=runcode,!desktopicon,!quicklaunchicon /nocancel /nocloseapplications`,
-				':: Clean up',
+				':: Run installer and wait for it to finish before cleaning up',
+				`start /wait "" "${installerPath}" /verysilent /mergetasks=runcode,!desktopicon,!quicklaunchicon /nocancel`,
+				':: Clean up only after installer exits',
 				`rmdir /s /q "${this._cachePath}"`,
-				':: Delete self',
 				'del "%~f0"'
 			];
 
-			await pfs.Promises.writeFile(updateScriptPath, batchScriptLines.join('\n'));
+			await pfs.Promises.writeFile(updateScriptPath, batchScriptLines.join('\r\n'));
 
 			// Spawn the watcher script (detached, hidden)
 			spawn('cmd.exe', ['/c', 'start', '/min', updateScriptPath], {
