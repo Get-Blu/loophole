@@ -893,8 +893,21 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					}
 				}
 			}
-			// check plan mode restrictions - block edit/rewrite/delete/terminal tools
-			if (toolName === 'edit_file' || toolName === 'rewrite_file' || toolName === 'delete_file_or_folder' || toolName === 'run_command' || toolName === 'run_persistent_command' || toolName === 'open_persistent_terminal' || toolName === 'kill_persistent_terminal') {
+			// check plan mode restrictions - allow rewrite_file only on .md files
+			if (toolName === 'rewrite_file') {
+				const chatMode = this._settingsService.state.globalSettings.chatMode
+				if (chatMode === 'plan') {
+					const params = toolParams as BuiltinToolCallParams['rewrite_file']
+					const uriStr = params.uri.toString()
+					if (!uriStr.endsWith('.md')) {
+						const errorMessage = `In Plan mode, you can only rewrite .md files. The file "${uriStr}" is not a .md file.`
+						this._addMessageToThread(threadId, { role: 'tool', type: 'invalid_params', rawParams: opts.unvalidatedToolParams, result: null, name: toolName, content: errorMessage, id: toolId, mcpServerName })
+						return {}
+					}
+				}
+			}
+			// check plan mode restrictions - block edit/delete/terminal tools
+			if (toolName === 'edit_file' || toolName === 'delete_file_or_folder' || toolName === 'run_command' || toolName === 'run_persistent_command' || toolName === 'open_persistent_terminal' || toolName === 'kill_persistent_terminal') {
 				const chatMode = this._settingsService.state.globalSettings.chatMode
 				if (chatMode === 'plan') {
 					const errorMessage = `In Plan mode, you cannot use the "${toolName}" tool. You can only create new .md files.`
