@@ -98,13 +98,16 @@ function isEnglishPostLine(line: string): boolean {
 	return ENGLISH_POST_PHRASES.some(p => l.startsWith(p))
 }
 
-/** Continue: rewritesLineAbove — don't complete if we'd just repeat the line above */
+/** Continue: rewritesLineAbove — don't complete if we'd just repeat the line strictly above the cursor */
 function rewritesLineAbove(completion: string, prefix: string): boolean {
-	const lineAbove = prefix.split('\n').filter(l => l.trim().length > 0).slice(-1)[0]
+	const allLines = prefix.split('\n')
+	// The last line is the current (partial) line — we want the one above it
+	const linesAboveCursor = allLines.slice(0, -1).filter(l => l.trim().length > 0)
+	const lineAbove = linesAboveCursor[linesAboveCursor.length - 1]
 	if (!lineAbove) return false
 	const firstLineOfCompletion = completion.split('\n').find(l => l.trim().length > 0)
 	if (!firstLineOfCompletion) return false
-	// "repeated" = >50% LCS overlap (simplified: startsWith after trim)
+	// "repeated" = completion's first line is just a repeat of the line above the cursor
 	const a = lineAbove.trim(), b = firstLineOfCompletion.trim()
 	return a.length > 4 && b.startsWith(a)
 }
@@ -167,7 +170,7 @@ function applyStreamFilterPipeline(
 		const suffixFirstLine = trimmedSuffix.split(_ln)[0].trim()
 		if (suffixFirstLine.length > 5) {
 			const overlapIdx = rawText.indexOf(suffixFirstLine)
-			if (overlapIdx > 0) rawText = rawText.slice(0, overlapIdx)
+			if (overlapIdx > 0) { console.log('[AC:filter] stage1 suffix overlap cut at', overlapIdx); rawText = rawText.slice(0, overlapIdx) }
 		}
 	}
 
@@ -181,6 +184,7 @@ function applyStreamFilterPipeline(
 
 		// Stage 3: skip LINES_TO_REMOVE_BEFORE_START (before first real code)
 		if (isFirstRealLine && LINES_TO_REMOVE_BEFORE_START.some(p => line.trimStart().startsWith(p))) {
+			console.log('[AC:filter] stage3 removed line before start:', JSON.stringify(line.slice(0,40)))
 			continue
 		}
 
@@ -203,10 +207,10 @@ function applyStreamFilterPipeline(
 		if (line.trim() !== '') isFirstRealLine = false
 
 		// Stage 4: stopAtLines
-		if (LINES_TO_STOP_AT.some(pat => line.includes(pat))) break
+		if (LINES_TO_STOP_AT.some(pat => line.includes(pat))) { console.log('[AC:filter] stage4 stop-at-line:', JSON.stringify(line.slice(0,60))); break }
 
 		// Stage 5: stopAtLinesExact — exact match with line below cursor
-		if (lineBelowCursor !== '' && line === lineBelowCursor) break
+		if (lineBelowCursor !== '' && line === lineBelowCursor) { console.log('[AC:filter] stage5 line matches lineBelowCursor:', JSON.stringify(line.slice(0,60))); break }
 
 		// Stage 6: stopAtRepeatingLines (max 3)
 		const prevLine = outputLines[outputLines.length - 1]
@@ -216,17 +220,17 @@ function applyStreamFilterPipeline(
 		}
 
 		// Stage 8: noDoubleNewLine — first blank line stops stream
-		if (line.trim() === '' && outputLines.length > 0) break
+		if (line.trim() === '' && outputLines.length > 0) { console.log('[AC:filter] stage8 blank line stop after', outputLines.length, 'lines'); break }
 
 		// Stage 9: English post-phrase
-		if (isEnglishPostLine(line)) break
+		if (isEnglishPostLine(line)) { console.log('[AC:filter] stage9 English post-phrase:', JSON.stringify(line.slice(0,60))); break }
 
 		// Stage 10: stopAtSimilarLine — fuzzy: trimmed equality with line below
 		if (
 			lineBelowCursor.trim() !== '' &&
 			line.trim() !== '' &&
 			line.trim() === lineBelowCursor.trim()
-		) break
+		) { console.log('[AC:filter] stage10 trimmed match with lineBelowCursor:', JSON.stringify(line.slice(0,60))); break }
 
 		// Stage 11: hard line cap
 		if (outputLines.length >= MAX_COMPLETION_LINES) break
@@ -242,9 +246,9 @@ function applyStreamFilterPipeline(
 	const result = outputLines.join(_ln)
 
 	// Stage 12: postprocessCompletion guards (Continue)
-	if (result.trim().length === 0) return ''
-	if (rewritesLineAbove(result, prefix)) return ''
-	if (isExtremeRepetition(result)) return ''
+	if (result.trim().length === 0) { console.log('[AC:filter] stage12 — result empty after pipeline'); return '' }
+	if (rewritesLineAbove(result, prefix)) { console.log('[AC:filter] stage12 — rewritesLineAbove killed:', JSON.stringify(result.slice(0, 60))); return '' }
+	if (isExtremeRepetition(result)) { console.log('[AC:filter] stage12 — isExtremeRepetition killed:', JSON.stringify(result.slice(0, 60))); return '' }
 
 	return result
 }
@@ -801,7 +805,7 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 
 					// 5. Apply Continue-style stream filter pipeline (stop tokens, repeat detection, etc.)
 					const beforeFilter = rawText
-					const lineBelowCursor = getLineBelowCursor(prefix.split(_ln).concat(rawText.split(_ln)))
+					const lineBelowCursor = getLineBelowCursor(suffix.split(_ln))
 					rawText = applyStreamFilterPipeline(rawText, suffix, lineBelowCursor, prefix)
 					if (beforeFilter !== rawText) console.log('[AC] stream filter changed output | before:', JSON.stringify(beforeFilter.slice(0, 60)), '→ after:', JSON.stringify(rawText.slice(0, 60)))
 
