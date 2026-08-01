@@ -30,7 +30,6 @@ const _ln = isWindows ? allLinebreakSymbols[0] : allLinebreakSymbols[1]
 // ─── Constants (mirrors Continue's approach exactly) ──────────────────────────
 
 const DEBOUNCE_TIME = 350          // Continue default: 350ms
-const MIN_PREFIX_CHARS = 3
 const TIMEOUT_TIME = 60_000
 const MAX_CACHE_SIZE = 20
 const MAX_PENDING_REQUESTS = 2
@@ -747,8 +746,6 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 			_newlineCount: 0,
 		}
 
-		console.log('[AC] →', predictionType, '| model:', modelSelection ? `${modelSelection.providerName}/${modelSelection.modelName}` : 'none', '| prefixLen:', llmPrefix.length, '| suffixLen:', llmSuffix.length)
-
 		const featureName: FeatureName = 'Autocomplete'
 		const overridesOfModel = this._settingsService.state.overridesOfModel
 		const modelSelection = this._settingsService.state.modelSelectionOfFeature[featureName]
@@ -756,6 +753,7 @@ export class AutocompleteService extends Disposable implements IAutocompleteServ
 			? this._settingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName]
 			: undefined
 		if (!modelSelection) console.warn('[AC] no model selected for Autocomplete feature — check settings')
+		console.log('[AC] →', predictionType, '| model:', modelSelection ? `${modelSelection.providerName}/${modelSelection.modelName}` : 'none', '| prefixLen:', llmPrefix.length, '| suffixLen:', llmSuffix.length)
 
 		newAutocompletion.llmPromise = new Promise((resolve, reject) => {
 			const requestId = this._llmMessageService.sendLLMMessage({
