@@ -84,10 +84,6 @@ npm i -g @loophole-ai/cli
 
 -->
 
-<p align="center">
-  <img src="logo/banner_ide.png" width="100%" alt="Loophole Banner" />
-</p>
-
 ## Overview
 
 Loophole is an open-source AI code editor built on top of the Void editor (a fork of VS Code). It integrates AI features directly into the core editor experience with a focus on privacy, flexibility, and a premium user experience.
