@@ -112,10 +112,13 @@ export const sendLLMMessage = async ({
 			return
 		}
 		if (messagesType === 'FIMMessage') {
+			console.log('[FIM] dispatch → provider:', providerName, '| model:', modelName, '| hasSendFIM:', !!sendFIM)
 			if (sendFIM) {
 				await sendFIM({ messages: messages_, onText, onFinalMessage, onError, settingsOfProvider, modelSelectionOptions, overridesOfModel, modelName, _setAborter, providerName, separateSystemMessage })
+				console.log('[FIM] dispatch complete for', providerName, '/', modelName)
 				return
 			}
+			console.error('[FIM] provider', providerName, 'has no sendFIM implementation — autocomplete not supported for this provider')
 			onError({ message: `Error running Autocomplete with ${providerName} - ${modelName}.`, fullError: null })
 			return
 		}
@@ -133,4 +136,3 @@ export const sendLLMMessage = async ({
 
 
 }
-
