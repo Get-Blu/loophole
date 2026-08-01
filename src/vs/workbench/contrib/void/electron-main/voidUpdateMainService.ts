@@ -370,7 +370,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 				// Windows: Run the installer silently
 				this._logService.info('[LoopholeUpdate] Applying Windows update...');
 
-				spawn(downloadPath, ['/verysilent', '/mergetasks=runcode,!desktopicon,!quicklaunchicon', '/nocancel'], {
+				spawn(downloadPath, ['/verysilent', '/mergetasks=!runcode,!desktopicon,!quicklaunchicon', '/nocancel', '/nocloseapplications'], {
 					detached: true,
 					stdio: ['ignore', 'ignore', 'ignore'],
 					windowsVerbatimArguments: true
@@ -432,7 +432,7 @@ export class LoopholeMainUpdateService extends Disposable implements ILoopholeUp
 				'',
 				':runinstaller',
 				':: Run installer and wait for it to finish before cleaning up',
-				`start /wait "" "${installerPath}" /verysilent /mergetasks=runcode,!desktopicon,!quicklaunchicon /nocancel`,
+				`start /wait "" "${installerPath}" /verysilent /mergetasks=!runcode,!desktopicon,!quicklaunchicon /nocancel`,
 				':: Clean up only after installer exits',
 				`rmdir /s /q "${this._cachePath}"`,
 				'del "%~f0"'
