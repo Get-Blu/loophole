@@ -774,8 +774,9 @@ const sendAnthropicChat = async ({ messages, providerName, onText, onFinalMessag
 
 // ------------ MISTRAL ------------
 // https://docs.mistral.ai/api/#tag/fim
-const sendMistralFIM = ({ messages, onFinalMessage, onError, settingsOfProvider, overridesOfModel, modelName: modelName_, _setAborter, providerName }: SendFIMParams_Internal) => {
+const sendMistralFIM = async ({ messages, onFinalMessage, onError, settingsOfProvider, overridesOfModel, modelName: modelName_, _setAborter, providerName }: SendFIMParams_Internal) => {
 	const { modelName, supportsFIM } = getModelCapabilities(providerName, modelName_, overridesOfModel)
+	console.log('[FIM/Mistral] called | model:', modelName, '| supportsFIM:', supportsFIM, '| prefixLen:', messages.prefix.length, '| suffixLen:', messages.suffix.length, '| stopTokens:', messages.stopTokens)
 	if (!supportsFIM) {
 		if (modelName === modelName_)
 			onError({ message: `Model ${modelName} does not support FIM.`, fullError: null })
@@ -784,9 +785,11 @@ const sendMistralFIM = ({ messages, onFinalMessage, onError, settingsOfProvider,
 		return
 	}
 
-	const mistral = new MistralCore({ apiKey: settingsOfProvider.mistral.apiKey })
-	fimComplete(mistral,
-		{
+	try {
+		const mistral = new MistralCore({ apiKey: settingsOfProvider.mistral.apiKey })
+		console.log('[FIM/Mistral] sending request to Codestral API...')
+		const t0 = Date.now()
+		const response = await fimComplete(mistral, {
 			model: modelName,
 			prompt: messages.prefix,
 			suffix: messages.suffix,
@@ -794,18 +797,25 @@ const sendMistralFIM = ({ messages, onFinalMessage, onError, settingsOfProvider,
 			maxTokens: 300,
 			stop: messages.stopTokens,
 		})
-		.then(async response => {
 
-			// unfortunately, _setAborter() does not exist
-			let content = response?.ok ? response.value.choices?.[0]?.message?.content ?? '' : '';
-			const fullText = typeof content === 'string' ? content
-				: content.map(chunk => (chunk.type === 'text' ? chunk.text : '')).join('')
+		console.log('[FIM/Mistral] response received in', Date.now() - t0, 'ms | ok:', response?.ok)
+		// If the API returned a non-2xx response, surface it as an error instead of
+		// silently calling onFinalMessage with an empty string (which looks like a hang).
+		if (!response?.ok) {
+			const errMsg = `Mistral FIM error: HTTP ${(response as any)?.status ?? 'unknown'} — check your Codestral API key and quota.`
+			onError({ message: errMsg, fullError: new Error(errMsg) })
+			return
+		}
 
-			onFinalMessage({ fullText, fullReasoning: '', anthropicReasoning: null });
-		})
-		.catch(error => {
-			onError({ message: error + '', fullError: error });
-		})
+		const raw = response.value.choices?.[0]?.message?.content ?? ''
+		console.log('[FIM/Mistral] raw content type:', typeof raw, '| length:', typeof raw === 'string' ? raw.length : raw.length, '| preview:', JSON.stringify((typeof raw === 'string' ? raw : '').slice(0, 80)))
+		const fullText = typeof raw === 'string' ? raw
+			: (raw as any[]).map((chunk: any) => (chunk.type === 'text' ? chunk.text : '')).join('')
+
+		onFinalMessage({ fullText, fullReasoning: '', anthropicReasoning: null })
+	} catch (error) {
+		onError({ message: error + '', fullError: error })
+	}
 }
 
 
