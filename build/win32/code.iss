@@ -98,24 +98,6 @@ Name: "{app}"; AfterInstall: DisableAppDirInheritance
 Source: "*"; Excludes: "\CodeSignSummary*.md,\tools,\tools\*,\policies,\policies\*,\appx,\appx\*,\resources\app\product.json,\{#ExeBasename}.exe,\{#ExeBasename}.VisualElementsManifest.xml,\bin,\bin\*"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#ExeBasename}.exe"; DestDir: "{code:GetDestDir}"; DestName: "{code:GetExeBasename}"; Flags: ignoreversion
 Source: "{#ExeBasename}.VisualElementsManifest.xml"; DestDir: "{code:GetDestDir}"; DestName: "{code:GetVisualElementsManifest}"; Flags: ignoreversion
-; Electron's Chromium layer looks for these files next to the exe before Node.js starts.
-; With win32VersionedUpdate they live inside the versioned folder, so we copy them to root too.
-Source: "{#VersionedResourcesFolder}\icudtl.dat"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\snapshot_blob.bin"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\v8_context_snapshot.bin"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\resources.pak"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\chrome_100_percent.pak"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\chrome_200_percent.pak"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\ffmpeg.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\libEGL.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\libGLESv2.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\d3dcompiler_47.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\vk_swiftshader.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\vk_swiftshader_icd.json"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\vulkan-1.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\dxcompiler.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\dxil.dll"; DestDir: "{code:GetDestDir}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "{#VersionedResourcesFolder}\locales"; DestDir: "{code:GetDestDir}\locales"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "tools\*"; DestDir: "{app}\{#VersionedResourcesFolder}\tools"; Flags: ignoreversion
 Source: "policies\*"; DestDir: "{code:GetDestDir}\{#VersionedResourcesFolder}\policies"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "bin\{#TunnelApplicationName}.exe"; DestDir: "{code:GetDestDir}\bin"; DestName: "{code:GetBinDirTunnelApplicationFilename}"; Flags: ignoreversion skipifsourcedoesntexist
