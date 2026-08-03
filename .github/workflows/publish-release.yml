@@ -352,6 +352,117 @@ jobs:
             echo "::warning::GOFILE_DOWNLOADS.md is empty or does not exist — skipping upload"
           fi
 
+      # Download SHA256 hash artifacts from all platform builds
+      - name: Download SHA256 hashes — macOS x64
+        uses: actions/download-artifact@v4
+        with:
+          name: sha256-hashes-macos-x64
+          path: sha256-hashes/macos-x64/
+        continue-on-error: true
+
+      - name: Download SHA256 hashes — macOS arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: sha256-hashes-macos-arm64
+          path: sha256-hashes/macos-arm64/
+        continue-on-error: true
+
+      - name: Download SHA256 hashes — Linux x64
+        uses: actions/download-artifact@v4
+        with:
+          name: sha256-hashes-linux-x64
+          path: sha256-hashes/linux-x64/
+        continue-on-error: true
+
+      - name: Download SHA256 hashes — Linux arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: sha256-hashes-linux-arm64
+          path: sha256-hashes/linux-arm64/
+        continue-on-error: true
+
+      - name: Download SHA256 hashes — Windows x64
+        uses: actions/download-artifact@v4
+        with:
+          name: sha256-hashes-windows-x64
+          path: sha256-hashes/windows-x64/
+        continue-on-error: true
+
+      - name: Download SHA256 hashes — Windows arm64
+        uses: actions/download-artifact@v4
+        with:
+          name: sha256-hashes-windows-arm64
+          path: sha256-hashes/windows-arm64/
+        continue-on-error: true
+
+      - name: Update versions repo with SHA256 hashes
+        env:
+          LV: ${{ needs.create-release.outputs.loophole_version }}
+          VERSIONS_PAT: ${{ secrets.VERSIONS_PAT }}
+        run: |
+          git clone https://x-access-token:${VERSIONS_PAT}@github.com/loophole-ai/versions versions-repo
+
+          python3 - << 'PYEOF'
+          import json, os
+
+          def load_hashes(directory):
+              merged = {}
+              if not os.path.isdir(directory):
+                  return merged
+              for fname in os.listdir(directory):
+                  if fname.endswith('.json'):
+                      try:
+                          with open(os.path.join(directory, fname)) as f:
+                              merged.update(json.load(f))
+                      except Exception as e:
+                          print(f"WARNING: could not read {fname}: {e}")
+              return merged
+
+          # Merge hashes from all platforms
+          all_hashes = {}
+          base = 'sha256-hashes'
+          if os.path.isdir(base):
+              for d in os.listdir(base):
+                  all_hashes.update(load_hashes(os.path.join(base, d)))
+
+          print(f"Collected {len(all_hashes)} hashes: {list(all_hashes.keys())}")
+
+          LV = os.environ['LV']
+
+          # Map each latest.json → the primary installer for that platform
+          mappings = {
+              'versions-repo/oss/darwin/x64/latest.json':   f'Loophole.x64.{LV}.dmg',
+              'versions-repo/oss/darwin/arm64/latest.json': f'Loophole.arm64.{LV}.dmg',
+              'versions-repo/oss/linux/x64/latest.json':    f'Loophole-linux-x64-{LV}.tar.gz',
+              'versions-repo/oss/linux/arm64/latest.json':  f'Loophole-linux-arm64-{LV}.tar.gz',
+              'versions-repo/oss/win32/x64/latest.json':    f'LoopholeSetup-x64-{LV}.exe',
+              'versions-repo/oss/win32/arm64/latest.json':  f'LoopholeSetup-arm64-{LV}.exe',
+          }
+
+          for json_path, artifact_name in mappings.items():
+              sha = all_hashes.get(artifact_name, '')
+              if not sha:
+                  print(f'WARNING: no hash found for {artifact_name} — leaving blank')
+                  continue
+              if not os.path.isfile(json_path):
+                  print(f'WARNING: {json_path} not found — skipping')
+                  continue
+              with open(json_path) as f:
+                  data = json.load(f)
+              data['sha256hash'] = sha
+              with open(json_path, 'w') as f:
+                  json.dump(data, f, indent=2)
+                  f.write('\n')
+              print(f'✓ {json_path} → {sha}')
+          PYEOF
+
+          cd versions-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "chore: sha256 hashes for ${LV}"
+          git push
+
       - name: Publish draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
