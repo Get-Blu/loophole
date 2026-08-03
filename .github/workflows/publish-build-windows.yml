@@ -254,6 +254,25 @@ jobs:
             Write-Host "  $($_.Name)  ($size MB)"
           }
 
+      - name: Compute SHA256 hashes
+        shell: pwsh
+        run: |
+          $hashes = @{}
+          Get-ChildItem dist | Where-Object { !$_.PSIsContainer } | ForEach-Object {
+            $sha = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            $hashes[$_.Name] = $sha
+            Write-Host "$($_.Name) → $sha"
+          }
+          $hashes | ConvertTo-Json | Set-Content sha256-hashes.json
+          Get-Content sha256-hashes.json
+
+      - name: Upload SHA256 hashes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha256-hashes-windows-x64
+          path: sha256-hashes.json
+          retention-days: 7
+
       # ── Upload all artifacts to GitHub Actions ─────────────────────────────────
       - name: Upload — User Installer
         uses: actions/upload-artifact@v4
@@ -591,6 +610,25 @@ jobs:
             $size = [math]::Round($_.Length / 1MB, 2)
             Write-Host "  $($_.Name)  ($size MB)"
           }
+
+      - name: Compute SHA256 hashes
+        shell: pwsh
+        run: |
+          $hashes = @{}
+          Get-ChildItem dist | Where-Object { !$_.PSIsContainer } | ForEach-Object {
+            $sha = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            $hashes[$_.Name] = $sha
+            Write-Host "$($_.Name) → $sha"
+          }
+          $hashes | ConvertTo-Json | Set-Content sha256-hashes.json
+          Get-Content sha256-hashes.json
+
+      - name: Upload SHA256 hashes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha256-hashes-windows-arm64
+          path: sha256-hashes.json
+          retention-days: 7
 
       # ── Upload all artifacts to GitHub Actions ─────────────────────────────────
       - name: Upload — User Installer
