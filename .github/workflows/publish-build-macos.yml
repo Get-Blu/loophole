@@ -259,6 +259,30 @@ jobs:
           echo "=== dist/ artifacts ==="
           ls -lh dist/ || echo "(dist/ is empty)"
 
+      - name: Compute SHA256 hashes
+        run: |
+          echo "{}" > sha256-hashes.json
+          for f in dist/*; do
+            [ -f "$f" ] || continue
+            FILENAME=$(basename "$f")
+            SHA=$(shasum -a 256 "$f" | awk '{print $1}')
+            echo "$FILENAME → $SHA"
+            python3 -c "
+import json
+with open('sha256-hashes.json') as fp: data = json.load(fp)
+data['$FILENAME'] = '$SHA'
+with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
+"
+          done
+          cat sha256-hashes.json
+
+      - name: Upload SHA256 hashes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha256-hashes-macos-x64
+          path: sha256-hashes.json
+          retention-days: 7
+
       - name: Upload — DMG
         uses: actions/upload-artifact@v4
         with:
@@ -585,6 +609,30 @@ jobs:
         run: |
           echo "=== dist/ artifacts ==="
           ls -lh dist/ || echo "(dist/ is empty)"
+
+      - name: Compute SHA256 hashes
+        run: |
+          echo "{}" > sha256-hashes.json
+          for f in dist/*; do
+            [ -f "$f" ] || continue
+            FILENAME=$(basename "$f")
+            SHA=$(shasum -a 256 "$f" | awk '{print $1}')
+            echo "$FILENAME → $SHA"
+            python3 -c "
+import json
+with open('sha256-hashes.json') as fp: data = json.load(fp)
+data['$FILENAME'] = '$SHA'
+with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
+"
+          done
+          cat sha256-hashes.json
+
+      - name: Upload SHA256 hashes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha256-hashes-macos-arm64
+          path: sha256-hashes.json
+          retention-days: 7
 
       - name: Upload — DMG
         uses: actions/upload-artifact@v4
