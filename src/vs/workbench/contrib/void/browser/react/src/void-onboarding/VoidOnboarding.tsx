@@ -51,9 +51,7 @@ const LoopholeIcon = () => {
 			const theme = themeService.getColorTheme().type
 			const isDark = theme === ColorScheme.DARK || theme === ColorScheme.HIGH_CONTRAST_DARK
 			if (divRef.current) {
-				divRef.current.style.maxWidth = '220px'
-				divRef.current.style.opacity = '50%'
-				divRef.current.style.filter = isDark ? '' : 'invert(1)' //brightness(.5)
+				divRef.current.style.filter = isDark ? '' : 'invert(1)'
 			}
 		}
 		updateTheme()
@@ -61,7 +59,15 @@ const LoopholeIcon = () => {
 		return () => d.dispose()
 	}, [])
 
-	return <div ref={divRef} className='@@loophole-loophole-icon' />
+	return (
+		<div ref={divRef} style={{ maxWidth: '180px', opacity: 0.7 }}>
+			<img
+				src="../../../logo/logo_onboarding.png"
+				alt="Loophole"
+				style={{ width: '100%', height: 'auto' }}
+			/>
+		</div>
+	)
 }
 
 const FADE_DURATION_MS = 2000
@@ -467,6 +473,171 @@ const PrimaryActionButton = ({ children, className, ringSize, ...props }: { chil
 
 type WantToUseOption = 'smart' | 'private' | 'cheap' | 'all'
 
+type ThemeOption = 'Loophole Dark' | 'Loophole Light' | 'Dark 2026' | 'Light 2026'
+
+const ThemePickerPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
+	const accessor = useAccessor()
+	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
+	const loopholeMetricsService = accessor.get('IMetricsService')
+	const loopholeSettingsState = useSettingsState()
+
+	const [selectedTheme, setSelectedTheme] = useState<ThemeOption>('Loophole Dark')
+
+	const themeOptions: { name: ThemeOption; id: string; isDark: boolean }[] = [
+		{ name: 'Loophole Dark', id: 'loophole-dark', isDark: true },
+		{ name: 'Loophole Light', id: 'loophole-light', isDark: false },
+		{ name: 'Dark 2026', id: 'dark-2026', isDark: true },
+		{ name: 'Light 2026', id: 'light-2026', isDark: false },
+	]
+
+	const applyTheme = (themeId: string) => {
+		const workbenchThemeService = accessor.get('IWorkbenchThemeService')
+		workbenchThemeService.setColorTheme(themeId, undefined)
+	}
+
+	const lastPageButtons = (
+		<div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
+			<div className="flex items-center gap-2">
+				<PreviousButton onClick={() => setPageIndex(pageIndex - 1)} />
+				<PrimaryActionButton
+					onClick={() => {
+						const theme = themeOptions.find(t => t.name === selectedTheme)
+						if (theme) {
+							applyTheme(theme.id)
+						}
+						loopholeSettingsService.setGlobalSetting('isOnboardingComplete', true)
+						loopholeMetricsService.capture('Completed Onboarding', { selectedTheme })
+					}}
+					ringSize={loopholeSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
+				>
+					Enter Loophole
+				</PrimaryActionButton>
+			</div>
+		</div>
+	)
+
+	return (
+		<OnboardingPageShell
+			hasMaxWidth={false}
+			content={
+				<div className="flex flex-col items-center w-full max-w-[700px] mx-auto">
+					<div className="text-5xl font-light text-center mb-12">Choose your theme</div>
+
+					<div className="grid grid-cols-2 gap-5 w-full mb-8">
+						{themeOptions.map((theme) => (
+							<div
+								key={theme.name}
+								className={`
+									relative cursor-pointer rounded-xl p-4 border-2 transition-all duration-200
+									${selectedTheme === theme.name
+										? 'border-loophole-fg-1 bg-loophole-bg-2'
+										: 'border-loophole-border-2 hover:border-loophole-border-1'
+									}
+								`}
+								onClick={() => {
+									setSelectedTheme(theme.name)
+									applyTheme(theme.id)
+								}}
+							>
+								{/* Theme Preview */}
+								<div
+									className={`
+										w-full h-36 rounded-lg mb-3 overflow-hidden
+										${theme.name.includes('Loophole')
+											? (theme.isDark ? 'bg-[#131210]' : 'bg-[#ffffff]')
+											: (theme.isDark ? 'bg-[#1e1e1e]' : 'bg-[#ffffff]')
+										}
+									`}
+									style={{
+										padding: '8px',
+										fontFamily: 'Consolas, Monaco, monospace',
+										fontSize: '11px',
+									}}
+								>
+									{/* Header bar */}
+									<div
+										className="flex gap-1 mb-2 p-1 rounded"
+										style={{
+											background: theme.name.includes('Loophole')
+												? (theme.isDark ? '#24221e' : '#f0f0f0')
+												: (theme.isDark ? '#181818' : '#f3f3f3'),
+										}}
+									>
+										<div
+											className="w-2 h-2 rounded-full"
+											style={{
+												background: theme.name.includes('Loophole')
+													? (theme.isDark ? '#80cbc4' : '#80cbc4')
+													: (theme.isDark ? '#3d3d3d' : '#d0d0d0')
+											}}
+										/>
+									</div>
+
+									{/* Code preview */}
+									<div style={{
+										color: theme.name.includes('Loophole')
+											? (theme.isDark ? '#dfd9d0' : '#2d2d2d')
+											: (theme.isDark ? '#d4d4d4' : '#333333')
+									}}>
+										<div>
+											<span style={{
+												color: theme.name.includes('Loophole')
+													? (theme.isDark ? '#89DDFF' : '#4a90d9')
+													: (theme.isDark ? '#569cd6' : '#0000ff')
+											}}>
+												function
+											</span>{' '}
+											<span style={{
+												color: theme.name.includes('Loophole')
+													? (theme.isDark ? '#82AAFF' : '#4a7cc9')
+													: (theme.isDark ? '#dcdcaa' : '#795e26')
+											}}>
+												add
+											</span>
+											(x, y) {'{'}
+										</div>
+										<div style={{ paddingLeft: '12px' }}>
+											<span style={{
+												color: theme.name.includes('Loophole')
+													? (theme.isDark ? '#89DDFF' : '#4a90d9')
+													: (theme.isDark ? '#569cd6' : '#0000ff')
+											}}>
+												return
+											</span>{' '}
+											x + y;
+										</div>
+										<div style={{
+											color: theme.name.includes('Loophole')
+												? (theme.isDark ? '#46443e' : '#6b6b6b')
+												: (theme.isDark ? '#6a9955' : '#008000')
+										}}>
+											{'// code comment'}
+										</div>
+										<div>{'}'}</div>
+									</div>
+								</div>
+
+								{/* Theme name */}
+								<div className="text-center text-sm font-medium text-loophole-fg-1">
+									{theme.name}
+								</div>
+
+								{/* Selected indicator */}
+								{selectedTheme === theme.name && (
+									<div className="absolute top-3 right-3">
+										<Check className="w-5 h-5 text-loophole-fg-1" />
+									</div>
+								)}
+							</div>
+						))}
+					</div>
+				</div>
+			}
+			bottom={lastPageButtons}
+		/>
+	)
+}
+
 const LoopholeOnboardingContent = () => {
 
 
@@ -535,6 +706,17 @@ const LoopholeOnboardingContent = () => {
 		</div>
 	</div>
 
+
+	const settingsPagePrevAndNextButtons = <div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
+		<div className="flex items-center gap-2">
+			<PreviousButton
+				onClick={() => { setPageIndex(pageIndex - 1) }}
+			/>
+			<NextButton
+				onClick={() => { setPageIndex(pageIndex + 1) }}
+			/>
+		</div>
+	</div>
 
 	const lastPagePrevAndNextButtons = <div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
 		<div className="flex items-center gap-2">
@@ -636,8 +818,9 @@ const LoopholeOnboardingContent = () => {
 					</div>
 				</div>
 			}
-			bottom={lastPagePrevAndNextButtons}
+			bottom={settingsPagePrevAndNextButtons}
 		/>,
+		3: <ThemePickerPage pageIndex={pageIndex} setPageIndex={setPageIndex} />,
 	}
 
 
