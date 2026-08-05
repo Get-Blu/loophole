@@ -2842,21 +2842,15 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 			return part;
 		}
 
-		// Render the active carousel in the input part (above the input box, not while editing)
-		const isEditing = !!this.viewModel?.editing;
-		const part = isEditing ? undefined : widget?.input.renderQuestionCarousel(carousel, context, {
+		// Always render the carousel inline in the message list so it's immediately
+		// interactive — even while the AI response is still streaming. Previously the
+		// carousel was hoisted into the input widget container above the input box,
+		// which meant users had to cancel the running response before they could answer.
+		const fallbackPart = this.instantiationService.createInstance(ChatQuestionCarouselPart, carousel, context, {
 			shouldAutoFocus,
-			onSubmit: async (answers) => handleSubmit(answers, part!)
+			onSubmit: async (answers) => handleSubmit(answers, fallbackPart)
 		});
-
-		// If we couldn't render in the input part, fall back to inline rendering
-		if (!part) {
-			const fallbackPart = this.instantiationService.createInstance(ChatQuestionCarouselPart, carousel, context, {
-				shouldAutoFocus,
-				onSubmit: async (answers) => handleSubmit(answers, fallbackPart)
-			});
-			return fallbackPart;
-		}
+		const part = fallbackPart;
 
 		// Track the carousel for auto-skip when user submits a new message
 		// Only add tracking if not already tracked (prevents duplicate tracking on re-render)
