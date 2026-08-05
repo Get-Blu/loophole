@@ -1602,13 +1602,13 @@ export class ChatQuestionCarouselPart extends Disposable implements IChatContent
 			const questionText = question.message ?? question.title;
 			let labelText = typeof questionText === 'string' ? questionText : questionText.value;
 			labelText = labelText.replace(/[:\s]+$/, '');
-			questionRow.textContent = localize('chat.questionCarousel.summaryQuestion', 'Q: {0}', labelText);
+			questionRow.textContent = localize('chat.questionCarousel.summaryQuestion', 'Question: {0}', labelText);
 			summaryItem.appendChild(questionRow);
 
 			if (answer !== undefined) {
 				const formattedAnswer = this.formatAnswerForSummary(question, answer);
 				const answerRow = dom.$('div.chat-question-summary-answer-title');
-				answerRow.textContent = localize('chat.questionCarousel.summaryAnswer', 'A: {0}', formattedAnswer);
+				answerRow.textContent = localize('chat.questionCarousel.summaryAnswer', 'Answer: {0}', formattedAnswer);
 				summaryItem.appendChild(answerRow);
 			} else {
 				const unanswered = dom.$('div.chat-question-summary-unanswered');
