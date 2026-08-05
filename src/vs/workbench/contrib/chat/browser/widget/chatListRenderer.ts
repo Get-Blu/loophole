@@ -3385,3 +3385,4 @@ function getSubagentId(invocation: IChatToolInvocation | IChatToolInvocationSeri
 function isSubagentToolInvocation(invocation: IChatToolInvocation | IChatToolInvocationSerialized): boolean {
 	return !!getSubagentId(invocation);
 }
+
