@@ -62,7 +62,7 @@ const LoopholeIcon = () => {
 	return (
 		<div ref={divRef} style={{ maxWidth: '180px', opacity: 0.7 }}>
 			<img
-				src="../../../logo/onboarding_logo180.png"
+				src={require('../../../../../../../../../logo/onboarding_logo180.png')}
 				alt="Loophole"
 				style={{ width: '100%', height: 'auto' }}
 			/>
