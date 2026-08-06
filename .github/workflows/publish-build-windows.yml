@@ -137,7 +137,7 @@ jobs:
       - name: Rebuild native modules for Electron
         run: |
           npm install -g @electron/rebuild
-          electron-rebuild -f -w node-pty
+          electron-rebuild -f -w node-pty,onnxruntime-node
         env:
           npm_config_arch: x64
 
@@ -494,7 +494,7 @@ jobs:
       - name: Rebuild native modules for Electron
         run: |
           npm install -g @electron/rebuild
-          electron-rebuild -f -w node-pty --arch=arm64
+          electron-rebuild -f -w node-pty,onnxruntime-node --arch=arm64
         env:
           npm_config_arch: arm64
 
