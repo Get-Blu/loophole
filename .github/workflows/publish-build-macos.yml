@@ -9,6 +9,7 @@ on:
       release_id:
         required: true
         type: string
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '22'
@@ -266,12 +267,7 @@ jobs:
             FILENAME=$(basename "$f")
             SHA=$(shasum -a 256 "$f" | awk '{print $1}')
             echo "$FILENAME → $SHA"
-            python3 -c "
-import json
-with open('sha256-hashes.json') as fp: data = json.load(fp)
-data['$FILENAME'] = '$SHA'
-with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
-"
+            python3 -c "import json,sys; d=json.load(open('sha256-hashes.json')); d[sys.argv[1]]=sys.argv[2]; json.dump(d,open('sha256-hashes.json','w'),indent=2)" "$FILENAME" "$SHA"
           done
           cat sha256-hashes.json
 
@@ -617,12 +613,7 @@ with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
             FILENAME=$(basename "$f")
             SHA=$(shasum -a 256 "$f" | awk '{print $1}')
             echo "$FILENAME → $SHA"
-            python3 -c "
-import json
-with open('sha256-hashes.json') as fp: data = json.load(fp)
-data['$FILENAME'] = '$SHA'
-with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
-"
+            python3 -c "import json,sys; d=json.load(open('sha256-hashes.json')); d[sys.argv[1]]=sys.argv[2]; json.dump(d,open('sha256-hashes.json','w'),indent=2)" "$FILENAME" "$SHA"
           done
           cat sha256-hashes.json
 
