@@ -9,7 +9,6 @@ on:
       release_id:
         required: true
         type: string
-  workflow_dispatch:
 
 env:
   NODE_VERSION: '22'
