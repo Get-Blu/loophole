@@ -1,9 +1,6 @@
 name: Publish Release
 
 on:
-  push:
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'   # e.g. 2.0.0, 2.1.3, 3.0.5
   workflow_dispatch:
 
 permissions:
@@ -38,7 +35,7 @@ jobs:
           LOOPHOLE_VERSION=$(node -p "require('./product.json').loopholeVersion ?? require('./package.json').version")
 
           # Commits since last tag (for release notes context)
-          PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p' || echo "")
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p' || echo "")
           if [[ -n "$PREV_TAG" ]]; then
             COMMIT_COUNT=$(git rev-list ${PREV_TAG}..HEAD --count)
           else
