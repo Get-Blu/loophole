@@ -435,14 +435,7 @@ jobs:
             FILENAME=$(basename "$f")
             SHA=$(sha256sum "$f" | awk '{print $1}')
             echo "$FILENAME → $SHA"
-            TMPFILE=$(mktemp)
-            python3 - "$FILENAME" "$SHA" << 'PYEOF'
-import json, sys
-filename, sha = sys.argv[1], sys.argv[2]
-with open('sha256-hashes.json') as fp: data = json.load(fp)
-data[filename] = sha
-with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
-PYEOF
+            python3 -c "import json,sys; d=json.load(open('sha256-hashes.json')); d[sys.argv[1]]=sys.argv[2]; json.dump(d,open('sha256-hashes.json','w'),indent=2)" "$FILENAME" "$SHA"
           done
           cat sha256-hashes.json
 
@@ -827,13 +820,7 @@ PYEOF
             FILENAME=$(basename "$f")
             SHA=$(sha256sum "$f" | awk '{print $1}')
             echo "$FILENAME → $SHA"
-            python3 - "$FILENAME" "$SHA" << 'PYEOF'
-import json, sys
-filename, sha = sys.argv[1], sys.argv[2]
-with open('sha256-hashes.json') as fp: data = json.load(fp)
-data[filename] = sha
-with open('sha256-hashes.json', 'w') as fp: json.dump(data, fp, indent=2)
-PYEOF
+            python3 -c "import json,sys; d=json.load(open('sha256-hashes.json')); d[sys.argv[1]]=sys.argv[2]; json.dump(d,open('sha256-hashes.json','w'),indent=2)" "$FILENAME" "$SHA"
           done
           cat sha256-hashes.json
 
