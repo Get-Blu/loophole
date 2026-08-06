@@ -767,11 +767,14 @@ const LoopholeOnboardingContent = () => {
 	}, []);
 
 	// reset the page to page 0 if the user redos onboarding
+	const prevIsComplete = useRef(loopholeSettingsState.globalSettings.isOnboardingComplete)
 	useEffect(() => {
-		if (!loopholeSettingsState.globalSettings.isOnboardingComplete) {
-			setPageIndex(0)
-		}
-	}, [setPageIndex, loopholeSettingsState.globalSettings.isOnboardingComplete])
+	    const isComplete = loopholeSettingsState.globalSettings.isOnboardingComplete
+	    if (prevIsComplete.current === true && isComplete === false) {
+	        setPageIndex(0)
+	    }
+	    prevIsComplete.current = isComplete
+	}, [loopholeSettingsState.globalSettings.isOnboardingComplete])
 
 
 	const contentOfIdx: { [pageIndex: number]: React.ReactNode } = {
