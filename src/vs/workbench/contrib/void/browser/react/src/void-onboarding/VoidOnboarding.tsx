@@ -42,11 +42,9 @@ export const LoopholeOnboarding = () => {
 const LoopholeIcon = () => {
 	const accessor = useAccessor()
 	const themeService = accessor.get('IThemeService')
-
 	const divRef = useRef<HTMLDivElement | null>(null)
 
 	useEffect(() => {
-		// loophole icon style
 		const updateTheme = () => {
 			const theme = themeService.getColorTheme().type
 			const isDark = theme === ColorScheme.DARK || theme === ColorScheme.HIGH_CONTRAST_DARK
@@ -60,13 +58,20 @@ const LoopholeIcon = () => {
 	}, [])
 
 	return (
-		<div ref={divRef} style={{ maxWidth: '180px', opacity: 0.7 }}>
-			<img
-				src={require('../../../../../../../../../../../../logo/onboarding_logo180.png')}
-				alt="Loophole"
-				style={{ width: '100%', height: 'auto' }}
-			/>
-		</div>
+		<>
+			<style>{`
+				.loophole-logo-icon {
+					width: 180px;
+					height: 180px;
+					opacity: 0.7;
+					background-image: url('./logo/onboarding_logo180.png');
+					background-size: contain;
+					background-repeat: no-repeat;
+					background-position: center;
+				}
+			`}</style>
+			<div ref={divRef} className="loophole-logo-icon" />
+		</>
 	)
 }
 
