@@ -508,7 +508,7 @@ const ThemePickerPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPa
 						loopholeSettingsService.setGlobalSetting('isOnboardingComplete', true)
 						loopholeMetricsService.capture('Completed Onboarding', { selectedTheme })
 					}}
-					ringSize={loopholeSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
+					ringSize={undefined}
 				>
 					Enter Loophole
 				</PrimaryActionButton>
@@ -728,7 +728,7 @@ const LoopholeOnboardingContent = () => {
 					loopholeSettingsService.setGlobalSetting('isOnboardingComplete', true);
 					loopholeMetricsService.capture('Completed Onboarding', { selectedProviderName, wantToUseOption })
 				}}
-				 ringSize={loopholeSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
+				 ringSize={undefined}
 			>Enter Loophole</PrimaryActionButton>
 		</div>
 	</div>
