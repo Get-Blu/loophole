@@ -12,7 +12,6 @@ import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, Mod
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 import { isLinux } from '../../../../../../../base/common/platform.js';
-import { IWorkbenchThemeService } from '../../../../../../../services/themes/common/workbenchThemeService.js';
 
 const OVERRIDE_VALUE = false
 
@@ -391,11 +390,11 @@ const ThemePickerPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPa
 	const [selectedThemeId, setSelectedThemeId] = useState<string>('Loophole Dark')
 
 	const applyTheme = (themeId: string) => {
-		// Get IWorkbenchThemeService via IInstantiationService — it's a superset of IThemeService
-		// and exposes setColorTheme which IThemeService does not.
-		const instantiationService = accessor.get('IInstantiationService')
-		const workbenchThemeService = instantiationService.invokeFunction((a) => a.get(IWorkbenchThemeService))
-		workbenchThemeService.setColorTheme(themeId, 'auto')
+		// IWorkbenchThemeService is outside the React bundle boundary so we can't import it.
+		// Writing to workbench.colorTheme via IConfigurationService is exactly what
+		// setColorTheme(..., 'auto') does internally — it persists and applies the theme.
+		const configurationService = accessor.get('IConfigurationService')
+		configurationService.updateValue('workbench.colorTheme', themeId)
 	}
 
 	const navButtons = (
