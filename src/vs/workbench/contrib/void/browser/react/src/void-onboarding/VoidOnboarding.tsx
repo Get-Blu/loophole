@@ -12,6 +12,7 @@ import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, Mod
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 import { isLinux } from '../../../../../../../base/common/platform.js';
+import { IWorkbenchThemeService } from '../../../../../../../services/themes/common/workbenchThemeService.js';
 
 const OVERRIDE_VALUE = false
 
@@ -51,9 +52,7 @@ const LoopholeIcon = () => {
 			const theme = themeService.getColorTheme().type
 			const isDark = theme === ColorScheme.DARK || theme === ColorScheme.HIGH_CONTRAST_DARK
 			if (divRef.current) {
-				divRef.current.style.maxWidth = '220px'
-				divRef.current.style.opacity = '50%'
-				divRef.current.style.filter = isDark ? '' : 'invert(1)' //brightness(.5)
+				divRef.current.style.filter = isDark ? '' : 'invert(1)'
 			}
 		}
 		updateTheme()
@@ -61,7 +60,15 @@ const LoopholeIcon = () => {
 		return () => d.dispose()
 	}, [])
 
-	return <div ref={divRef} className='@@loophole-loophole-icon' />
+	return (
+		<div ref={divRef} style={{ maxWidth: '180px', opacity: 0.7 }}>
+			<img
+				src={require('../../../../../../../../../../../../logo/onboarding_logo180.png')}
+				alt="Loophole"
+				style={{ width: '100%', height: 'auto' }}
+			/>
+		</div>
+	)
 }
 
 const FADE_DURATION_MS = 2000
@@ -89,20 +96,16 @@ const FadeIn = ({ children, className, delayMs = 0, durationMs, ...props }: { ch
 	)
 }
 
-// Onboarding
-
 // =============================================
-//  New AddProvidersPage Component and helpers
+//  AddProvidersPage Component and helpers
 // =============================================
 
 const tabNames = ['Free', 'Paid', 'Local'] as const;
 
 type TabName = typeof tabNames[number] | 'Cloud/Other';
 
-// Data for cloud providers tab
 const cloudProviders: ProviderName[] = ['googleVertex', 'liteLLM', 'microsoftAzure', 'awsBedrock', 'openAICompatible'];
 
-// Data structures for provider tabs
 const providerNamesOfTab: Record<TabName, ProviderName[]> = {
 	Free: ['gemini', 'openRouter'],
 	Local: localProviderNames,
@@ -117,7 +120,6 @@ const descriptionOfTab: Record<TabName, string> = {
 	'Cloud/Other': `Add as many as you'd like! Reach out for custom configuration requests.`,
 };
 
-
 const featureNameMap: { display: string, featureName: FeatureName }[] = [
 	{ display: 'Chat', featureName: 'Chat' },
 	{ display: 'Quick Edit', featureName: 'Ctrl+K' },
@@ -131,17 +133,13 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 	const settingsState = useSettingsState();
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-	// Clear error message after 5 seconds
 	useEffect(() => {
 		let timeoutId: NodeJS.Timeout | null = null;
-
 		if (errorMessage) {
 			timeoutId = setTimeout(() => {
 				setErrorMessage(null);
 			}, 5000);
 		}
-
-		// Cleanup function to clear the timeout if component unmounts or error changes
 		return () => {
 			if (timeoutId) {
 				clearTimeout(timeoutId);
@@ -163,7 +161,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 							} transition-all duration-200`}
 						onClick={() => {
 							setCurrentTab(tab as TabName);
-							setErrorMessage(null); // Reset error message when changing tabs
+							setErrorMessage(null);
 						}}
 					>
 						{tab}
@@ -223,7 +221,6 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					</div>
 					<div>
 						<SettingsForProvider providerName={providerName} showProviderTitle={false} showProviderSuggestions={true} />
-
 					</div>
 					{providerName === 'ollama' && <OllamaSetupInstructions />}
 				</div>
@@ -234,17 +231,13 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					<div className="flex items-center gap-2 mb-4">
 						<div className="text-xl font-medium">Models</div>
 					</div>
-
 					{currentTab === 'Local' && (
 						<div className="text-sm opacity-80 text-loophole-fg-3 my-4 w-full">Local models should be detected automatically. You can add custom models below.</div>
 					)}
-
 					{currentTab === 'Local' && <ModelDump filteredProviders={localProviderNames} />}
 					{currentTab === 'Cloud/Other' && <ModelDump filteredProviders={cloudProviders} />}
 				</div>
 			)}
-
-
 
 			{/* Navigation buttons in right column */}
 			<div className="flex flex-col items-end w-full mt-auto pt-8">
@@ -256,12 +249,10 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					<NextButton
 						onClick={() => {
 							const isDisabled = isFeatureNameDisabled('Chat', settingsState)
-
 							if (!isDisabled) {
 								setPageIndex(pageIndex + 1);
 								setErrorMessage(null);
 							} else {
-								// Show error message
 								setErrorMessage("Please set up at least one Chat model before moving on.");
 							}
 						}}
@@ -271,53 +262,9 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 		</div>
 	</div>);
 };
-// =============================================
-// 	OnboardingPage
-// 		title:
-// 			div
-// 				"Welcome to Loophole"
-// 			image
-// 		content:<></>
-// 		title
-// 		content
-// 		prev/next
-
-// 	OnboardingPage
-// 		title:
-// 			div
-// 				"How would you like to use Void?"
-// 		content:
-// 			ModelQuestionContent
-// 				|
-// 					div
-// 						"I want to:"
-// 					div
-// 						"Use the smartest models"
-// 						"Keep my data fully private"
-// 						"Save money"
-// 						"I don't know"
-// 				| div
-// 					| div
-// 						"We recommend using "
-// 						"Set API"
-// 					| div
-// 						""
-// 					| div
-//
-// 		title
-// 		content
-// 		prev/next
-//
-// 	OnboardingPage
-// 		title
-// 		content
-// 		prev/next
 
 const NextButton = ({ onClick, ...props }: { onClick: () => void } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
-
-	// Create a new props object without the disabled attribute
 	const { disabled, ...buttonProps } = props;
-
 	return (
 		<button
 			onClick={disabled ? undefined : onClick}
@@ -329,7 +276,7 @@ const NextButton = ({ onClick, ...props }: { onClick: () => void } & React.Butto
 			`}
 			{...disabled && {
 				'data-tooltip-id': 'loophole-tooltip',
-				"data-tooltip-content": 'Please enter all required fields or choose another provider', // (double-click to proceed anyway, can come back in Settings)
+				"data-tooltip-content": 'Please enter all required fields or choose another provider',
 				"data-tooltip-place": 'top',
 			}}
 			{...buttonProps}
@@ -351,8 +298,6 @@ const PreviousButton = ({ onClick, ...props }: { onClick: () => void } & React.B
 	)
 }
 
-
-
 const OnboardingPageShell = ({ top, bottom, content, hasMaxWidth = true, className = '', }: {
 	top?: React.ReactNode,
 	bottom?: React.ReactNode,
@@ -370,7 +315,6 @@ const OnboardingPageShell = ({ top, bottom, content, hasMaxWidth = true, classNa
 }
 
 const OllamaDownloadOrRemoveModelButton = ({ modelName, isModelInstalled, sizeGb }: { modelName: string, isModelInstalled: boolean, sizeGb: number | false | 'not-known' }) => {
-	// for now just link to the ollama download page
 	return <a
 		href={`https://ollama.com/library/${modelName}`}
 		target="_blank"
@@ -379,12 +323,9 @@ const OllamaDownloadOrRemoveModelButton = ({ modelName, isModelInstalled, sizeGb
 	>
 		<ExternalLink className="w-3.5 h-3.5" />
 	</a>
-
 }
 
-
 const YesNoText = ({ val }: { val: boolean | null }) => {
-
 	return <div
 		className={
 			val === true ? "text text-emerald-500"
@@ -392,58 +333,28 @@ const YesNoText = ({ val }: { val: boolean | null }) => {
 					: "text text-amber-300"
 		}
 	>
-		{
-			val === true ? "Yes"
-				: val === false ? 'No'
-					: "Yes*"
-		}
+		{val === true ? "Yes" : val === false ? 'No' : "Yes*"}
 	</div>
-
 }
-
-
 
 const abbreviateNumber = (num: number): string => {
-	if (num >= 1000000) {
-		// For millions
-		return Math.floor(num / 1000000) + 'M';
-	} else if (num >= 1000) {
-		// For thousands
-		return Math.floor(num / 1000) + 'K';
-	} else {
-		// For numbers less than 1000
-		return num.toString();
-	}
+	if (num >= 1000000) return Math.floor(num / 1000000) + 'M';
+	else if (num >= 1000) return Math.floor(num / 1000) + 'K';
+	else return num.toString();
 }
 
-
-
-
-
 const PrimaryActionButton = ({ children, className, ringSize, ...props }: { children: React.ReactNode, ringSize?: undefined | 'xl' | 'screen' } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
-
-
 	return (
 		<button
 			type='button'
 			className={`
 				flex items-center justify-center
-
 				text-white dark:text-black
 				bg-black/90 dark:bg-white/90
-
-				${ringSize === 'xl' ? `
-					gap-2 px-16 py-8
-					transition-all duration-300 ease-in-out
-					`
-					: ringSize === 'screen' ? `
-					gap-2 px-16 py-8
-					transition-all duration-1000 ease-in-out
-					`: ringSize === undefined ? `
-					gap-1 px-4 py-2
-					transition-all duration-300 ease-in-out
-				`: ''}
-
+				${ringSize === 'xl' ? `gap-2 px-16 py-8 transition-all duration-300 ease-in-out`
+					: ringSize === 'screen' ? `gap-2 px-16 py-8 transition-all duration-1000 ease-in-out`
+					: ringSize === undefined ? `gap-1 px-4 py-2 transition-all duration-300 ease-in-out`
+					: ''}
 				rounded-lg
 				group
 				${className}
@@ -454,7 +365,6 @@ const PrimaryActionButton = ({ children, className, ringSize, ...props }: { chil
 			<ChevronRight
 				className={`
 					transition-all duration-300 ease-in-out
-
 					transform
 					group-hover:translate-x-1
 					group-active:translate-x-1
@@ -464,11 +374,165 @@ const PrimaryActionButton = ({ children, className, ringSize, ...props }: { chil
 	)
 }
 
+// =============================================
+//  ThemePickerPage
+// =============================================
+
+type ThemeOption = {
+	name: string;
+	id: string;      // real VS Code theme ID from package.json
+	isDark: boolean;
+	isLoophole: boolean;
+}
+
+const themeOptions: ThemeOption[] = [
+	{ name: 'Loophole Dark',  id: 'Loophole Dark',  isDark: true,  isLoophole: true  },
+	{ name: 'Loophole Light', id: 'Loophole Light', isDark: false, isLoophole: true  },
+	{ name: 'Dark 2026',      id: 'Dark 2026',      isDark: true,  isLoophole: false },
+	{ name: 'Light 2026',     id: 'Light 2026',     isDark: false, isLoophole: false },
+]
+
+const ThemePickerPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
+	const accessor = useAccessor()
+	const [selectedThemeId, setSelectedThemeId] = useState<string>('Loophole Dark')
+
+	const applyTheme = (themeId: string) => {
+		// Get IWorkbenchThemeService via IInstantiationService — it's a superset of IThemeService
+		// and exposes setColorTheme which IThemeService does not.
+		const instantiationService = accessor.get('IInstantiationService')
+		const workbenchThemeService = instantiationService.invokeFunction((a) => a.get(IWorkbenchThemeService))
+		workbenchThemeService.setColorTheme(themeId, 'auto')
+	}
+
+	const navButtons = (
+		<div className="max-w-[700px] w-full mx-auto flex flex-col items-end">
+			<div className="flex items-center gap-2">
+				<PreviousButton onClick={() => setPageIndex(pageIndex - 1)} />
+				<NextButton onClick={() => setPageIndex(pageIndex + 1)} />
+			</div>
+		</div>
+	)
+
+	return (
+		<OnboardingPageShell
+			hasMaxWidth={false}
+			content={
+				<div className="flex flex-col items-center w-full max-w-[700px] mx-auto">
+					<div className="text-5xl font-light text-center mb-12">Choose your theme</div>
+
+					<div className="grid grid-cols-2 gap-5 w-full mb-8">
+						{themeOptions.map((theme) => (
+							<div
+								key={theme.id}
+								className={`
+									relative cursor-pointer rounded-xl p-4 border-2 transition-all duration-200
+									${selectedThemeId === theme.id
+										? 'border-loophole-fg-1 bg-loophole-bg-2'
+										: 'border-loophole-border-2 hover:border-loophole-border-1'
+									}
+								`}
+								onClick={() => {
+									setSelectedThemeId(theme.id)
+									applyTheme(theme.id)
+								}}
+							>
+								{/* Theme Preview */}
+								<div
+									className="w-full h-36 rounded-lg mb-3 overflow-hidden"
+									style={{
+										background: theme.isLoophole
+											? (theme.isDark ? '#131210' : '#ffffff')
+											: (theme.isDark ? '#1e1e1e' : '#ffffff'),
+										padding: '8px',
+										fontFamily: 'Consolas, Monaco, monospace',
+										fontSize: '11px',
+									}}
+								>
+									{/* Header bar */}
+									<div
+										className="flex gap-1 mb-2 p-1 rounded"
+										style={{
+											background: theme.isLoophole
+												? (theme.isDark ? '#24221e' : '#f0f0f0')
+												: (theme.isDark ? '#181818' : '#f3f3f3'),
+										}}
+									>
+										<div
+											className="w-2 h-2 rounded-full"
+											style={{
+												background: theme.isLoophole
+													? '#80cbc4'
+													: (theme.isDark ? '#3d3d3d' : '#d0d0d0')
+											}}
+										/>
+									</div>
+
+									{/* Code preview */}
+									<div style={{
+										color: theme.isLoophole
+											? (theme.isDark ? '#dfd9d0' : '#2d2d2d')
+											: (theme.isDark ? '#d4d4d4' : '#333333')
+									}}>
+										<div>
+											<span style={{
+												color: theme.isLoophole
+													? (theme.isDark ? '#89DDFF' : '#4a90d9')
+													: (theme.isDark ? '#569cd6' : '#0000ff')
+											}}>function</span>{' '}
+											<span style={{
+												color: theme.isLoophole
+													? (theme.isDark ? '#82AAFF' : '#4a7cc9')
+													: (theme.isDark ? '#dcdcaa' : '#795e26')
+											}}>add</span>
+											(x, y) {'{'}
+										</div>
+										<div style={{ paddingLeft: '12px' }}>
+											<span style={{
+												color: theme.isLoophole
+													? (theme.isDark ? '#89DDFF' : '#4a90d9')
+													: (theme.isDark ? '#569cd6' : '#0000ff')
+											}}>return</span>{' '}
+											x + y;
+										</div>
+										<div style={{
+											color: theme.isLoophole
+												? (theme.isDark ? '#46443e' : '#6b6b6b')
+												: (theme.isDark ? '#6a9955' : '#008000')
+										}}>
+											{'// code comment'}
+										</div>
+										<div>{'}'}</div>
+									</div>
+								</div>
+
+								{/* Theme name */}
+								<div className="text-center text-sm font-medium text-loophole-fg-1">
+									{theme.name}
+								</div>
+
+								{/* Selected indicator */}
+								{selectedThemeId === theme.id && (
+									<div className="absolute top-3 right-3">
+										<Check className="w-5 h-5 text-loophole-fg-1" />
+									</div>
+								)}
+							</div>
+						))}
+					</div>
+				</div>
+			}
+			bottom={navButtons}
+		/>
+	)
+}
+
+// =============================================
+//  LoopholeOnboardingContent
+// =============================================
 
 type WantToUseOption = 'smart' | 'private' | 'cheap' | 'all'
 
 const LoopholeOnboardingContent = () => {
-
 
 	const accessor = useAccessor()
 	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
@@ -478,18 +542,13 @@ const LoopholeOnboardingContent = () => {
 
 	const [pageIndex, setPageIndex] = useState(0)
 
-
-	// page 1 state
 	const [wantToUseOption, setWantToUseOption] = useState<WantToUseOption>('smart')
 
-	// Replace the single selectedProviderName with four separate states
-	// page 2 state - each tab gets its own state
 	const [selectedIntelligentProvider, setSelectedIntelligentProvider] = useState<ProviderName>('anthropic');
 	const [selectedPrivateProvider, setSelectedPrivateProvider] = useState<ProviderName>('ollama');
 	const [selectedAffordableProvider, setSelectedAffordableProvider] = useState<ProviderName>('gemini');
 	const [selectedAllProvider, setSelectedAllProvider] = useState<ProviderName>('anthropic');
 
-	// Helper function to get the current selected provider based on active tab
 	const getSelectedProvider = (): ProviderName => {
 		switch (wantToUseOption) {
 			case 'smart': return selectedIntelligentProvider;
@@ -499,7 +558,6 @@ const LoopholeOnboardingContent = () => {
 		}
 	}
 
-	// Helper function to set the selected provider for the current tab
 	const setSelectedProvider = (provider: ProviderName) => {
 		switch (wantToUseOption) {
 			case 'smart': setSelectedIntelligentProvider(provider); break;
@@ -516,43 +574,32 @@ const LoopholeOnboardingContent = () => {
 		all: providerNames,
 	}
 
-
 	const selectedProviderName = getSelectedProvider();
 	const didFillInProviderSettings = selectedProviderName && loopholeSettingsState.settingsOfProvider[selectedProviderName]._didFillInProviderSettings
 	const isApiKeyLongEnoughIfApiKeyExists = selectedProviderName && loopholeSettingsState.settingsOfProvider[selectedProviderName].apiKey ? loopholeSettingsState.settingsOfProvider[selectedProviderName].apiKey.length > 15 : true
 	const isAtLeastOneModel = selectedProviderName && loopholeSettingsState.settingsOfProvider[selectedProviderName].models.length >= 1
-
 	const didFillInSelectedProviderSettings = !!(didFillInProviderSettings && isApiKeyLongEnoughIfApiKeyExists && isAtLeastOneModel)
 
 	const prevAndNextButtons = <div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
 		<div className="flex items-center gap-2">
-			<PreviousButton
-				onClick={() => { setPageIndex(pageIndex - 1) }}
-			/>
-			<NextButton
-				onClick={() => { setPageIndex(pageIndex + 1) }}
-			/>
+			<PreviousButton onClick={() => { setPageIndex(pageIndex - 1) }} />
+			<NextButton onClick={() => { setPageIndex(pageIndex + 1) }} />
 		</div>
 	</div>
 
-
 	const lastPagePrevAndNextButtons = <div className="max-w-[600px] w-full mx-auto flex flex-col items-end">
 		<div className="flex items-center gap-2">
-			<PreviousButton
-				onClick={() => { setPageIndex(pageIndex - 1) }}
-			/>
+			<PreviousButton onClick={() => { setPageIndex(pageIndex - 1) }} />
 			<PrimaryActionButton
 				onClick={() => {
 					loopholeSettingsService.setGlobalSetting('isOnboardingComplete', true);
 					loopholeMetricsService.capture('Completed Onboarding', { selectedProviderName, wantToUseOption })
 				}}
-				 ringSize={loopholeSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
+				ringSize={loopholeSettingsState.globalSettings.isOnboardingComplete ? 'screen' : undefined}
 			>Enter Loophole</PrimaryActionButton>
 		</div>
 	</div>
 
-
-	// cannot be md
 	const basicDescOfWantToUseOption: { [wantToUseOption in WantToUseOption]: string } = {
 		smart: "Models with the best performance on benchmarks.",
 		private: "Host on your computer or local network for full data privacy.",
@@ -560,7 +607,6 @@ const LoopholeOnboardingContent = () => {
 		all: "",
 	}
 
-	// can be md
 	const detailedDescOfWantToUseOption: { [wantToUseOption in WantToUseOption]: string } = {
 		smart: "Most intelligent and best for agent mode.",
 		private: "Private-hosted so your data never leaves your computer or network. [Email us](mailto:hello@loophole.dev) for help setting up at your company.",
@@ -568,66 +614,56 @@ const LoopholeOnboardingContent = () => {
 		all: "",
 	}
 
-	// Modified: initialize separate provider states on initial render instead of watching wantToUseOption changes
 	useEffect(() => {
-		if (selectedIntelligentProvider === undefined) {
-			setSelectedIntelligentProvider(providerNamesOfWantToUseOption['smart'][0]);
-		}
-		if (selectedPrivateProvider === undefined) {
-			setSelectedPrivateProvider(providerNamesOfWantToUseOption['private'][0]);
-		}
-		if (selectedAffordableProvider === undefined) {
-			setSelectedAffordableProvider(providerNamesOfWantToUseOption['cheap'][0]);
-		}
-		if (selectedAllProvider === undefined) {
-			setSelectedAllProvider(providerNamesOfWantToUseOption['all'][0]);
-		}
+		if (selectedIntelligentProvider === undefined) setSelectedIntelligentProvider(providerNamesOfWantToUseOption['smart'][0]);
+		if (selectedPrivateProvider === undefined) setSelectedPrivateProvider(providerNamesOfWantToUseOption['private'][0]);
+		if (selectedAffordableProvider === undefined) setSelectedAffordableProvider(providerNamesOfWantToUseOption['cheap'][0]);
+		if (selectedAllProvider === undefined) setSelectedAllProvider(providerNamesOfWantToUseOption['all'][0]);
 	}, []);
 
 	// reset the page to page 0 if the user redos onboarding
+	const prevIsComplete = useRef(loopholeSettingsState.globalSettings.isOnboardingComplete)
 	useEffect(() => {
-		if (!loopholeSettingsState.globalSettings.isOnboardingComplete) {
+		const isComplete = loopholeSettingsState.globalSettings.isOnboardingComplete
+		if (prevIsComplete.current === true && isComplete === false) {
 			setPageIndex(0)
 		}
-	}, [setPageIndex, loopholeSettingsState.globalSettings.isOnboardingComplete])
-
+		prevIsComplete.current = isComplete
+	}, [loopholeSettingsState.globalSettings.isOnboardingComplete])
 
 	const contentOfIdx: { [pageIndex: number]: React.ReactNode } = {
+		// Page 0: Welcome
 		0: <OnboardingPageShell
 			content={
 				<div className='flex flex-col items-center gap-8'>
 					<div className="text-5xl font-light text-center">Welcome to Loophole</div>
-					{/* Slice of Loophole image */}
 					<div className='max-w-md w-full h-[30vh] mx-auto flex items-center justify-center'>
 						{!isLinux && <LoopholeIcon />}
 					</div>
-
-
-					<FadeIn
-						delayMs={1000}
-					>
-						<PrimaryActionButton
-							onClick={() => { setPageIndex(1) }}
-						>
+					<FadeIn delayMs={1000}>
+						<PrimaryActionButton onClick={() => { setPageIndex(1) }}>
 							Get Started
 						</PrimaryActionButton>
 					</FadeIn>
-
 				</div>
 			}
 		/>,
 
+		// Page 1: Add a Provider
 		1: <OnboardingPageShell hasMaxWidth={false}
 			content={
 				<AddProvidersPage pageIndex={pageIndex} setPageIndex={setPageIndex} />
 			}
 		/>,
-		2: <OnboardingPageShell
 
+		// Page 2: Choose Your Theme (NEW)
+		2: <ThemePickerPage pageIndex={pageIndex} setPageIndex={setPageIndex} />,
+
+		// Page 3: Settings and editor import
+		3: <OnboardingPageShell
 			content={
 				<div>
 					<div className="text-5xl font-light text-center">Settings and Themes</div>
-
 					<div className="mt-8 text-center flex flex-col items-center gap-4 w-full max-w-md mx-auto">
 						<h4 className="text-loophole-fg-3 mb-4">Transfer your settings from an existing editor?</h4>
 						<OneClickSwitchButton className='w-full px-4 py-2' fromEditor="VS Code" />
@@ -639,7 +675,6 @@ const LoopholeOnboardingContent = () => {
 			bottom={lastPagePrevAndNextButtons}
 		/>,
 	}
-
 
 	return <div key={pageIndex} className="w-full h-[80vh] text-left mx-auto flex flex-col items-center justify-center">
 		<ErrorBoundary>
