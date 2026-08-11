@@ -52,6 +52,8 @@ const LoopholeIcon = () => {
 			const theme = themeService.getColorTheme().type
 			const isDark = theme === ColorScheme.DARK || theme === ColorScheme.HIGH_CONTRAST_DARK
 			if (divRef.current) {
+				divRef.current.style.maxWidth = '220px'
+				divRef.current.style.opacity = '50%'
 				divRef.current.style.filter = isDark ? '' : 'invert(1)'
 			}
 		}
@@ -60,15 +62,7 @@ const LoopholeIcon = () => {
 		return () => d.dispose()
 	}, [])
 
-	return (
-		<div ref={divRef} style={{ maxWidth: '180px', opacity: 0.7 }}>
-			<img
-				src={require('../../../../../../../../../../../../logo/onboarding_logo180.png')}
-				alt="Loophole"
-				style={{ width: '100%', height: 'auto' }}
-			/>
-		</div>
-	)
+	return <div ref={divRef} className='@@loophole-loophole-icon' />
 }
 
 const FADE_DURATION_MS = 2000
