@@ -64,3 +64,6 @@ import './tokenUsageStatusBar.js'
 import './tokenUsageDialogService.js'
 // register report issue status bar
 import './reportIssueStatusBar.js'
+// register Repo Wiki service + activity bar pane
+import './repoWikiService.js'
+import './wikiPane.js'
