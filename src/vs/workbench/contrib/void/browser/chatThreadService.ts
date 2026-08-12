@@ -11,7 +11,7 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
 import { URI } from '../../../../base/common/uri.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { ILLMMessageService } from '../common/sendLLMMessageService.js';
-import { chat_userMessageContent, isABuiltinToolName } from '../common/prompt/prompts.js';
+import { chat_userMessageContent, isABuiltinToolName, team_memberSystemMessage, teamMembers, TeamMemberName } from '../common/prompt/prompts.js';
 import { AnthropicReasoning, getErrorMessage, RawToolCallObj, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { FeatureName, ModelSelection, ModelSelectionOptions } from '../common/voidSettingsTypes.js';
@@ -291,6 +291,9 @@ export interface IChatThreadService {
 
 	// sub-agent: run a full agentic loop with tools, returns the final assistant text
 	runSubAgentLoop(opts: { prompt: string, chatMode: import('../common/voidSettingsTypes.js').ChatMode, modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null, parentThreadId: string }): Promise<string>;
+
+	// team mode: run 7 specialized agents in sequence, stream results back into the thread
+	runTeamPipeline(opts: { userMessage: string, threadId: string }): Promise<void>;
 
 	// // current thread's staging selections
 	// closeCurrentStagingSelectionsInMessage(opts: { messageIdx: number }): void;
@@ -582,6 +585,91 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		this._setState({ allThreads: remainingThreads })
 
 		return lastAssistantText || '(no output)'
+	}
+
+	// ─── TEAM MODE PIPELINE ──────────────────────────────────────────────────
+	// Runs 7 specialized agents in sequence. Each one sees the original user
+	// request plus all prior members' outputs. Results are streamed into the
+	// thread as a single formatted assistant message.
+	runTeamPipeline = async ({ userMessage, threadId }: { userMessage: string, threadId: string }): Promise<void> => {
+		const modelSelection = this._settingsService.state.modelSelectionOfFeature['Chat']
+		if (!modelSelection) return
+
+		const overridesOfModel = this._settingsService.state.overridesOfModel
+		const modelSelectionOptions = this._settingsService.state.optionsOfModelSelection['Chat']?.[modelSelection.providerName]?.[modelSelection.modelName]
+
+		const previousOutputs: { title: string, output: string }[] = []
+
+		for (const member of teamMembers) {
+			const systemPrompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, previousOutputs)
+
+			// Build a single-turn message: just the user request (context is in system prompt)
+			const messages: import('../common/sendLLMMessageTypes.js').LLMChatMessage[] = [
+				{ role: 'user', content: userMessage }
+			]
+
+			let memberOutput = ''
+
+			await new Promise<void>((resolve) => {
+				this._llmMessageService.sendLLMMessage({
+					messagesType: 'chatMessages',
+					chatMode: 'normal',
+					messages,
+					modelSelection,
+					modelSelectionOptions,
+					overridesOfModel,
+					separateSystemMessage: systemPrompt,
+					logging: { loggingName: `Team - ${member.title}`, loggingExtras: { threadId } },
+					onText: ({ fullText }) => {
+						memberOutput = fullText
+						// Build the running display: all previous members + current streaming member
+						const completedParts = previousOutputs.map(o => `**${o.title}**\n\n${o.output}`).join('\n\n---\n\n')
+						const streamingPart = `**${member.title}**\n\n${fullText}`
+						const displayContent = completedParts
+							? `${completedParts}\n\n---\n\n${streamingPart}`
+							: streamingPart
+
+						this._setStreamState(threadId, {
+							isRunning: 'LLM',
+							llmInfo: {
+								displayContentSoFar: displayContent,
+								reasoningSoFar: '',
+								toolCallSoFar: null,
+							},
+							interrupt: Promise.resolve(() => {}),
+						})
+					},
+					onFinalMessage: ({ fullText }) => {
+						memberOutput = fullText
+						resolve()
+					},
+					onError: ({ message }) => {
+						memberOutput = `(error: ${message})`
+						resolve() // keep going even if one member fails
+					},
+					onAbort: () => {
+						resolve()
+					},
+				})
+			})
+
+			previousOutputs.push({ title: member.title, output: memberOutput })
+		}
+
+		// Commit the full team response as a single assistant message
+		const fullResponse = previousOutputs
+			.map(o => `**${o.title}**\n\n${o.output}`)
+			.join('\n\n---\n\n')
+
+		this._addMessageToThread(threadId, {
+			role: 'assistant',
+			displayContent: fullResponse,
+			reasoning: '',
+			anthropicReasoning: null,
+		})
+
+		this._setStreamState(threadId, undefined)
+		this._addUserCheckpoint({ threadId })
 	}
 
 	getTodosForThread = (threadId: string): import('../common/toolsServiceTypes.js').TodoItem[] => {
@@ -2022,10 +2110,19 @@ We only need to do it for files that were edited since `from`, ie files between 
 
 		this._setThreadState(threadId, { currCheckpointIdx: null }) // no longer at a checkpoint because started streaming
 
-		this._wrapRunAgentToNotify(
-			this._runChatAgent({ threadId, ...this._currentModelSelectionProps(), }),
-			threadId,
-		)
+		const { chatMode } = this._settingsService.state.globalSettings
+
+		if (chatMode === 'team') {
+			this._wrapRunAgentToNotify(
+				this.runTeamPipeline({ userMessage, threadId }),
+				threadId,
+			)
+		} else {
+			this._wrapRunAgentToNotify(
+				this._runChatAgent({ threadId, ...this._currentModelSelectionProps(), }),
+				threadId,
+			)
+		}
 
 		// scroll to bottom
 		this.state.allThreads[threadId]?.state.mountedInfo?.whenMounted.then(m => {
