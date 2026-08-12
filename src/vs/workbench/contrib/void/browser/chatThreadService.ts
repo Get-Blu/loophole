@@ -603,9 +603,10 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		for (const member of teamMembers) {
 			const systemPrompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, previousOutputs)
 
-			// Build a single-turn message: just the user request (context is in system prompt)
+			// Inject system prompt as first message — works for all providers (OpenAI-compatible + Anthropic)
 			const messages: import('../common/sendLLMMessageTypes.js').LLMChatMessage[] = [
-				{ role: 'user', content: userMessage }
+				{ role: 'system', content: systemPrompt },
+				{ role: 'user', content: userMessage },
 			]
 
 			let memberOutput = ''
@@ -618,7 +619,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					modelSelection,
 					modelSelectionOptions,
 					overridesOfModel,
-					separateSystemMessage: systemPrompt,
+					separateSystemMessage: undefined,
 					logging: { loggingName: `Team - ${member.title}`, loggingExtras: { threadId } },
 					onText: ({ fullText }) => {
 						memberOutput = fullText
