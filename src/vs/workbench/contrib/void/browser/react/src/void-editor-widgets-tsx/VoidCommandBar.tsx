@@ -159,9 +159,9 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
         if (currFileIdx === null) {
                 return (
                         <div className="pointer-events-auto" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-                                <div style={{ display: 'inline-flex', alignItems: 'center', background: '#1c1c1c', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.09)', padding: '4px 6px', gap: '2px', height: '36px' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', background: '#1c1c1c', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.09)', padding: '2px 4px', gap: '2px', height: '28px' }}>
                                         <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', padding: '0 4px', fontWeight: 500 }}>Next File</span>
-                                        <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.72)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', borderRadius: '5px', padding: '0' }} onClick={() => commandBarService.goToURIIdx(nextURIIdx)}>
+                                        <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.72)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '5px', padding: '0' }} onClick={() => commandBarService.goToURIIdx(nextURIIdx)}>
                                                 <MoveRight className='size-3.5' />
                                         </button>
                                 </div>
@@ -179,8 +179,8 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '24px',
-                height: '24px',
+                width: '20px',
+                height: '20px',
                 borderRadius: '5px',
                 padding: 0,
                 transition: 'background 0.1s',
@@ -194,14 +194,14 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                 background: '#1c1c1c',
                 borderRadius: '10px',
                 border: '1px solid rgba(255,255,255,0.09)',
-                padding: '4px 6px',
+                padding: '2px 4px',
                 gap: '2px',
-                height: '36px',
+                height: '28px',
         }
 
         const vDividerStyle: React.CSSProperties = {
                 width: '1px',
-                height: '18px',
+                height: '14px',
                 background: 'rgba(255,255,255,0.1)',
                 margin: '0 4px',
                 flexShrink: 0,
@@ -271,8 +271,8 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                                                                         color: 'rgba(255,255,255,0.82)',
                                                                         fontSize: '12px',
                                                                         fontWeight: 500,
-                                                                        padding: '0 12px',
-                                                                        height: '26px',
+                                                                        padding: '0 10px',
+                                                                        height: '22px',
                                                                         borderRadius: '6px',
                                                                         cursor: 'pointer',
                                                                         whiteSpace: 'nowrap',
@@ -280,10 +280,8 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                                                                         flexShrink: 0,
                                                                 }}
                                                         >
+                                                                <X size={11} />
                                                                 Reject File
-                                                                {rejectFileKeybindLabel && (
-                                                                        <span style={{ fontSize: '10.5px', opacity: 0.5 }}>{rejectFileKeybindLabel}</span>
-                                                                )}
                                                         </button>
 
                                                         {/* 3px gap */}
@@ -304,8 +302,8 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                                                                         color: '#111111',
                                                                         fontSize: '12px',
                                                                         fontWeight: 600,
-                                                                        padding: '0 12px',
-                                                                        height: '26px',
+                                                                        padding: '0 10px',
+                                                                        height: '22px',
                                                                         borderRadius: '6px',
                                                                         cursor: 'pointer',
                                                                         whiteSpace: 'nowrap',
@@ -313,10 +311,8 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                                                                         flexShrink: 0,
                                                                 }}
                                                         >
+                                                                <Check size={11} />
                                                                 Accept File
-                                                                {acceptFileKeybindLabel && (
-                                                                        <span style={{ fontSize: '10.5px', opacity: 0.45, color: '#444' }}>{acceptFileKeybindLabel}</span>
-                                                                )}
                                                         </button>
                                                 </>
                                         )}
