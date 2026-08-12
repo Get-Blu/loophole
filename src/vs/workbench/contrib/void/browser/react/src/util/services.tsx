@@ -52,6 +52,8 @@ import { ITerminalService } from '../../../../../terminal/browser/terminal.js'
 import { ISearchService } from '../../../../../../services/search/common/search.js'
 import { IExtensionManagementService } from '../../../../../../../platform/extensionManagement/common/extensionManagement.js'
 import { IMCPService } from '../../../../common/mcpService.js';
+import { IRepoWikiService } from '../../../repoWikiService.js';
+import { WikiState } from '../../../../common/repoWikiTypes.js';
 import { IStorageService, StorageScope } from '../../../../../../../platform/storage/common/storage.js'
 import { OPT_OUT_KEY } from '../../../../common/storageKeys.js'
 import { IFileDialogService } from '../../../../../../../platform/dialogs/common/dialogs.js';
@@ -89,6 +91,9 @@ const tokenUsageListeners: Set<(total: number) => void> = new Set()
 let estimatedCostTotal: number = 0
 const estimatedCostListeners: Set<(cost: number) => void> = new Set()
 
+let wikiState: WikiState
+const wikiStateListeners: Set<(s: WikiState) => void> = new Set()
+
 
 // must call this before you can use any of the hooks below
 // this should only be called ONCE! this is the only place you don't need to dispose onDidChange. If you use state.onDidChange anywhere else, make sure to dispose it!
@@ -108,9 +113,18 @@ export const _registerServices = (accessor: ServicesAccessor) => {
 		modelService: accessor.get(IModelService),
 		mcpService: accessor.get(IMCPService),
 		tokenUsageService: accessor.get(ITokenUsageService),
+		repoWikiService: accessor.get(IRepoWikiService),
 	}
 
-	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService, tokenUsageService } = stateServices
+	const { settingsStateService, chatThreadsStateService, refreshModelService, themeService, editCodeService, voidCommandBarService, modelService, mcpService, tokenUsageService, repoWikiService } = stateServices
+
+	wikiState = repoWikiService.state
+	disposables.push(
+		repoWikiService.onDidChangeState(() => {
+			wikiState = repoWikiService.state
+			wikiStateListeners.forEach(l => l(wikiState))
+		})
+	)
 
 
 
@@ -249,6 +263,7 @@ const getReactAccessor = (accessor: ServicesAccessor) => {
 		IStorageService: accessor.get(IStorageService),
 		IFileDialogService: accessor.get(IFileDialogService),
 		ITokenUsageService: accessor.get(ITokenUsageService),
+		IRepoWikiService: accessor.get(IRepoWikiService),
 
 	} as const
 	return reactAccessor
@@ -360,6 +375,16 @@ export const useCtrlKZoneStreamingState = (listener: (diffareaid: number, s: boo
 		ctrlKZoneStreamingStateListeners.add(listener)
 		return () => { ctrlKZoneStreamingStateListeners.delete(listener) }
 	}, [listener, ctrlKZoneStreamingStateListeners])
+}
+
+export const useWikiState = () => {
+	const [s, ss] = useState(wikiState)
+	useEffect(() => {
+		ss(wikiState)
+		wikiStateListeners.add(ss)
+		return () => { wikiStateListeners.delete(ss) }
+	}, [ss])
+	return s
 }
 
 export const useIsDark = () => {
