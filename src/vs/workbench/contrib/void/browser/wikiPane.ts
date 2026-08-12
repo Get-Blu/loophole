@@ -29,12 +29,7 @@ import { Orientation } from '../../../../base/browser/ui/sash/sash.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { ServicesAccessor } from '../../../../editor/browser/editorExtensions.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
-import { mountFnGenerator } from './react/src/util/mountFnGenerator.js';
-import { SidebarWiki } from './react/src/wiki-tsx/SidebarWiki.js';
-
-// ─── MOUNT FUNCTION ──────────────────────────────────────────────────────────
-
-const mountWiki = mountFnGenerator(SidebarWiki);
+import { mountWiki } from './react/out/wiki-tsx/index.js';
 
 // ─── ICON ────────────────────────────────────────────────────────────────────
 
