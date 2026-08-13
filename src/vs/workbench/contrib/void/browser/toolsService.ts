@@ -692,6 +692,12 @@ export class ToolsService implements IToolsService {
 			},
 
 			task: async ({ description, prompt, subagentType, taskId, background }) => {
+				// ── Depth guard: task tool cannot be called from within a sub-agent ──
+				// Prevents runaway recursive agent spawning (mirrors DSCode's DSCODE_SUBAGENT_DEPTH guard).
+				if ((globalThis as any).__loopholeSubagentDepth >= 1) {
+					return { result: { output: '(sub-agent not started: max nesting depth reached — sub-agents cannot spawn further sub-agents)', taskId: taskId ?? `task-${Date.now()}` } }
+				}
+				;(globalThis as any).__loopholeSubagentDepth = ((globalThis as any).__loopholeSubagentDepth ?? 0) + 1
 				const isResearcher = subagentType === 'researcher'
 				const subagentChatMode = isResearcher ? 'gather' : 'agent'
 
@@ -729,6 +735,9 @@ export class ToolsService implements IToolsService {
 						.catch(err => {
 							this.chatThreadService.injectBackgroundTaskResult(currentThreadId, resultTaskId, description, String(err?.message ?? err), 'error')
 						})
+						.finally(() => {
+							;(globalThis as any).__loopholeSubagentDepth = Math.max(0, ((globalThis as any).__loopholeSubagentDepth ?? 1) - 1)
+						})
 
 					return {
 						result: {
@@ -739,7 +748,12 @@ export class ToolsService implements IToolsService {
 				}
 
 				// Foreground — wait for result
-				const output = await runAgent()
+				let output: string
+				try {
+					output = await runAgent()
+				} finally {
+					;(globalThis as any).__loopholeSubagentDepth = Math.max(0, ((globalThis as any).__loopholeSubagentDepth ?? 1) - 1)
+				}
 				return { result: { output, taskId: resultTaskId } }
 			},
 			attempt_completion: async ({ result, command }) => {
