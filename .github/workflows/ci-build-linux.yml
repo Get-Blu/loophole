@@ -49,6 +49,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
+
       - name: Install React dependencies
         run: npm install
         working-directory: src/vs/workbench/contrib/void/browser/react
@@ -198,6 +202,10 @@ jobs:
         run: npm ci
         env:
           npm_config_arch: x64
+
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
 
       - name: Install React dependencies
         run: npm install
@@ -742,6 +750,10 @@ jobs:
         env:
           npm_config_arch: arm64
 
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
+
       - name: Install React dependencies
         run: npm install
         working-directory: src/vs/workbench/contrib/void/browser/react
@@ -1057,6 +1069,7 @@ jobs:
               git config --global safe.directory /workspace
 
               npm ci
+              cd extensions && npm install && cd -
               cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
               npm run gulp compile-build-without-mangling
@@ -1197,6 +1210,7 @@ jobs:
               git config --global safe.directory /workspace
 
               npm ci
+              cd extensions && npm install && cd -
               cd src/vs/workbench/contrib/void/browser/react && npm install && cd -
               npm run buildreact
               npm run gulp compile-build-without-mangling
