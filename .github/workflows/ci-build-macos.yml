@@ -44,6 +44,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
+
       - name: Install React dependencies
         run: npm install
         working-directory: src/vs/workbench/contrib/void/browser/react
@@ -147,6 +151,10 @@ jobs:
           # Authenticated so @vscode/ripgrep postinstall doesn't hit the 60/hr
           # unauthenticated GitHub API rate limit on shared macOS runners
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
 
       - name: Install React dependencies
         run: npm install
@@ -455,6 +463,10 @@ jobs:
           # Authenticated so @vscode/ripgrep postinstall doesn't hit the 60/hr
           # unauthenticated GitHub API rate limit on shared macOS runners
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
 
       - name: Install React dependencies
         run: npm install
