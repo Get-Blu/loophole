@@ -290,7 +290,7 @@ export interface IChatThreadService {
 	injectBackgroundTaskResult(threadId: string, taskId: string, description: string, output: string, state: 'completed' | 'error'): void;
 
 	// sub-agent: run a full agentic loop with tools, returns the final assistant text
-	runSubAgentLoop(opts: { prompt: string, chatMode: import('../common/voidSettingsTypes.js').ChatMode, modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null, parentThreadId: string }): Promise<string>;
+	runSubAgentLoop(opts: { prompt: string, chatMode: import('../common/voidSettingsTypes.js').ChatMode, modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null, parentThreadId: string, _depth?: number }): Promise<string>;
 
 	// team mode: run 7 specialized agents in sequence, stream results back into the thread
 	runTeamPipeline(opts: { userMessage: string, threadId: string }): Promise<void>;
@@ -478,12 +478,21 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	}
 
 	// Run a full agentic loop for a sub-agent task — gives the sub-agent full tool access
-	runSubAgentLoop = async ({ prompt, chatMode, modelSelection, parentThreadId }: {
+	runSubAgentLoop = async ({ prompt, chatMode, modelSelection, parentThreadId, _depth = 0 }: {
 		prompt: string,
 		chatMode: import('../common/voidSettingsTypes.js').ChatMode,
 		modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null,
 		parentThreadId: string,
+		_depth?: number,
 	}): Promise<string> => {
+		// ── Depth guard: prevent sub-agents from spawning more sub-agents ──────
+		// Mirrors DSCode's DSCODE_SUBAGENT_DEPTH check. Max depth is 1 — a top-level
+		// agent can spawn sub-agents, but those sub-agents cannot spawn further ones.
+		const MAX_SUBAGENT_DEPTH = 1
+		if (_depth >= MAX_SUBAGENT_DEPTH) {
+			return '(sub-agent not started: max nesting depth reached — sub-agents cannot spawn further sub-agents)'
+		}
+
 		// Create an ephemeral sub-thread to run the agent in
 		const subThreadId = generateUuid()
 		const subThread = newThreadObject()
@@ -588,77 +597,126 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	}
 
 	// ─── TEAM MODE PIPELINE ──────────────────────────────────────────────────
-	// Runs 7 specialized agents in sequence. Each one sees the original user
-	// request plus all prior members' outputs. Results are streamed into the
-	// thread as a single formatted assistant message.
+	// Runs 4 specialized agents in two parallel waves, each with a full agentic
+	// loop and real tool access, mirroring how DSCode's delegate tool works.
+	//
+	// Wave 1 (parallel): explorer + analyst
+	//   - chatMode: 'gather' (read-only tools only, no file writes)
+	//   - both run at the same time, independently
+	//
+	// Wave 2 (parallel): implementer + reviewer
+	//   - implementer: chatMode: 'agent' (full tool access — can write files)
+	//   - reviewer:    chatMode: 'gather' (read-only, critiques wave-1+2 context)
+	//   - both see the wave-1 outputs as context in their prompt
+	//
+	// After both waves complete, a final synthesis step produces the summary.
 	runTeamPipeline = async ({ userMessage, threadId }: { userMessage: string, threadId: string }): Promise<void> => {
 		const modelSelection = this._settingsService.state.modelSelectionOfFeature['Chat']
 		if (!modelSelection) return
 
-		const overridesOfModel = this._settingsService.state.overridesOfModel
-		const modelSelectionOptions = this._settingsService.state.optionsOfModelSelection['Chat']?.[modelSelection.providerName]?.[modelSelection.modelName]
-
-		const previousOutputs: { title: string, output: string }[] = []
-
-		for (const member of teamMembers) {
-			const systemPrompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, previousOutputs)
-
-			// Inject system prompt as first message — works for all providers (OpenAI-compatible + Anthropic)
-			const messages: import('../common/sendLLMMessageTypes.js').LLMChatMessage[] = [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: userMessage },
-			]
-
-			let memberOutput = ''
-
-			await new Promise<void>((resolve) => {
-				this._llmMessageService.sendLLMMessage({
-					messagesType: 'chatMessages',
-					chatMode: 'normal',
-					messages,
-					modelSelection,
-					modelSelectionOptions,
-					overridesOfModel,
-					separateSystemMessage: undefined,
-					logging: { loggingName: `Team - ${member.title}`, loggingExtras: { threadId } },
-					onText: ({ fullText }) => {
-						memberOutput = fullText
-						// Build the running display: all previous members + current streaming member
-						const completedParts = previousOutputs.map(o => `**${o.title}**\n\n${o.output}`).join('\n\n---\n\n')
-						const streamingPart = `**${member.title}**\n\n${fullText}`
-						const displayContent = completedParts
-							? `${completedParts}\n\n---\n\n${streamingPart}`
-							: streamingPart
-
-						this._setStreamState(threadId, {
-							isRunning: 'LLM',
-							llmInfo: {
-								displayContentSoFar: displayContent,
-								reasoningSoFar: '',
-								toolCallSoFar: null,
-							},
-							interrupt: Promise.resolve(() => {}),
-						})
-					},
-					onFinalMessage: ({ fullText }) => {
-						memberOutput = fullText
-						resolve()
-					},
-					onError: ({ message }) => {
-						memberOutput = `(error: ${message})`
-						resolve() // keep going even if one member fails
-					},
-					onAbort: () => {
-						resolve()
-					},
-				})
+		// ── helper: run up to `limit` agents concurrently ─────────────────────
+		const mapLimited = async <T, R>(
+			items: T[],
+			limit: number,
+			fn: (item: T) => Promise<R>,
+		): Promise<R[]> => {
+			const results = new Array<R>(items.length)
+			let cursor = 0
+			const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+				while (true) {
+					const index = cursor++
+					if (index >= items.length) return
+					results[index] = await fn(items[index]!)
+				}
 			})
-
-			previousOutputs.push({ title: member.title, output: memberOutput })
+			await Promise.all(workers)
+			return results
 		}
 
-		// Commit the full team response as a single assistant message
-		const fullResponse = previousOutputs
+		// ── helper: update the live display while agents are running ───────────
+		const completedOutputs: { title: string, output: string }[] = []
+		const updateDisplay = (inProgressLabel?: string, inProgressText?: string) => {
+			const parts = completedOutputs.map(o => `**${o.title}**\n\n${o.output}`)
+			if (inProgressLabel && inProgressText) {
+				parts.push(`**${inProgressLabel}** *(running…)*\n\n${inProgressText}`)
+			}
+			this._setStreamState(threadId, {
+				isRunning: 'LLM',
+				llmInfo: {
+					displayContentSoFar: parts.join('\n\n---\n\n'),
+					reasoningSoFar: '',
+					toolCallSoFar: null,
+				},
+				interrupt: Promise.resolve(() => {}),
+			})
+		}
+
+		// ── Wave 1: explorer + analyst run in parallel (read-only) ─────────────
+		updateDisplay('Wave 1 · Explorer + Analyst', 'Starting…')
+
+		const wave1Members = teamMembers.filter(m => m.wave === 1)
+		const wave1Results = await mapLimited(wave1Members, 2, async (member) => {
+			const prompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, [])
+			updateDisplay(`Wave 1 · ${member.title}`, 'Reading codebase…')
+			try {
+				const output = await this.runSubAgentLoop({
+					prompt,
+					chatMode: 'gather', // read-only: no writes allowed
+					modelSelection,
+					parentThreadId: threadId,
+				})
+				return { title: member.title, output }
+			} catch (e) {
+				return { title: member.title, output: `(error: ${e instanceof Error ? e.message : String(e)})` }
+			}
+		})
+
+		completedOutputs.push(...wave1Results)
+
+		// ── Wave 2: implementer (full agent) + reviewer (read-only) in parallel ─
+		updateDisplay('Wave 2 · Implementer + Reviewer', 'Starting…')
+
+		const wave2Members = teamMembers.filter(m => m.wave === 2)
+		const wave2Results = await mapLimited(wave2Members, 2, async (member) => {
+			const prompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, wave1Results)
+			const chatMode = member.name === 'implementer' ? 'agent' : 'gather'
+			updateDisplay(`Wave 2 · ${member.title}`, chatMode === 'agent' ? 'Implementing…' : 'Reviewing…')
+			try {
+				const output = await this.runSubAgentLoop({
+					prompt,
+					chatMode,
+					modelSelection,
+					parentThreadId: threadId,
+				})
+				return { title: member.title, output }
+			} catch (e) {
+				return { title: member.title, output: `(error: ${e instanceof Error ? e.message : String(e)})` }
+			}
+		})
+
+		completedOutputs.push(...wave2Results)
+
+		// ── Wave 3: single synthesis pass ──────────────────────────────────────
+		updateDisplay('Synthesis', 'Writing final summary…')
+
+		const allOutputs = [...wave1Results, ...wave2Results]
+		const synthesisMember = teamMembers.find(m => m.wave === 3)!
+		const synthesisPrompt = team_memberSystemMessage(synthesisMember.name as TeamMemberName, userMessage, allOutputs)
+		let synthesisOutput = ''
+		try {
+			synthesisOutput = await this.runSubAgentLoop({
+				prompt: synthesisPrompt,
+				chatMode: 'gather',
+				modelSelection,
+				parentThreadId: threadId,
+			})
+		} catch (e) {
+			synthesisOutput = `(error: ${e instanceof Error ? e.message : String(e)})`
+		}
+		completedOutputs.push({ title: synthesisMember.title, output: synthesisOutput })
+
+		// ── Commit the full response ───────────────────────────────────────────
+		const fullResponse = completedOutputs
 			.map(o => `**${o.title}**\n\n${o.output}`)
 			.join('\n\n---\n\n')
 
