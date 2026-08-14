@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import * as cookie from 'cookie';
+import { parse as cookieParse } from 'cookie';
 import * as fs from 'fs';
 import type * as http from 'http';
 import * as url from 'url';
@@ -127,6 +127,6 @@ export function requestHasValidConnectionToken(connectionToken: ServerConnection
 	}
 
 	// Otherwise, check if there is a valid cookie
-	const cookies = cookie.parse(req.headers.cookie || '');
+	const cookies = cookieParse(req.headers.cookie || '');
 	return connectionToken.validate(cookies[connectionTokenCookieName]);
 }
