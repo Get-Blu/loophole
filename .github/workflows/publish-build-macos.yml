@@ -272,14 +272,14 @@ jobs:
           cat sha256-hashes.json
 
       - name: Upload SHA256 hashes artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sha256-hashes-macos-x64
           path: sha256-hashes.json
           retention-days: 7
 
       - name: Upload — DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-x64-${{ env.VERSION }}-dmg
           path: dist/Loophole.x64.${{ env.VERSION }}.dmg
@@ -287,7 +287,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-x64-${{ env.VERSION }}-zip
           path: dist/Loophole-darwin-x64-${{ env.VERSION }}.zip
@@ -295,7 +295,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-darwin-x64-${{ env.VERSION }}
           path: dist/loophole-reh-darwin-x64-${{ env.VERSION }}.tar.gz
@@ -303,7 +303,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-darwin-x64-${{ env.VERSION }}
           path: dist/loophole-reh-web-darwin-x64-${{ env.VERSION }}.tar.gz
@@ -311,7 +311,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-darwin-x64-${{ env.VERSION }}
           path: dist/loophole-cli-darwin-x64-${{ env.VERSION }}.tar.gz
@@ -371,7 +371,7 @@ jobs:
           echo "]" >> gofile-links-x64.json
 
       - name: Upload Gofile links artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gofile-links-macos-x64
           path: gofile-links-x64.json
@@ -618,14 +618,14 @@ jobs:
           cat sha256-hashes.json
 
       - name: Upload SHA256 hashes artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sha256-hashes-macos-arm64
           path: sha256-hashes.json
           retention-days: 7
 
       - name: Upload — DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-arm64-${{ env.VERSION }}-dmg
           path: dist/Loophole.arm64.${{ env.VERSION }}.dmg
@@ -633,7 +633,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-arm64-${{ env.VERSION }}-zip
           path: dist/Loophole-darwin-arm64-${{ env.VERSION }}.zip
@@ -641,7 +641,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-darwin-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-darwin-arm64-${{ env.VERSION }}.tar.gz
@@ -649,7 +649,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-darwin-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-web-darwin-arm64-${{ env.VERSION }}.tar.gz
@@ -657,7 +657,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-darwin-arm64-${{ env.VERSION }}
           path: dist/loophole-cli-darwin-arm64-${{ env.VERSION }}.tar.gz
@@ -717,7 +717,7 @@ jobs:
           echo "]" >> gofile-links-arm64.json
 
       - name: Upload Gofile links artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gofile-links-macos-arm64
           path: gofile-links-arm64.json

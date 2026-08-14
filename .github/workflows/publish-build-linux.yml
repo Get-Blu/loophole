@@ -358,7 +358,7 @@ jobs:
 
       - name: Upload — Snapcraft debug log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: snapcraft-debug-log-x64
           path: .build/logs/snapcraft-x64-failure.log
@@ -440,14 +440,14 @@ jobs:
           cat sha256-hashes.json
 
       - name: Upload SHA256 hashes artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sha256-hashes-linux-x64
           path: sha256-hashes.json
           retention-days: 7
 
       - name: Upload — .deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-linux-x64-${{ env.VERSION }}-deb
           path: dist/loophole_${{ env.VERSION }}_amd64.deb
@@ -455,7 +455,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — .rpm
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-linux-x64-${{ env.VERSION }}-rpm
           path: dist/loophole-${{ env.VERSION }}-el8.x86_64.rpm
@@ -463,7 +463,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — tar.gz
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-linux-x64-${{ env.VERSION }}-targz
           path: dist/Loophole-linux-x64-${{ env.VERSION }}.tar.gz
@@ -471,7 +471,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — AppImage + zsync
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-linux-x64-${{ env.VERSION }}-appimage
           path: |
@@ -481,7 +481,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Snap
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-linux-x64-${{ env.VERSION }}-snap
           path: dist/loophole_${{ env.VERSION }}_amd64.snap
@@ -489,7 +489,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-linux-x64-${{ env.VERSION }}
           path: dist/loophole-reh-linux-x64-${{ env.VERSION }}.tar.gz
@@ -497,7 +497,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-linux-x64-${{ env.VERSION }}
           path: dist/loophole-reh-web-linux-x64-${{ env.VERSION }}.tar.gz
@@ -505,7 +505,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-linux-x64-${{ env.VERSION }}
           path: dist/loophole-cli-linux-x64-${{ env.VERSION }}.tar.gz
@@ -565,7 +565,7 @@ jobs:
           echo "]" >> gofile-links-x64.json
 
       - name: Upload Gofile links artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gofile-links-linux-x64
           path: gofile-links-x64.json
@@ -825,14 +825,14 @@ jobs:
           cat sha256-hashes.json
 
       - name: Upload SHA256 hashes artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sha256-hashes-linux-arm64
           path: sha256-hashes.json
           retention-days: 7
 
       - name: Upload — .deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-linux-arm64-${{ env.VERSION }}-deb
           path: dist/loophole_${{ env.VERSION }}_arm64.deb
@@ -840,7 +840,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — .rpm
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-linux-arm64-${{ env.VERSION }}-rpm
           path: dist/loophole-${{ env.VERSION }}-el8.aarch64.rpm
@@ -848,7 +848,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — tar.gz
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-linux-arm64-${{ env.VERSION }}-targz
           path: dist/Loophole-linux-arm64-${{ env.VERSION }}.tar.gz
@@ -856,7 +856,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-linux-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-linux-arm64-${{ env.VERSION }}.tar.gz
@@ -864,7 +864,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-linux-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-web-linux-arm64-${{ env.VERSION }}.tar.gz
@@ -872,7 +872,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-linux-arm64-${{ env.VERSION }}
           path: dist/loophole-cli-linux-arm64-${{ env.VERSION }}.tar.gz
@@ -944,7 +944,7 @@ jobs:
           echo "]" >> gofile-links-arm64.json
 
       - name: Upload Gofile links artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gofile-links-linux-arm64
           path: gofile-links-arm64.json
@@ -1044,7 +1044,7 @@ jobs:
           ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — Remote Host (Alpine x64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-alpine-x64-${{ env.VERSION }}
           path: dist/loophole-reh-alpine-x64-${{ env.VERSION }}.tar.gz
@@ -1052,7 +1052,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host (Alpine x64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-alpine-x64-${{ env.VERSION }}
           path: dist/loophole-reh-web-alpine-x64-${{ env.VERSION }}.tar.gz
@@ -1124,7 +1124,7 @@ jobs:
           echo "]" >> gofile-links-alpine-x64.json
 
       - name: Upload Gofile links artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gofile-links-alpine-x64
           path: gofile-links-alpine-x64.json
@@ -1221,7 +1221,7 @@ jobs:
           ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — Remote Host (Alpine arm64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-alpine-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-alpine-arm64-${{ env.VERSION }}.tar.gz
@@ -1229,7 +1229,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host (Alpine arm64)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-alpine-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-web-alpine-arm64-${{ env.VERSION }}.tar.gz
@@ -1301,7 +1301,7 @@ jobs:
           echo "]" >> gofile-links-alpine-arm64.json
 
       - name: Upload Gofile links artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gofile-links-alpine-arm64
           path: gofile-links-alpine-arm64.json

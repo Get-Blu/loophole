@@ -254,7 +254,7 @@ jobs:
 
       # ── Upload all artifacts to GitHub ────────────────────────────────────────
       - name: Upload — User Installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: LoopholeUserSetup-x64-${{ env.VERSION }}
           path: dist/LoopholeUserSetup-x64-${{ env.VERSION }}.exe
@@ -262,7 +262,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — System Installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: LoopholeSetup-x64-${{ env.VERSION }}
           path: dist/LoopholeSetup-x64-${{ env.VERSION }}.exe
@@ -270,7 +270,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-win32-x64-${{ env.VERSION }}
           path: dist/loophole-cli-win32-x64-${{ env.VERSION }}.exe
@@ -285,7 +285,7 @@ jobs:
           }
 
       - name: Upload — Zips
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-win32-x64-zips-${{ env.VERSION }}
           path: dist/*.zip
@@ -531,7 +531,7 @@ jobs:
 
       # ── Upload all artifacts to GitHub ────────────────────────────────────────
       - name: Upload — User Installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: LoopholeUserSetup-arm64-${{ env.VERSION }}
           path: dist/LoopholeUserSetup-arm64-${{ env.VERSION }}.exe
@@ -539,7 +539,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — System Installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: LoopholeSetup-arm64-${{ env.VERSION }}
           path: dist/LoopholeSetup-arm64-${{ env.VERSION }}.exe
@@ -547,7 +547,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-win32-arm64-${{ env.VERSION }}
           path: dist/loophole-cli-win32-arm64-${{ env.VERSION }}.exe
@@ -562,7 +562,7 @@ jobs:
           }
 
       - name: Upload — Zips
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-win32-arm64-zips-${{ env.VERSION }}
           path: dist/*.zip

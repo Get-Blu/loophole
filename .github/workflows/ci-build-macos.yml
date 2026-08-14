@@ -321,7 +321,7 @@ jobs:
           ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-x64-${{ env.VERSION }}-dmg
           path: dist/Loophole.x64.${{ env.VERSION }}.dmg
@@ -329,7 +329,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-x64-${{ env.VERSION }}-zip
           path: dist/Loophole-darwin-x64-${{ env.VERSION }}.zip
@@ -337,7 +337,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-darwin-x64-${{ env.VERSION }}
           path: dist/loophole-reh-darwin-x64-${{ env.VERSION }}.tar.gz
@@ -345,7 +345,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-darwin-x64-${{ env.VERSION }}
           path: dist/loophole-reh-web-darwin-x64-${{ env.VERSION }}.tar.gz
@@ -353,7 +353,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-darwin-x64-${{ env.VERSION }}
           path: dist/loophole-cli-darwin-x64-${{ env.VERSION }}.tar.gz
@@ -628,7 +628,7 @@ jobs:
           ls -lh dist/ || echo "(dist/ is empty)"
 
       - name: Upload — DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-arm64-${{ env.VERSION }}-dmg
           path: dist/Loophole.arm64.${{ env.VERSION }}.dmg
@@ -636,7 +636,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — ZIP
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Loophole-darwin-arm64-${{ env.VERSION }}-zip
           path: dist/Loophole-darwin-arm64-${{ env.VERSION }}.zip
@@ -644,7 +644,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Remote Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-darwin-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-darwin-arm64-${{ env.VERSION }}.tar.gz
@@ -652,7 +652,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — Web Host
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-reh-web-darwin-arm64-${{ env.VERSION }}
           path: dist/loophole-reh-web-darwin-arm64-${{ env.VERSION }}.tar.gz
@@ -660,7 +660,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload — CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: loophole-cli-darwin-arm64-${{ env.VERSION }}
           path: dist/loophole-cli-darwin-arm64-${{ env.VERSION }}.tar.gz
