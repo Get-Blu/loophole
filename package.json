@@ -86,7 +86,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.36.3",
-    "@google/genai": "^0.10.0",
+    "@google/genai": "^2.16.0",
     "@huggingface/transformers": "^4.2.0",
     "@microsoft/1ds-core-js": "^3.2.13",
     "@microsoft/1ds-post-js": "^3.2.13",
