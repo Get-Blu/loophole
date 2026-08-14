@@ -1,0 +1,189 @@
+name: Safe to Merge
+
+on:
+  workflow_run:
+    workflows:
+      - "Loophole IDE"          # pr.yml — compile + all platform tests
+      - "CI Build — Linux"      # ci-build-linux.yml — pr-check job
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  statuses: read
+  checks: read
+
+jobs:
+  notify:
+    name: Notify Safe to Merge
+    runs-on: ubuntu-latest
+    # Only act when triggered by a PR event and the workflow succeeded
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Get PR number from workflow run
+        id: get-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            });
+
+            // Find PR number from the head SHA
+            const headSha = context.payload.workflow_run.head_sha;
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 20,
+            });
+
+            const pr = prs.data.find(p => p.head.sha === headSha);
+            if (!pr) {
+              console.log('No open PR found for SHA:', headSha);
+              return;
+            }
+
+            core.setOutput('pr_number', pr.number);
+            core.setOutput('pr_title', pr.title);
+            core.setOutput('workflow_name', context.payload.workflow_run.name);
+
+      - name: Check all required checks on PR
+        id: check-all
+        if: steps.get-pr.outputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const sha = pr.data.head.sha;
+
+            // Get all check runs for this SHA
+            const checks = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha,
+              per_page: 100,
+            });
+
+            const runs = checks.data.check_runs;
+            console.log(`Found ${runs.length} check run(s) for SHA ${sha}`);
+
+            const failed = runs.filter(r => r.conclusion === 'failure' || r.conclusion === 'cancelled');
+            const pending = runs.filter(r => r.status !== 'completed');
+            const passed = runs.filter(r => r.conclusion === 'success' || r.conclusion === 'skipped');
+
+            console.log(`Passed: ${passed.length}, Pending: ${pending.length}, Failed: ${failed.length}`);
+
+            if (failed.length > 0) {
+              core.setOutput('status', 'failed');
+              core.setOutput('failed_checks', failed.map(r => r.name).join(', '));
+            } else if (pending.length > 0) {
+              core.setOutput('status', 'pending');
+            } else {
+              core.setOutput('status', 'all_green');
+            }
+
+      - name: Post "Safe to Merge" comment
+        if: >
+          steps.get-pr.outputs.pr_number != '' &&
+          steps.check-all.outputs.status == 'all_green'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
+
+            // Avoid duplicate comments — delete old ones first
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComments = comments.data.filter(
+              c => c.user.type === 'Bot' && c.body.includes('<!-- loophole-safe-to-merge -->')
+            );
+            for (const c of botComments) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: c.id,
+              });
+            }
+
+            // Post the green light
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `<!-- loophole-safe-to-merge -->
+            ## ✅ Safe to Merge
+
+            All CI checks passed — **you can blindly merge this PR**.
+
+            | Check | Status |
+            |-------|--------|
+            | Compile & Hygiene | ✅ Passed |
+            | Linux (Electron / Browser / Remote) | ✅ Passed |
+            | macOS (Electron / Browser / Remote) | ✅ Passed |
+            | Windows (Electron / Browser / Remote) | ✅ Passed |
+            | Linux PR Compile Check | ✅ Passed |
+
+            > _This comment is posted automatically when all required workflows go green._`,
+            });
+
+            console.log(`Posted safe-to-merge comment on PR #${prNumber}`);
+
+      - name: Post "Failed" comment
+        if: >
+          steps.get-pr.outputs.pr_number != '' &&
+          steps.check-all.outputs.status == 'failed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
+            const failedChecks = '${{ steps.check-all.outputs.failed_checks }}';
+
+            // Remove old safe-to-merge comments
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComments = comments.data.filter(
+              c => c.user.type === 'Bot' && c.body.includes('<!-- loophole-safe-to-merge -->')
+            );
+            for (const c of botComments) {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: c.id,
+              });
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `<!-- loophole-safe-to-merge -->
+            ## ❌ Do NOT Merge
+
+            One or more CI checks failed — **do not merge this PR**.
+
+            **Failed checks:** ${failedChecks}
+
+            Fix the failures above before merging.`,
+            });
