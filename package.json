@@ -119,7 +119,7 @@
     "@vscodium/policy-watcher": "^1.3.2-252465",
     "@xterm/addon-clipboard": "^0.3.0-beta.213",
     "@xterm/addon-image": "^0.10.0-beta.213",
-    "@xterm/addon-ligatures": "^0.11.0-beta.213",
+    "@xterm/addon-ligatures": "^0.11.0-beta.299",
     "@xterm/addon-progress": "^0.3.0-beta.213",
     "@xterm/addon-search": "^0.17.0-beta.213",
     "@xterm/addon-serialize": "^0.15.0-beta.213",
