@@ -11,14 +11,14 @@ jobs:
 
     steps:
       - name: Checkout code branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: code
           path: code
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout clean/vscode-1.116 branch (AI source)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: clean/vscode-1.116
           path: ai-source
