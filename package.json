@@ -181,7 +181,7 @@
     "@types/ws": "^8.18.1",
     "@types/yauzl": "^2.10.0",
     "@types/yazl": "^2.4.2",
-    "@typescript-eslint/utils": "^8.45.0",
+    "@typescript-eslint/utils": "^8.67.0",
     "@typescript/native-preview": "^7.0.0-dev.20260429",
     "@vscode/component-explorer": "^0.2.1-27",
     "@vscode/component-explorer-cli": "^0.2.1-27",
