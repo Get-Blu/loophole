@@ -400,7 +400,6 @@ const nameOfChatMode = {
 	'gather': 'Gather',
 	'agent': 'Agent',
 	'plan': 'Plan',
-	'team': 'Team',
 }
 
 const detailOfChatMode = {
@@ -408,7 +407,6 @@ const detailOfChatMode = {
 	'gather': 'Reads files, but can\'t edit',
 	'agent': 'Edits files and uses tools',
 	'plan': 'Creates .md plans',
-	'team': '7 specialists respond in sequence',
 }
 
 // Shown in the ⓘ tooltip on hover of each dropdown row
@@ -417,7 +415,6 @@ const descriptionOfChatMode: Record<ChatMode, string> = {
 	'gather': 'Reads and searches across your codebase for context. Can\'t edit files.',
 	'agent': 'Edits files, runs terminal commands, and uses tools on its own to complete tasks.',
 	'plan': 'Drafts a step-by-step plan as a markdown file before making changes. Won\'t touch code until you approve it.',
-	'team': 'Runs your request through 7 specialists: Product Lead, Architect, Senior Engineer, Code Reviewer, QA Engineer, UI Designer, and Tech Writer. Each one builds on the last.',
 }
 
 const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
@@ -425,7 +422,6 @@ const iconOfChatMode: Record<ChatMode, React.ReactNode> = {
 	'gather': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Gather</span>,
 	'agent': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Agent</span>,
 	'plan': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Plan</span>,
-	'team': <span className='flex items-center gap-0.5 text-xs'><ChevronRight size={10} className='rotate-90' />Team</span>,
 }
 
 
@@ -435,7 +431,7 @@ const ChatModeDropdown = ({ className }: { className: string }) => {
 	const loopholeSettingsService = accessor.get('ILoopholeSettingsService')
 	const settingsState = useSettingsState()
 
-	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent', 'plan', 'team'], [])
+	const options: ChatMode[] = useMemo(() => ['normal', 'gather', 'agent', 'plan'], [])
 
 	const onChangeOption = useCallback((newVal: ChatMode) => {
 		loopholeSettingsService.setGlobalSetting('chatMode', newVal)
@@ -3754,7 +3750,7 @@ export const SidebarChat = () => {
 
 	// Get current chat mode from settings
 	const chatMode = settingsState.globalSettings.chatMode
-	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Gather' : chatMode === 'plan' ? 'Plan' : chatMode === 'team' ? 'Team' : 'Chat'
+	const modeTitle = chatMode === 'agent' ? 'Agent' : chatMode === 'gather' ? 'Gather' : chatMode === 'plan' ? 'Plan' : 'Chat'
 
 	// Welcome screen component
 	const WelcomeScreen = () => null
