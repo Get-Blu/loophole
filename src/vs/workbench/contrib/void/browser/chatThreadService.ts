@@ -11,7 +11,7 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
 import { URI } from '../../../../base/common/uri.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { ILLMMessageService } from '../common/sendLLMMessageService.js';
-import { chat_userMessageContent, isABuiltinToolName, team_memberSystemMessage, teamMembers, TeamMemberName } from '../common/prompt/prompts.js';
+import { chat_userMessageContent, isABuiltinToolName } from '../common/prompt/prompts.js';
 import { AnthropicReasoning, getErrorMessage, RawToolCallObj, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { FeatureName, ModelSelection, ModelSelectionOptions } from '../common/voidSettingsTypes.js';
@@ -293,7 +293,7 @@ export interface IChatThreadService {
 	runSubAgentLoop(opts: { prompt: string, chatMode: import('../common/voidSettingsTypes.js').ChatMode, modelSelection: import('../common/voidSettingsTypes.js').ModelSelection | null, parentThreadId: string, _depth?: number }): Promise<string>;
 
 	// team mode: run 7 specialized agents in sequence, stream results back into the thread
-	runTeamPipeline(opts: { userMessage: string, threadId: string }): Promise<void>;
+
 
 	// // current thread's staging selections
 	// closeCurrentStagingSelectionsInMessage(opts: { messageIdx: number }): void;
@@ -594,141 +594,6 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		this._setState({ allThreads: remainingThreads })
 
 		return lastAssistantText || '(no output)'
-	}
-
-	// ─── TEAM MODE PIPELINE ──────────────────────────────────────────────────
-	// Runs 4 specialized agents in two parallel waves, each with a full agentic
-	// loop and real tool access, mirroring how DSCode's delegate tool works.
-	//
-	// Wave 1 (parallel): explorer + analyst
-	//   - chatMode: 'gather' (read-only tools only, no file writes)
-	//   - both run at the same time, independently
-	//
-	// Wave 2 (parallel): implementer + reviewer
-	//   - implementer: chatMode: 'agent' (full tool access — can write files)
-	//   - reviewer:    chatMode: 'gather' (read-only, critiques wave-1+2 context)
-	//   - both see the wave-1 outputs as context in their prompt
-	//
-	// After both waves complete, a final synthesis step produces the summary.
-	runTeamPipeline = async ({ userMessage, threadId }: { userMessage: string, threadId: string }): Promise<void> => {
-		const modelSelection = this._settingsService.state.modelSelectionOfFeature['Chat']
-		if (!modelSelection) return
-
-		// ── helper: run up to `limit` agents concurrently ─────────────────────
-		const mapLimited = async <T, R>(
-			items: T[],
-			limit: number,
-			fn: (item: T) => Promise<R>,
-		): Promise<R[]> => {
-			const results = new Array<R>(items.length)
-			let cursor = 0
-			const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-				while (true) {
-					const index = cursor++
-					if (index >= items.length) return
-					results[index] = await fn(items[index]!)
-				}
-			})
-			await Promise.all(workers)
-			return results
-		}
-
-		// ── helper: update the live display while agents are running ───────────
-		const completedOutputs: { title: string, output: string }[] = []
-		const updateDisplay = (inProgressLabel?: string, inProgressText?: string) => {
-			const parts = completedOutputs.map(o => `**${o.title}**\n\n${o.output}`)
-			if (inProgressLabel && inProgressText) {
-				parts.push(`**${inProgressLabel}** *(running…)*\n\n${inProgressText}`)
-			}
-			this._setStreamState(threadId, {
-				isRunning: 'LLM',
-				llmInfo: {
-					displayContentSoFar: parts.join('\n\n---\n\n'),
-					reasoningSoFar: '',
-					toolCallSoFar: null,
-				},
-				interrupt: Promise.resolve(() => {}),
-			})
-		}
-
-		// ── Wave 1: explorer + analyst run in parallel (read-only) ─────────────
-		updateDisplay('Wave 1 · Explorer + Analyst', 'Starting…')
-
-		const wave1Members = teamMembers.filter(m => m.wave === 1)
-		const wave1Results = await mapLimited(wave1Members, 2, async (member) => {
-			const prompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, [])
-			updateDisplay(`Wave 1 · ${member.title}`, 'Reading codebase…')
-			try {
-				const output = await this.runSubAgentLoop({
-					prompt,
-					chatMode: 'gather', // read-only: no writes allowed
-					modelSelection,
-					parentThreadId: threadId,
-				})
-				return { title: member.title, output }
-			} catch (e) {
-				return { title: member.title, output: `(error: ${e instanceof Error ? e.message : String(e)})` }
-			}
-		})
-
-		completedOutputs.push(...wave1Results)
-
-		// ── Wave 2: implementer (full agent) + reviewer (read-only) in parallel ─
-		updateDisplay('Wave 2 · Implementer + Reviewer', 'Starting…')
-
-		const wave2Members = teamMembers.filter(m => m.wave === 2)
-		const wave2Results = await mapLimited(wave2Members, 2, async (member) => {
-			const prompt = team_memberSystemMessage(member.name as TeamMemberName, userMessage, wave1Results)
-			const chatMode = member.name === 'implementer' ? 'agent' : 'gather'
-			updateDisplay(`Wave 2 · ${member.title}`, chatMode === 'agent' ? 'Implementing…' : 'Reviewing…')
-			try {
-				const output = await this.runSubAgentLoop({
-					prompt,
-					chatMode,
-					modelSelection,
-					parentThreadId: threadId,
-				})
-				return { title: member.title, output }
-			} catch (e) {
-				return { title: member.title, output: `(error: ${e instanceof Error ? e.message : String(e)})` }
-			}
-		})
-
-		completedOutputs.push(...wave2Results)
-
-		// ── Wave 3: single synthesis pass ──────────────────────────────────────
-		updateDisplay('Synthesis', 'Writing final summary…')
-
-		const allOutputs = [...wave1Results, ...wave2Results]
-		const synthesisMember = teamMembers.find(m => m.wave === 3)!
-		const synthesisPrompt = team_memberSystemMessage(synthesisMember.name as TeamMemberName, userMessage, allOutputs)
-		let synthesisOutput = ''
-		try {
-			synthesisOutput = await this.runSubAgentLoop({
-				prompt: synthesisPrompt,
-				chatMode: 'gather',
-				modelSelection,
-				parentThreadId: threadId,
-			})
-		} catch (e) {
-			synthesisOutput = `(error: ${e instanceof Error ? e.message : String(e)})`
-		}
-		completedOutputs.push({ title: synthesisMember.title, output: synthesisOutput })
-
-		// ── Commit the full response ───────────────────────────────────────────
-		const fullResponse = completedOutputs
-			.map(o => `**${o.title}**\n\n${o.output}`)
-			.join('\n\n---\n\n')
-
-		this._addMessageToThread(threadId, {
-			role: 'assistant',
-			displayContent: fullResponse,
-			reasoning: '',
-			anthropicReasoning: null,
-		})
-
-		this._setStreamState(threadId, undefined)
-		this._addUserCheckpoint({ threadId })
 	}
 
 	getTodosForThread = (threadId: string): import('../common/toolsServiceTypes.js').TodoItem[] => {
@@ -2171,17 +2036,10 @@ We only need to do it for files that were edited since `from`, ie files between 
 
 		const { chatMode } = this._settingsService.state.globalSettings
 
-		if (chatMode === 'team') {
-			this._wrapRunAgentToNotify(
-				this.runTeamPipeline({ userMessage, threadId }),
-				threadId,
-			)
-		} else {
-			this._wrapRunAgentToNotify(
-				this._runChatAgent({ threadId, ...this._currentModelSelectionProps(), }),
-				threadId,
-			)
-		}
+		this._wrapRunAgentToNotify(
+			this._runChatAgent({ threadId, ...this._currentModelSelectionProps(), }),
+			threadId,
+		)
 
 		// scroll to bottom
 		this.state.allThreads[threadId]?.state.mountedInfo?.whenMounted.then(m => {
