@@ -197,7 +197,7 @@
     "ansi-colors": "^3.2.3",
     "asar": "^3.0.3",
     "chromium-pickle-js": "^0.2.0",
-    "cookie": "^0.7.2",
+    "cookie": "^2.0.1",
     "debounce": "^1.0.0",
     "deemon": "^1.13.6",
     "electron": "39.8.8",
