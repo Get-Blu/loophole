@@ -2034,7 +2034,7 @@ We only need to do it for files that were edited since `from`, ie files between 
 
 		this._setThreadState(threadId, { currCheckpointIdx: null }) // no longer at a checkpoint because started streaming
 
-		const { chatMode } = this._settingsService.state.globalSettings
+		const { chatMode: _chatMode } = this._settingsService.state.globalSettings
 
 		this._wrapRunAgentToNotify(
 			this._runChatAgent({ threadId, ...this._currentModelSelectionProps(), }),
