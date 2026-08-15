@@ -92,7 +92,7 @@ jobs:
           ref: ${{ steps.resolve.outputs.is_version != 'true' && inputs.test_build || github.ref }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -191,7 +191,7 @@ jobs:
           ref: ${{ needs.setup.outputs.test_is_version != 'true' && inputs.test_build || github.ref }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -364,7 +364,7 @@ jobs:
           ref: ${{ needs.setup.outputs.test_is_version != 'true' && inputs.test_build || github.ref }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -463,7 +463,7 @@ jobs:
           ref: ${{ needs.setup.outputs.test_is_version != 'true' && inputs.test_build || github.ref }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
 
