@@ -29,10 +29,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: npm
-          cache-dependency-path: |
-            extensions/copilot/package-lock.json
-            extensions/copilot/chat-lib/package-lock.json
 
       - name: Extract chat-lib
         shell: bash
