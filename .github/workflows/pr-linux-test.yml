@@ -320,9 +320,6 @@ jobs:
             compile-extension:vscode-colorize-perf-tests \
             compile-extension:vscode-test-resolver
 
-      - name: Compile Copilot extension
-        run: npm --prefix extensions/copilot run compile
-
       - name: 🧪 Run integration tests (Electron)
         if: ${{ inputs.electron_tests }}
         timeout-minutes: 20
