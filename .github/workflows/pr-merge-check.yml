@@ -1,0 +1,351 @@
+name: PR Merge Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to validate (e.g. 41)'
+        required: true
+        type: string
+
+concurrency:
+  group: pr-merge-check-${{ github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  VSCODE_QUALITY: 'oss'
+  NODE_OPTIONS: '--max-old-space-size=8192'
+
+jobs:
+
+  # ── 1. Checkout PR branch & expose metadata ───────────────────────────────
+  resolve-pr:
+    name: Resolve PR #${{ github.event.inputs.pr_number }}
+    runs-on: ubuntu-22.04
+    outputs:
+      head_sha: ${{ steps.pr.outputs.head_sha }}
+      head_ref: ${{ steps.pr.outputs.head_ref }}
+      pr_title: ${{ steps.pr.outputs.pr_title }}
+    steps:
+      - name: Fetch PR metadata
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.inputs.pr_number }})
+          echo "head_sha=$(echo $PR | jq -r '.head.sha')"   >> "$GITHUB_OUTPUT"
+          echo "head_ref=$(echo $PR | jq -r '.head.ref')"   >> "$GITHUB_OUTPUT"
+          echo "pr_title=$(echo $PR | jq -r '.title')"      >> "$GITHUB_OUTPUT"
+
+  # ── 2. Compile + Hygiene (TypeScript, lint, layer checks) ─────────────────
+  compile:
+    name: ✅ Compile & Hygiene
+    needs: resolve-pr
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-pr.outputs.head_sha }}
+          lfs: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Prepare node_modules cache key
+        run: mkdir -p .build && node build/azure-pipelines/common/computeNodeModulesCacheKey.ts compile $(node -p process.arch) > .build/packagelockhash
+
+      - name: Restore node_modules cache
+        id: cache-node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: .build/node_modules_cache
+          key: "node_modules-compile-${{ hashFiles('.build/packagelockhash') }}"
+
+      - name: Extract node_modules cache
+        if: steps.cache-node-modules.outputs.cache-hit == 'true'
+        run: tar -xzf .build/node_modules_cache/cache.tgz
+
+      - name: Install system build tools
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: sudo apt update -y && sudo apt install -y build-essential pkg-config libx11-dev libx11-xcb-dev libxkbfile-dev libnotify-bin libkrb5-dev
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          for i in {1..5}; do
+            npm ci && break
+            [ $i -eq 5 ] && exit 1
+            echo "Attempt $i failed, retrying..."
+          done
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save node_modules cache
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: |
+          node build/azure-pipelines/common/listNodeModules.ts .build/node_modules_list.txt
+          mkdir -p .build/node_modules_cache
+          tar -czf .build/node_modules_cache/cache.tgz --files-from .build/node_modules_list.txt
+
+      - name: Type-check build scripts
+        run: npm run typecheck
+        working-directory: build
+
+      - name: Restore built-in extensions cache
+        id: cache-builtin
+        uses: actions/cache/restore@v4
+        with:
+          enableCrossOsArchive: true
+          path: .build/builtInExtensions
+          key: "builtin-extensions-${{ hashFiles('.build/builtindepshash') }}"
+
+      - name: Download built-in extensions
+        if: steps.cache-builtin.outputs.cache-hit != 'true'
+        run: node build/lib/builtInExtensions.ts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile & Hygiene (all checks)
+        run: npm exec -- npm-run-all2 -lp core-ci hygiene eslint valid-layers-check define-class-fields-check vscode-dts-compile-check tsec-compile-check test-build-scripts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check cyclic dependencies
+        run: node build/lib/checkCyclicDependencies.ts out-build
+
+  # ── 3. CLI tests (Rust — Linux) ───────────────────────────────────────────
+  cli-tests:
+    name: ✅ CLI (Rust)
+    needs: resolve-pr
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-pr.outputs.head_sha }}
+
+      - name: Install Rust 1.88
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.88
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Set Rust version
+        run: |
+          rustup default 1.88
+          rustup update 1.88
+          rustup component add clippy
+
+      - name: Clippy lint
+        run: cargo clippy -- -D warnings
+        working-directory: cli
+
+      - name: Run unit tests
+        run: cargo test
+        working-directory: cli
+
+  # ── 4. Linux Electron tests ───────────────────────────────────────────────
+  linux-electron:
+    name: ✅ Linux — Electron
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-linux-test.yml
+    with:
+      job_name: Electron
+      electron_tests: true
+
+  # ── 5. Linux Browser tests ────────────────────────────────────────────────
+  linux-browser:
+    name: ✅ Linux — Browser
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-linux-test.yml
+    with:
+      job_name: Browser
+      browser_tests: true
+
+  # ── 6. Linux Remote tests ─────────────────────────────────────────────────
+  linux-remote:
+    name: ✅ Linux — Remote
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-linux-test.yml
+    with:
+      job_name: Remote
+      remote_tests: true
+
+  # ── 7. macOS Electron tests ───────────────────────────────────────────────
+  macos-electron:
+    name: ✅ macOS — Electron
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-darwin-test.yml
+    with:
+      job_name: Electron
+      electron_tests: true
+
+  # ── 8. macOS Browser tests ────────────────────────────────────────────────
+  macos-browser:
+    name: ✅ macOS — Browser
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-darwin-test.yml
+    with:
+      job_name: Browser
+      browser_tests: true
+
+  # ── 9. macOS Remote tests ─────────────────────────────────────────────────
+  macos-remote:
+    name: ✅ macOS — Remote
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-darwin-test.yml
+    with:
+      job_name: Remote
+      remote_tests: true
+
+  # ── 10. Windows Electron tests ────────────────────────────────────────────
+  windows-electron:
+    name: ✅ Windows — Electron
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-win32-test.yml
+    with:
+      job_name: Electron
+      electron_tests: true
+
+  # ── 11. Windows Browser tests ─────────────────────────────────────────────
+  windows-browser:
+    name: ✅ Windows — Browser
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-win32-test.yml
+    with:
+      job_name: Browser
+      browser_tests: true
+
+  # ── 12. Windows Remote tests ──────────────────────────────────────────────
+  windows-remote:
+    name: ✅ Windows — Remote
+    needs: [resolve-pr, compile]
+    uses: ./.github/workflows/pr-win32-test.yml
+    with:
+      job_name: Remote
+      remote_tests: true
+
+  # ── 13. Windows CI Build (x64 + arm64) ───────────────────────────────────
+  windows-build:
+    name: ✅ Windows CI Build
+    needs: [resolve-pr, compile]
+    runs-on: windows-2022
+    env:
+      NODE_VERSION: '22'
+      ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-pr.outputs.head_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            build/node_modules
+            extensions/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json', 'build/package-lock.json', 'extensions/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Install node-gyp
+        run: npm install -g node-gyp
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          npm_config_arch: x64
+
+      - name: Install extensions dependencies
+        run: npm install
+        working-directory: extensions
+
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Build React components
+        run: node build.js
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Build CLI (Rust x64)
+        run: cargo build --release --target x86_64-pc-windows-msvc
+        working-directory: cli
+
+      - name: Package Electron app
+        run: npm run gulp vscode-win32-x64
+
+  # ── 14. Final gate — ping @GarvAgnihotri only if EVERYTHING passed ────────
+  notify-success:
+    name: 🎉 Notify — Safe to Merge
+    needs:
+      - resolve-pr
+      - compile
+      - cli-tests
+      - linux-electron
+      - linux-browser
+      - linux-remote
+      - macos-electron
+      - macos-browser
+      - macos-remote
+      - windows-electron
+      - windows-browser
+      - windows-remote
+      - windows-build
+    if: success()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Post success comment on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.inputs.pr_number }} \
+            --repo ${{ github.repository }} \
+            --body "## ✅ All checks passed — safe to merge!
+
+          @GarvAgnihotri PR #${{ github.event.inputs.pr_number }} **${{ needs.resolve-pr.outputs.pr_title }}** passed every gate:
+
+          | Check | Status |
+          |---|---|
+          | Compile & Hygiene | ✅ |
+          | CLI (Rust) | ✅ |
+          | Linux — Electron | ✅ |
+          | Linux — Browser | ✅ |
+          | Linux — Remote | ✅ |
+          | macOS — Electron | ✅ |
+          | macOS — Browser | ✅ |
+          | macOS — Remote | ✅ |
+          | Windows — Electron | ✅ |
+          | Windows — Browser | ✅ |
+          | Windows — Remote | ✅ |
+          | Windows CI Build | ✅ |
+
+          You can **blindly merge** this PR. 
+
+          > Triggered by: @${{ github.actor }} · Run: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
