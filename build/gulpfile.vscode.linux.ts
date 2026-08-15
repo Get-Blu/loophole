@@ -23,7 +23,6 @@ import { promisify } from 'util';
 
 const exec = promisify(cp.exec);
 const root = path.dirname(import.meta.dirname);
-const commit = getVersion(root);
 
 const linuxPackageRevision = Math.floor(new Date().getTime() / 1000);
 const loopholeVersion = (product as any).loopholeVersion ?? packageJson.version;
