@@ -1,3 +1,5 @@
+# This file is AI-generated. Do not edit manually.
+
 name: PR Merge Check
 
 on:
@@ -43,7 +45,7 @@ jobs:
 
   # ── 2. Compile + Hygiene (TypeScript, lint, layer checks) ─────────────────
   compile:
-    name: ✅ Compile & Hygiene
+    name: Compile & Hygiene
     needs: resolve-pr
     runs-on: ubuntu-22.04
     steps:
@@ -123,7 +125,7 @@ jobs:
 
   # ── 3. CLI tests (Rust — Linux) ───────────────────────────────────────────
   cli-tests:
-    name: ✅ CLI (Rust)
+    name: CLI (Rust)
     needs: resolve-pr
     runs-on: ubuntu-22.04
     steps:
@@ -152,7 +154,7 @@ jobs:
 
   # ── 4. Linux Electron tests ───────────────────────────────────────────────
   linux-electron:
-    name: ✅ Linux — Electron
+    name: Linux — Electron
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-linux-test.yml
     with:
@@ -161,7 +163,7 @@ jobs:
 
   # ── 5. Linux Browser tests ────────────────────────────────────────────────
   linux-browser:
-    name: ✅ Linux — Browser
+    name: Linux — Browser
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-linux-test.yml
     with:
@@ -170,7 +172,7 @@ jobs:
 
   # ── 6. Linux Remote tests ─────────────────────────────────────────────────
   linux-remote:
-    name: ✅ Linux — Remote
+    name: Linux — Remote
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-linux-test.yml
     with:
@@ -179,7 +181,7 @@ jobs:
 
   # ── 7. macOS Electron tests ───────────────────────────────────────────────
   macos-electron:
-    name: ✅ macOS — Electron
+    name: macOS — Electron
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-darwin-test.yml
     with:
@@ -188,7 +190,7 @@ jobs:
 
   # ── 8. macOS Browser tests ────────────────────────────────────────────────
   macos-browser:
-    name: ✅ macOS — Browser
+    name: macOS — Browser
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-darwin-test.yml
     with:
@@ -197,7 +199,7 @@ jobs:
 
   # ── 9. macOS Remote tests ─────────────────────────────────────────────────
   macos-remote:
-    name: ✅ macOS — Remote
+    name: macOS — Remote
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-darwin-test.yml
     with:
@@ -206,7 +208,7 @@ jobs:
 
   # ── 10. Windows Electron tests ────────────────────────────────────────────
   windows-electron:
-    name: ✅ Windows — Electron
+    name: Windows — Electron
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-win32-test.yml
     with:
@@ -215,7 +217,7 @@ jobs:
 
   # ── 11. Windows Browser tests ─────────────────────────────────────────────
   windows-browser:
-    name: ✅ Windows — Browser
+    name: Windows — Browser
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-win32-test.yml
     with:
@@ -224,7 +226,7 @@ jobs:
 
   # ── 12. Windows Remote tests ──────────────────────────────────────────────
   windows-remote:
-    name: ✅ Windows — Remote
+    name: Windows — Remote
     needs: [resolve-pr, compile]
     uses: ./.github/workflows/pr-win32-test.yml
     with:
@@ -233,7 +235,7 @@ jobs:
 
   # ── 13. Windows CI Build (x64 + arm64) ───────────────────────────────────
   windows-build:
-    name: ✅ Windows CI Build
+    name: Windows CI Build
     needs: [resolve-pr, compile]
     runs-on: windows-2022
     env:
@@ -303,7 +305,7 @@ jobs:
 
   # ── 14. Final gate — ping @GarvAgnihotri only if EVERYTHING passed ────────
   notify-success:
-    name: 🎉 Notify — Safe to Merge
+    name: Notify — Safe to Merge
     needs:
       - resolve-pr
       - compile
@@ -327,7 +329,7 @@ jobs:
         run: |
           gh pr comment ${{ github.event.inputs.pr_number }} \
             --repo ${{ github.repository }} \
-            --body "## ✅ All checks passed — safe to merge!
+            --body "## All checks passed — safe to merge!
 
           @GarvAgnihotri PR #${{ github.event.inputs.pr_number }} **${{ needs.resolve-pr.outputs.pr_title }}** passed every gate:
 
