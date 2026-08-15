@@ -57,11 +57,11 @@ fn quality_download_segment(quality: options::Quality) -> &'static str {
 }
 
 fn get_app_name() -> Result<&'static str, CodeError> {
-	VSCODE_CLI_APP_NAME.ok_or_else(|| CodeError::UpdatesNotConfigured("no app name"))
+	VSCODE_CLI_APP_NAME.ok_or(CodeError::UpdatesNotConfigured("no app name"))
 }
 
 fn get_download_endpoint() -> Result<&'static str, CodeError> {
-	VSCODE_CLI_DOWNLOAD_ENDPOINT.ok_or_else(|| CodeError::UpdatesNotConfigured("no download url"))
+	VSCODE_CLI_DOWNLOAD_ENDPOINT.ok_or(CodeError::UpdatesNotConfigured("no download url"))
 }
 
 fn get_update_endpoint() -> Result<String, CodeError> {
