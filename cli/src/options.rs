@@ -20,7 +20,7 @@ pub enum Quality {
 }
 
 fn get_binary_name() -> Result<&'static str, CodeError> {
-	VSCODE_CLI_BINARY_NAME.ok_or_else(|| CodeError::UpdatesNotConfigured("no binary name"))
+	VSCODE_CLI_BINARY_NAME.ok_or(CodeError::UpdatesNotConfigured("no binary name"))
 }
 
 impl Quality {
