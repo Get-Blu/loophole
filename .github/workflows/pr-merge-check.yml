@@ -46,7 +46,7 @@ jobs:
     needs: resolve-pr
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
           lfs: true
@@ -128,7 +128,7 @@ jobs:
     needs: resolve-pr
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
 
@@ -157,7 +157,7 @@ jobs:
     needs: [resolve-pr, compile]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
           lfs: true
@@ -219,7 +219,7 @@ jobs:
     needs: [resolve-pr, compile]
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
           lfs: true
@@ -262,7 +262,7 @@ jobs:
     needs: [resolve-pr, compile]
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
           lfs: true
@@ -312,7 +312,7 @@ jobs:
     needs: [resolve-pr, compile]
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.resolve-pr.outputs.head_sha }}
           fetch-depth: 0
