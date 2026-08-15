@@ -182,32 +182,6 @@ function clearInheritedNpmrcConfig(dir: string, env: NodeJS.ProcessEnv): void {
 	}
 }
 
-function ensureAgentHarnessLink(sourceRelativePath: string, linkPath: string): 'existing' | 'junction' | 'symlink' | 'hard link' {
-	if (fs.existsSync(linkPath)) {
-		return 'existing';
-	}
-
-	const sourcePath = path.resolve(path.dirname(linkPath), sourceRelativePath);
-	const isDirectory = fs.statSync(sourcePath).isDirectory();
-
-	try {
-		if (process.platform === 'win32' && isDirectory) {
-			fs.symlinkSync(sourcePath, linkPath, 'junction');
-			return 'junction';
-		}
-
-		fs.symlinkSync(sourceRelativePath, linkPath, isDirectory ? 'dir' : 'file');
-		return 'symlink';
-	} catch (error) {
-		if (process.platform === 'win32' && !isDirectory && (error as NodeJS.ErrnoException).code === 'EPERM') {
-			fs.linkSync(sourcePath, linkPath);
-			return 'hard link';
-		}
-
-		throw error;
-	}
-}
-
 async function runWithConcurrency(tasks: (() => Promise<void>)[], concurrency: number): Promise<void> {
 	const errors: Error[] = [];
 	let index = 0;
