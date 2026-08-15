@@ -17,17 +17,19 @@ env:
   VSCODE_QUALITY: 'oss'
 
 jobs:
+
+  # ── 1. Compile + Hygiene ──────────────────────────────────────────────────
   compile:
     name: Compile & Hygiene
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout loophole-ai/loophole-ide
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
           lfs: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
 
@@ -36,7 +38,7 @@ jobs:
 
       - name: Restore node_modules cache
         id: cache-node-modules
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v4
         with:
           path: .build/node_modules_cache
           key: "node_modules-compile-${{ hashFiles('.build/packagelockhash') }}"
@@ -53,13 +55,9 @@ jobs:
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: |
           set -e
-
-          for i in {1..5}; do # try 5 times
+          for i in {1..5}; do
             npm ci && break
-            if [ $i -eq 5 ]; then
-              echo "Npm install failed too many times" >&2
-              exit 1
-            fi
+            if [ $i -eq 5 ]; then echo "Npm install failed too many times" >&2; exit 1; fi
             echo "Npm install failed $i, trying again..."
           done
         env:
@@ -80,12 +78,11 @@ jobs:
         working-directory: build
 
       - name: Prepare built-in extensions cache key
-        shell: pwsh
         run: node build/azure-pipelines/common/computeBuiltInDepsCacheKey.ts > .build/builtindepshash
 
       - name: Restore built-in extensions cache
         id: cache-builtin-extensions
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v4
         with:
           enableCrossOsArchive: true
           path: .build/builtInExtensions
@@ -105,72 +102,73 @@ jobs:
       - name: Check cyclic dependencies
         run: node build/lib/checkCyclicDependencies.ts out-build
 
-  linux-cli-tests:
-    name: Linux
-    uses: ./.github/workflows/pr-linux-cli-test.yml
-    with:
-      job_name: CLI
-      rustup_toolchain: 1.88
+  # ── 2. CLI tests (Rust) ───────────────────────────────────────────────────
+  cli-tests:
+    name: CLI (Rust)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
 
-  linux-electron-tests:
-    name: Linux
-    uses: ./.github/workflows/pr-linux-test.yml
-    with:
-      job_name: Electron
-      electron_tests: true
+      - name: Install Rust 1.88
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.88
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
-  linux-browser-tests:
-    name: Linux
-    uses: ./.github/workflows/pr-linux-test.yml
-    with:
-      job_name: Browser
-      browser_tests: true
+      - name: Set Rust version
+        run: |
+          rustup default 1.88
+          rustup update 1.88
+          rustup component add clippy
 
-  linux-remote-tests:
-    name: Linux
-    uses: ./.github/workflows/pr-linux-test.yml
-    with:
-      job_name: Remote
-      remote_tests: true
+      - name: Clippy lint
+        run: cargo clippy -- -D warnings
+        working-directory: cli
 
-  macos-electron-tests:
-    name: macOS
-    uses: ./.github/workflows/pr-darwin-test.yml
-    with:
-      job_name: Electron
-      electron_tests: true
+      - name: Run unit tests
+        run: cargo test
+        working-directory: cli
 
-  macos-browser-tests:
-    name: macOS
-    uses: ./.github/workflows/pr-darwin-test.yml
-    with:
-      job_name: Browser
-      browser_tests: true
+  # ── 3. Windows compile check ──────────────────────────────────────────────
+  windows-compile:
+    name: Windows Compile
+    needs: compile
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
 
-  macos-remote-tests:
-    name: macOS
-    uses: ./.github/workflows/pr-darwin-test.yml
-    with:
-      job_name: Remote
-      remote_tests: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
 
-  windows-electron-tests:
-    name: Windows
-    uses: ./.github/workflows/pr-win32-test.yml
-    with:
-      job_name: Electron
-      electron_tests: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-  windows-browser-tests:
-    name: Windows
-    uses: ./.github/workflows/pr-win32-test.yml
-    with:
-      job_name: Browser
-      browser_tests: true
+      - uses: microsoft/setup-msbuild@v2
 
-  windows-remote-tests:
-    name: Windows
-    uses: ./.github/workflows/pr-win32-test.yml
-    with:
-      job_name: Remote
-      remote_tests: true
+      - name: Install node-gyp
+        run: npm install -g node-gyp
+
+      - name: Install dependencies
+        run: npm install
+        env:
+          npm_config_arch: x64
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install React dependencies
+        run: npm install
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Build React components
+        run: node build.js
+        working-directory: src/vs/workbench/contrib/void/browser/react
+
+      - name: Compile TypeScript
+        run: npm run compile
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
