@@ -392,7 +392,7 @@ jobs:
           path: sha256-hashes/windows-arm64/
         continue-on-error: true
 
-      - name: Update versions repo with SHA256 hashes
+      - name: Update versions repo (version, url, timestamp + sha256)
         env:
           LV: ${{ needs.create-release.outputs.loophole_version }}
           VERSIONS_PAT: ${{ secrets.VERSIONS_PAT }}
@@ -400,7 +400,7 @@ jobs:
           git clone https://x-access-token:${VERSIONS_PAT}@github.com/loophole-ai/versions versions-repo
 
           python3 - << 'PYEOF'
-          import json, os
+          import json, os, time
 
           def load_hashes(directory):
               merged = {}
@@ -425,39 +425,46 @@ jobs:
           print(f"Collected {len(all_hashes)} hashes: {list(all_hashes.keys())}")
 
           LV = os.environ['LV']
+          BASE = f"https://github.com/loophole-ai/loophole-ide/releases/download/{LV}"
+          TIMESTAMP = int(time.time() * 1000)
 
-          # Map each latest.json → the primary installer for that platform
+          # Map each latest.json → (artifact name for sha256, download url)
           mappings = {
-              'versions-repo/oss/darwin/x64/latest.json':   f'Loophole.x64.{LV}.dmg',
-              'versions-repo/oss/darwin/arm64/latest.json': f'Loophole.arm64.{LV}.dmg',
-              'versions-repo/oss/linux/x64/latest.json':    f'Loophole-linux-x64-{LV}.tar.gz',
-              'versions-repo/oss/linux/arm64/latest.json':  f'Loophole-linux-arm64-{LV}.tar.gz',
-              'versions-repo/oss/win32/x64/latest.json':    f'LoopholeSetup-x64-{LV}.exe',
-              'versions-repo/oss/win32/arm64/latest.json':  f'LoopholeSetup-arm64-{LV}.exe',
+              'versions-repo/oss/darwin/x64/latest.json':        (f'Loophole-darwin-x64-{LV}.zip',     f'{BASE}/Loophole-darwin-x64-{LV}.zip'),
+              'versions-repo/oss/darwin/arm64/latest.json':      (f'Loophole-darwin-arm64-{LV}.zip',   f'{BASE}/Loophole-darwin-arm64-{LV}.zip'),
+              'versions-repo/oss/linux/x64/latest.json':         (f'Loophole-linux-x64-{LV}.tar.gz',   f'{BASE}/Loophole-linux-x64-{LV}.tar.gz'),
+              'versions-repo/oss/linux/arm64/latest.json':       (f'Loophole-linux-arm64-{LV}.tar.gz', f'{BASE}/Loophole-linux-arm64-{LV}.tar.gz'),
+              'versions-repo/oss/win32/x64/user/latest.json':    (f'LoopholeUserSetup-x64-{LV}.exe',   f'{BASE}/LoopholeUserSetup-x64-{LV}.exe'),
+              'versions-repo/oss/win32/x64/system/latest.json':  (f'LoopholeSetup-x64-{LV}.exe',       f'{BASE}/LoopholeSetup-x64-{LV}.exe'),
+              'versions-repo/oss/win32/arm64/user/latest.json':  (f'LoopholeUserSetup-arm64-{LV}.exe', f'{BASE}/LoopholeUserSetup-arm64-{LV}.exe'),
+              'versions-repo/oss/win32/arm64/system/latest.json':(f'LoopholeSetup-arm64-{LV}.exe',     f'{BASE}/LoopholeSetup-arm64-{LV}.exe'),
           }
 
-          for json_path, artifact_name in mappings.items():
+          for json_path, (artifact_name, download_url) in mappings.items():
               sha = all_hashes.get(artifact_name, '')
               if not sha:
-                  print(f'WARNING: no hash found for {artifact_name} — leaving blank')
-                  continue
+                  print(f'WARNING: no hash found for {artifact_name} — sha256hash will be empty')
               if not os.path.isfile(json_path):
                   print(f'WARNING: {json_path} not found — skipping')
                   continue
               with open(json_path) as f:
                   data = json.load(f)
+              data['version'] = LV
+              data['productVersion'] = LV
+              data['url'] = download_url
               data['sha256hash'] = sha
+              data['timestamp'] = TIMESTAMP
               with open(json_path, 'w') as f:
                   json.dump(data, f, indent=2)
                   f.write('\n')
-              print(f'✓ {json_path} → {sha}')
+              print(f'✓ {json_path} | url={download_url} | sha={sha[:12] if sha else "MISSING"}...')
           PYEOF
 
           cd versions-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git diff --cached --quiet || git commit -m "chore: sha256 hashes for ${LV}"
+          git diff --cached --quiet || git commit -m "release: v${LV} — bump version, url, sha256, timestamp"
           git push
 
       - name: Publish draft release
