@@ -198,56 +198,56 @@ jobs:
       # Download all Gofile link artifacts from platform builds
       # Each platform downloads to its own subdirectory to avoid filename collisions
       - name: Download Gofile links — Windows x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-windows-x64
           path: gofile-links/windows/
         continue-on-error: true
 
       - name: Download Gofile links — Windows ARM64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-windows-arm64
           path: gofile-links/windows/
         continue-on-error: true
 
       - name: Download Gofile links — macOS x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-macos-x64
           path: gofile-links/macos-x64/
         continue-on-error: true
 
       - name: Download Gofile links — macOS ARM64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-macos-arm64
           path: gofile-links/macos-arm64/
         continue-on-error: true
 
       - name: Download Gofile links — Linux x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-linux-x64
           path: gofile-links/linux-x64/
         continue-on-error: true
 
       - name: Download Gofile links — Linux ARM64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-linux-arm64
           path: gofile-links/linux-arm64/
         continue-on-error: true
 
       - name: Download Gofile links — Alpine x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-alpine-x64
           path: gofile-links/alpine-x64/
         continue-on-error: true
 
       - name: Download Gofile links — Alpine ARM64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gofile-links-alpine-arm64
           path: gofile-links/alpine-arm64/
@@ -351,42 +351,42 @@ jobs:
 
       # Download SHA256 hash artifacts from all platform builds
       - name: Download SHA256 hashes — macOS x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sha256-hashes-macos-x64
           path: sha256-hashes/macos-x64/
         continue-on-error: true
 
       - name: Download SHA256 hashes — macOS arm64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sha256-hashes-macos-arm64
           path: sha256-hashes/macos-arm64/
         continue-on-error: true
 
       - name: Download SHA256 hashes — Linux x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sha256-hashes-linux-x64
           path: sha256-hashes/linux-x64/
         continue-on-error: true
 
       - name: Download SHA256 hashes — Linux arm64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sha256-hashes-linux-arm64
           path: sha256-hashes/linux-arm64/
         continue-on-error: true
 
       - name: Download SHA256 hashes — Windows x64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sha256-hashes-windows-x64
           path: sha256-hashes/windows-x64/
         continue-on-error: true
 
       - name: Download SHA256 hashes — Windows arm64
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sha256-hashes-windows-arm64
           path: sha256-hashes/windows-arm64/
