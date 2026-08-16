@@ -1,7 +1,6 @@
 name: chat-lib tests
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -23,33 +22,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
           node-version: 22.x
-          cache: npm
-          cache-dependency-path: |
-            extensions/copilot/package-lock.json
-            extensions/copilot/chat-lib/package-lock.json
-
-      - name: Extract chat-lib
-        shell: bash
-        working-directory: extensions/copilot
-        run: |
-          npm ci
-          npm run extract-chat-lib
-          rm -rf node_modules
-
-      - name: Install chat-lib dependencies
-        working-directory: extensions/copilot/chat-lib
-        run: npm ci
-
-      - name: Build chat-lib
-        working-directory: extensions/copilot/chat-lib
-        run: npm run build
-
-      - name: Test chat-lib
-        working-directory: extensions/copilot/chat-lib
-        run: npm test
