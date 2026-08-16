@@ -158,168 +158,194 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
         // Simplified bar when not on a changed file
         if (currFileIdx === null) {
                 return (
-                        <div className="pointer-events-auto flex flex-col items-end">
-                                <button
-                                        className="text-xs font-semibold cursor-pointer flex items-center gap-1 hover:opacity-90 text-white rounded-md"
-                                        style={{ backgroundColor: '#16a34a', border: 'none', padding: '5px 22px' }}
-                                        onClick={() => commandBarService.goToURIIdx(nextURIIdx)}
-                                >
-                                        Next <MoveRight className='size-3' />
-                                </button>
+                        <div className="pointer-events-auto" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', background: '#1c1c1c', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.09)', padding: '2px 4px', gap: '2px', height: '28px' }}>
+                                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', padding: '0 4px', fontWeight: 500 }}>Next File</span>
+                                        <button style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.72)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '5px', padding: '0' }} onClick={() => commandBarService.goToURIIdx(nextURIIdx)}>
+                                                <MoveRight className='size-3.5' />
+                                        </button>
+                                </div>
                         </div>
                 )
         }
 
-        const borderColor = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.16)'
-        const bgColor = isDark ? 'rgba(36,36,36,0.97)' : 'rgba(255,255,255,0.97)'
-        const textColor = isDark ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.65)'
-        const dividerColor = isDark ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.11)'
+        // bar is always dark — colors are fixed
 
         const navBtnStyle: React.CSSProperties = {
                 background: 'none',
                 border: 'none',
-                color: textColor,
+                color: 'rgba(255,255,255,0.72)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '20px',
                 height: '20px',
-                borderRadius: '4px',
-                opacity: 0.65,
+                borderRadius: '5px',
                 padding: 0,
-                transition: 'opacity 0.12s',
+                transition: 'background 0.1s',
+                flexShrink: 0,
+        }
+
+        // shared pill style
+        const pillStyle: React.CSSProperties = {
+                display: 'flex',
+                alignItems: 'center',
+                background: '#1c1c1c',
+                borderRadius: '10px',
+                border: '1px solid rgba(255,255,255,0.09)',
+                padding: '2px 4px',
+                gap: '2px',
+                height: '28px',
+        }
+
+        const vDividerStyle: React.CSSProperties = {
+                width: '1px',
+                height: '14px',
+                background: 'rgba(255,255,255,0.1)',
+                margin: '0 4px',
+                flexShrink: 0,
+        }
+
+        const countLabelStyle: React.CSSProperties = {
+                fontSize: '12px',
+                color: 'rgba(255,255,255,0.75)',
+                whiteSpace: 'nowrap',
+                padding: '0 6px',
+                fontWeight: 500,
         }
 
         return (
-                <div className="pointer-events-auto flex flex-col items-end gap-1.5">
+                // outer: full-width, flex row, centered — the overlay widget is already 100% wide
+                <div className="pointer-events-auto" style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
 
-                        {/* Row 1: Accept File / Reject File — separate buttons, same total width */}
-                        {showAcceptReject && (
-                                <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
-                                        <button
-                                                data-tooltip-id="loophole-tooltip"
-                                                data-tooltip-content={acceptFileKeybindLabel}
-                                                data-tooltip-delay-show={500}
-                                                onClick={onAcceptFile}
-                                                style={{
-                                                        flex: 1,
-                                                        backgroundColor: '#16a34a',
-                                                        color: '#fff',
-                                                        fontSize: '12px',
-                                                        fontWeight: 600,
-                                                        padding: '5px 22px',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer',
-                                                        whiteSpace: 'nowrap',
-                                                        boxShadow: '0 1px 5px rgba(0,0,0,0.35)',
-                                                        transition: 'opacity 0.12s',
-                                                }}
-                                        >
-                                                Accept File
-                                        </button>
-                                        <button
-                                                data-tooltip-id="loophole-tooltip"
-                                                data-tooltip-content={rejectFileKeybindLabel}
-                                                data-tooltip-delay-show={500}
-                                                onClick={onRejectFile}
-                                                style={{
-                                                        flex: 1,
-                                                        backgroundColor: '#dc2626',
-                                                        color: '#fff',
-                                                        fontSize: '12px',
-                                                        fontWeight: 600,
-                                                        padding: '5px 22px',
-                                                        border: 'none',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer',
-                                                        whiteSpace: 'nowrap',
-                                                        boxShadow: '0 1px 5px rgba(0,0,0,0.35)',
-                                                        transition: 'opacity 0.12s',
-                                                }}
-                                        >
-                                                Reject File
-                                        </button>
-                                </div>
-                        )}
+                                {/* Left pill: diff nav + accept/reject */}
+                                <div style={pillStyle}>
 
-                        {/* Row 2: Diff nav on top, File nav below — stacked in one box */}
-                        <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                width: '100%',
-                                background: bgColor,
-                                border: `1px solid ${borderColor}`,
-                                borderRadius: '8px',
-                                boxShadow: '0 1px 5px rgba(0,0,0,0.35)',
-                                overflow: 'hidden',
-                        }}>
-                                {/* Diff row */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 10px', height: '28px' }}>
+                                        {/* Up / count / Down */}
                                         <button
                                                 style={navBtnStyle}
                                                 disabled={upDownDisabled}
                                                 onClick={() => commandBarService.goToDiffIdx(prevDiffIdx)}
-                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); commandBarService.goToDiffIdx(prevDiffIdx) } }}
                                                 data-tooltip-id="loophole-tooltip"
                                                 data-tooltip-content={upKeybindLabel}
                                                 data-tooltip-delay-show={500}
                                         >
                                                 <MoveUp className='size-3.5' />
                                         </button>
+                                        <span style={{ ...countLabelStyle, opacity: isADiffInThisFile ? 1 : 0.45 }}>
+                                                {isADiffInThisFile
+                                                        ? `${(currDiffIdx ?? 0) + 1} / ${sortedDiffIds.length}`
+                                                        : streamState === 'streaming' ? 'Streaming...' : 'No changes'
+                                                }
+                                        </span>
                                         <button
                                                 style={navBtnStyle}
                                                 disabled={upDownDisabled}
                                                 onClick={() => commandBarService.goToDiffIdx(nextDiffIdx)}
-                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); commandBarService.goToDiffIdx(nextDiffIdx) } }}
                                                 data-tooltip-id="loophole-tooltip"
                                                 data-tooltip-content={downKeybindLabel}
                                                 data-tooltip-delay-show={500}
                                         >
                                                 <MoveDown className='size-3.5' />
                                         </button>
-                                        <span style={{ fontSize: '11px', color: textColor, whiteSpace: 'nowrap', paddingLeft: '3px', opacity: isADiffInThisFile ? 1 : 0.5 }}>
-                                                {isADiffInThisFile
-                                                        ? `Diff ${(currDiffIdx ?? 0) + 1} of ${sortedDiffIds.length}`
-                                                        : streamState === 'streaming' ? 'Streaming...' : 'No changes'
-                                                }
-                                        </span>
+
+                                        {/* Accept / Reject — only when idle-has-changes */}
+                                        {showAcceptReject && (
+                                                <>
+                                                        <div style={vDividerStyle} />
+
+                                                        {/* Reject — dark gray */}
+                                                        <button
+                                                                data-tooltip-id="loophole-tooltip"
+                                                                data-tooltip-content={rejectFileKeybindLabel}
+                                                                data-tooltip-delay-show={500}
+                                                                onClick={onRejectFile}
+                                                                style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '5px',
+                                                                        background: '#333333',
+                                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                                        color: 'rgba(255,255,255,0.82)',
+                                                                        fontSize: '12px',
+                                                                        fontWeight: 500,
+                                                                        padding: '0 10px',
+                                                                        height: '22px',
+                                                                        borderRadius: '6px',
+                                                                        cursor: 'pointer',
+                                                                        whiteSpace: 'nowrap',
+                                                                        transition: 'background 0.1s',
+                                                                        flexShrink: 0,
+                                                                }}
+                                                        >
+                                                                <X size={11} />
+                                                                Reject File
+                                                        </button>
+
+                                                        {/* 3px gap */}
+                                                        <div style={{ width: '3px', flexShrink: 0 }} />
+
+                                                        {/* Accept — bright white, primary */}
+                                                        <button
+                                                                data-tooltip-id="loophole-tooltip"
+                                                                data-tooltip-content={acceptFileKeybindLabel}
+                                                                data-tooltip-delay-show={500}
+                                                                onClick={onAcceptFile}
+                                                                style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '5px',
+                                                                        background: '#f0f0f0',
+                                                                        border: '1px solid rgba(255,255,255,0.15)',
+                                                                        color: '#111111',
+                                                                        fontSize: '12px',
+                                                                        fontWeight: 600,
+                                                                        padding: '0 10px',
+                                                                        height: '22px',
+                                                                        borderRadius: '6px',
+                                                                        cursor: 'pointer',
+                                                                        whiteSpace: 'nowrap',
+                                                                        transition: 'background 0.1s',
+                                                                        flexShrink: 0,
+                                                                }}
+                                                        >
+                                                                <Check size={11} />
+                                                                Accept File
+                                                        </button>
+                                                </>
+                                        )}
                                 </div>
 
-                                {/* Divider */}
-                                <div style={{ height: '1px', backgroundColor: dividerColor }} />
-
-                                {/* File row */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 10px', height: '28px' }}>
+                                {/* Right pill: file nav */}
+                                <div style={pillStyle}>
                                         <button
                                                 style={navBtnStyle}
                                                 disabled={leftRightDisabled}
                                                 onClick={() => commandBarService.goToURIIdx(prevURIIdx)}
-                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); commandBarService.goToURIIdx(prevURIIdx) } }}
                                                 data-tooltip-id="loophole-tooltip"
                                                 data-tooltip-content={leftKeybindLabel}
                                                 data-tooltip-delay-show={500}
                                         >
                                                 <MoveLeft className='size-3.5' />
                                         </button>
+                                        <span style={countLabelStyle}>
+                                                {`File ${currFileIdx + 1} / ${sortedCommandBarURIs.length}`}
+                                        </span>
                                         <button
                                                 style={navBtnStyle}
                                                 disabled={leftRightDisabled}
                                                 onClick={() => commandBarService.goToURIIdx(nextURIIdx)}
-                                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); commandBarService.goToURIIdx(nextURIIdx) } }}
                                                 data-tooltip-id="loophole-tooltip"
                                                 data-tooltip-content={rightKeybindLabel}
                                                 data-tooltip-delay-show={500}
                                         >
                                                 <MoveRight className='size-3.5' />
                                         </button>
-                                        <span style={{ fontSize: '11px', color: textColor, whiteSpace: 'nowrap', paddingLeft: '3px' }}>
-                                                {`File ${currFileIdx + 1} of ${sortedCommandBarURIs.length}`}
-                                        </span>
                                 </div>
-                        </div>
 
+                        </div>
                 </div>
         )
 }
