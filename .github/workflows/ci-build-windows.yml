@@ -76,7 +76,7 @@ jobs:
 
       # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -86,7 +86,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-x64-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
@@ -95,7 +95,7 @@ jobs:
           restore-keys: ${{ runner.os }}-electron-
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
@@ -354,7 +354,7 @@ jobs:
 
       # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -364,7 +364,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-arm64-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
@@ -373,7 +373,7 @@ jobs:
           restore-keys: ${{ runner.os }}-electron-arm64-
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-arm64-${{ hashFiles('package-lock.json') }}

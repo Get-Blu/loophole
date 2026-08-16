@@ -175,7 +175,7 @@ jobs:
 
       # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -185,7 +185,7 @@ jobs:
           restore-keys: linux-x64-cargo-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
@@ -719,7 +719,7 @@ jobs:
           targets: aarch64-unknown-linux-gnu
 
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -729,7 +729,7 @@ jobs:
           restore-keys: linux-arm64-cargo-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}

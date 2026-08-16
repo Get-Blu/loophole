@@ -76,7 +76,7 @@ jobs:
 
       # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -86,7 +86,7 @@ jobs:
           restore-keys: publish-win-x64-cargo-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
@@ -95,7 +95,7 @@ jobs:
           restore-keys: publish-win-x64-electron-
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: publish-win-x64-node-${{ hashFiles('package-lock.json') }}
@@ -433,7 +433,7 @@ jobs:
 
       # ── Caches ────────────────────────────────────────────────────────────────
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -443,7 +443,7 @@ jobs:
           restore-keys: publish-win-arm64-cargo-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
@@ -452,7 +452,7 @@ jobs:
           restore-keys: publish-win-arm64-electron-
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: publish-win-arm64-node-${{ hashFiles('package-lock.json') }}

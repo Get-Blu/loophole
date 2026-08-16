@@ -121,7 +121,7 @@ jobs:
 
       # ── Caches ───────────────────────────────────────────────────────────[...]
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -131,7 +131,7 @@ jobs:
           restore-keys: macos-x64-cargo-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
@@ -429,7 +429,7 @@ jobs:
 
       # ── Caches ───────────────────────────────────────────────────────────[...]
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -439,7 +439,7 @@ jobs:
           restore-keys: macos-arm64-cargo-
 
       - name: Cache Electron
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ${{ env.ELECTRON_CACHE }}
