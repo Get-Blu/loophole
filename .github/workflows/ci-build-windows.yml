@@ -67,7 +67,7 @@ jobs:
           python-version: '3.11'
 
       - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Setup Rust (for CLI)
         uses: dtolnay/rust-toolchain@stable
@@ -345,7 +345,7 @@ jobs:
           python-version: '3.11'
 
       - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Setup Rust (for CLI)
         uses: dtolnay/rust-toolchain@stable
