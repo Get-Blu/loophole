@@ -255,7 +255,7 @@
     "ternary-stream": "^3.0.0",
     "through": "^2.3.8",
     "tsec": "0.2.7",
-    "tslib": "^2.6.3",
+    "tslib": "^2.8.1",
     "typescript": "^6.0.0-dev.20260416",
     "typescript-eslint": "^8.45.0",
     "util": "^0.12.4",
