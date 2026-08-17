@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { ScrollType } from '../../../../../../../editor/common/editorCommon.js';
 import { acceptAllBg, acceptBorder, buttonFontSize, buttonTextColor, rejectAllBg, rejectBg, rejectBorder } from '../../../../common/helpers/colors.js';
 import { LoopholeCommandBarProps } from '../../../voidCommandBarService.js';
-import { Check, EllipsisVertical, Menu, MoveDown, MoveLeft, MoveRight, MoveUp, X } from 'lucide-react';
+import { Check, EllipsisVertical, Menu, MoveDown, MoveLeft, MoveRight, MoveUp, X, Command, CornerDownLeft, Delete } from 'lucide-react';
 import {
 	LOOPHOLE_GOTO_NEXT_DIFF_ACTION_ID,
 	LOOPHOLE_GOTO_PREV_DIFF_ACTION_ID,
