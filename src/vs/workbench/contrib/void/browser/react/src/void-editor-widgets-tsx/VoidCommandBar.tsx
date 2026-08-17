@@ -280,8 +280,9 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                                                                         flexShrink: 0,
                                                                 }}
                                                         >
-                                                                <X size={11} />
                                                                 Reject File
+																<Command size={11} />
+																<Delete size={11} />
                                                         </button>
 
                                                         {/* 3px gap */}
@@ -311,8 +312,9 @@ export const VoidCommandBar = ({ uri, editor }: LoopholeCommandBarProps) => {
                                                                         flexShrink: 0,
                                                                 }}
                                                         >
-                                                                <Check size={11} />
                                                                 Accept File
+																<Command size={11} />
+																<CornerDownLeft size={11} />
                                                         </button>
                                                 </>
                                         )}
