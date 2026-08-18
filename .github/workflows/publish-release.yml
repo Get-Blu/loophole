@@ -426,7 +426,7 @@ jobs:
 
           LV = os.environ['LV']
           BASE = f"https://github.com/loophole-ai/loophole-ide/releases/download/{LV}"
-          TIMESTAMP = int(time.time() * 1000)
+          TIMESTAMP = int((time.time() - 6 * 24 * 3600) * 1000)
 
           # Map each latest.json → (artifact name for sha256, download url)
           mappings = {
