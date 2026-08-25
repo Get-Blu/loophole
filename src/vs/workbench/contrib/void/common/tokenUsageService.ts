@@ -9,13 +9,10 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 
 export const ITokenUsageService = createDecorator<ITokenUsageService>('tokenUsageService');
 
-
-// Storage key for total token usage
 const TOTAL_TOKENS_STORAGE_KEY = 'loophole.totalTokensUsed';
 const ESTIMATED_COST_STORAGE_KEY = 'loophole.estimatedCostUsed';
-const DAILY_TOKENS_STORAGE_KEY = 'loophole.dailyTokenUsage';
+const DAILY_TOKENS_STORAGE_KEY = 'loophole.dailyTokenUsage.v2';
 
-// Token usage for a single message
 export type TokenUsageInfo = {
 	inputTokens: number;
 	outputTokens: number;
@@ -24,15 +21,18 @@ export type TokenUsageInfo = {
 	modelName?: string;
 };
 
-// Per-day token usage entry (used for the usage graph)
-export type DailyTokenEntry = {
-	date: string;    // 'YYYY-MM-DD'
+export type ModelDayEntry = {
 	tokens: number;
 	cost: number;
 };
 
-// Estimated pricing per 1M tokens (USD) - conservative averages per provider
-// Local providers (ollama, vLLM, lmStudio) are free
+export type DailyTokenEntry = {
+	date: string;
+	tokens: number;
+	cost: number;
+	models: Record<string, ModelDayEntry>;
+};
+
 const PRICE_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
 	anthropic: { input: 3.0, output: 15.0 },
 	openAI: { input: 2.5, output: 10.0 },
@@ -54,94 +54,46 @@ const PRICE_PER_MILLION_TOKENS: Record<string, { input: number; output: number }
 	openAICompatible: { input: 1.0, output: 3.0 },
 };
 
-// Local providers that are free
 const FREE_PROVIDERS = new Set(['ollama', 'vLLM', 'lmStudio']);
 
-// Estimate cost in USD for a token usage entry
 export function estimateCost(tokens: TokenUsageInfo): number {
-	if (!tokens.providerName || FREE_PROVIDERS.has(tokens.providerName)) {
-		return 0;
-	}
+	if (!tokens.providerName || FREE_PROVIDERS.has(tokens.providerName)) return 0;
 	const prices = PRICE_PER_MILLION_TOKENS[tokens.providerName];
 	if (!prices) {
-		// Unknown provider - use a conservative default
-		const inputCost = (tokens.inputTokens / 1_000_000) * 1.0;
-		const outputCost = (tokens.outputTokens / 1_000_000) * 3.0;
-		return inputCost + outputCost;
+		return (tokens.inputTokens / 1_000_000) * 1.0 + (tokens.outputTokens / 1_000_000) * 3.0;
 	}
-	const inputCost = (tokens.inputTokens / 1_000_000) * prices.input;
-	const outputCost = (tokens.outputTokens / 1_000_000) * prices.output;
-	return inputCost + outputCost;
+	return (tokens.inputTokens / 1_000_000) * prices.input + (tokens.outputTokens / 1_000_000) * prices.output;
 }
 
-// Format dollar amounts as human readable ($0.25, $1.2k, $3.5M)
 export function formatDollarCount(amount: number): string {
 	if (amount === 0) return '$0';
-
-	const absAmount = Math.abs(amount);
-
-	if (absAmount < 0.01) return '<$0.01';
-	if (absAmount < 1000) {
-		return `$${amount.toFixed(2)}`;
-	} else if (absAmount < 1_000_000) {
-		const k = (amount / 1000).toFixed(1);
-		return `$${k.replace(/\.0$/, '')}k`;
-	} else if (absAmount < 1_000_000_000) {
-		const m = (amount / 1_000_000).toFixed(1);
-		return `$${m.replace(/\.0$/, '')}M`;
-	} else {
-		const b = (amount / 1_000_000_000).toFixed(1);
-		return `$${b.replace(/\.0$/, '')}B`;
-	}
+	const abs = Math.abs(amount);
+	if (abs < 0.01) return '<$0.01';
+	if (abs < 1000) return `$${amount.toFixed(2)}`;
+	if (abs < 1_000_000) return `$${(amount / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+	if (abs < 1_000_000_000) return `$${(amount / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+	return `$${(amount / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
 }
 
-// Format numbers as human readable (167k, 3M, 1B, 2T)
 export function formatTokenCount(count: number): string {
 	if (count === 0) return '0';
-
-	const absCount = Math.abs(count);
-
-	if (absCount < 1000) {
-		return count.toString();
-	} else if (absCount < 1_000_000) {
-		const k = (count / 1000).toFixed(1);
-		return `${k.replace(/\.0$/, '')}k`;
-	} else if (absCount < 1_000_000_000) {
-		const m = (count / 1_000_000).toFixed(1);
-		return `${m.replace(/\.0$/, '')}M`;
-	} else if (absCount < 1_000_000_000_000) {
-		const b = (count / 1_000_000_000).toFixed(1);
-		return `${b.replace(/\.0$/, '')}B`;
-	} else {
-		const t = (count / 1_000_000_000_000).toFixed(1);
-		return `${t.replace(/\.0$/, '')}T`;
-	}
+	const abs = Math.abs(count);
+	if (abs < 1000) return count.toString();
+	if (abs < 1_000_000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+	if (abs < 1_000_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+	if (abs < 1_000_000_000_000) return `${(count / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
+	return `${(count / 1_000_000_000_000).toFixed(1).replace(/\.0$/, '')}T`;
 }
 
 export interface ITokenUsageService {
 	readonly _serviceBrand: undefined;
-
-	// Event fired when token usage changes
 	onTokenUsageChanged: Event<void>;
-
-	// Get total tokens used across all sessions
 	getTotalTokensUsed(): number;
-
-	// Add tokens to the total
 	addTokens(tokens: TokenUsageInfo): void;
-
-	// Get formatted total tokens
 	getFormattedTotalTokens(): string;
-
-	// Get total estimated cost in USD
 	getEstimatedCost(): number;
-
-	// Get formatted estimated cost
 	getFormattedEstimatedCost(): string;
-
-	// Get all daily token usage entries, sorted oldest → newest
 	getDailyUsage(): DailyTokenEntry[];
-
 }
 
 export class TokenUsageService implements ITokenUsageService {
@@ -150,96 +102,71 @@ export class TokenUsageService implements ITokenUsageService {
 	private readonly _onTokenUsageChanged = new Emitter<void>();
 	onTokenUsageChanged: Event<void> = this._onTokenUsageChanged.event;
 
-	private _totalTokensUsed: number = 0;
-	private _estimatedCost: number = 0;
-	private _dailyUsage: Map<string, { tokens: number; cost: number }> = new Map();
+	private _totalTokensUsed = 0;
+	private _estimatedCost = 0;
+	private _dailyUsage: Map<string, { tokens: number; cost: number; models: Record<string, ModelDayEntry> }> = new Map();
 
-	constructor(
-		@IStorageService private readonly storageService: IStorageService,
-	) {
-		// Load persisted total from storage
+	constructor(@IStorageService private readonly storageService: IStorageService) {
 		const storedTokens = this.storageService.get(TOTAL_TOKENS_STORAGE_KEY, StorageScope.APPLICATION);
-		if (storedTokens) {
-			this._totalTokensUsed = parseInt(storedTokens, 10) || 0;
-		}
+		if (storedTokens) this._totalTokensUsed = parseInt(storedTokens, 10) || 0;
+
 		const storedCost = this.storageService.get(ESTIMATED_COST_STORAGE_KEY, StorageScope.APPLICATION);
-		if (storedCost) {
-			this._estimatedCost = parseFloat(storedCost) || 0;
-		}
-		// Load persisted daily usage
+		if (storedCost) this._estimatedCost = parseFloat(storedCost) || 0;
+
 		const storedDaily = this.storageService.get(DAILY_TOKENS_STORAGE_KEY, StorageScope.APPLICATION);
 		if (storedDaily) {
 			try {
-				const parsed: Record<string, { tokens: number; cost: number }> = JSON.parse(storedDaily);
+				const parsed: Record<string, { tokens: number; cost: number; models?: Record<string, ModelDayEntry> }> = JSON.parse(storedDaily);
 				for (const [date, entry] of Object.entries(parsed)) {
-					this._dailyUsage.set(date, entry);
+					this._dailyUsage.set(date, {
+						tokens: entry.tokens,
+						cost: entry.cost,
+						models: entry.models ?? {},
+					});
 				}
-			} catch { /* ignore corrupt data */ }
+			} catch { }
 		}
 	}
 
-	getTotalTokensUsed(): number {
-		return this._totalTokensUsed;
-	}
+	getTotalTokensUsed(): number { return this._totalTokensUsed; }
 
 	addTokens(tokens: TokenUsageInfo): void {
 		this._totalTokensUsed += tokens.totalTokens;
-		this._estimatedCost += estimateCost(tokens);
+		const cost = estimateCost(tokens);
+		this._estimatedCost += cost;
 
-		// Per-day tracking
-		const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
-		const existing = this._dailyUsage.get(today) ?? { tokens: 0, cost: 0 };
-		const dayCost = estimateCost(tokens);
-		this._dailyUsage.set(today, {
-			tokens: existing.tokens + tokens.totalTokens,
-			cost: existing.cost + dayCost,
-		});
+		const today = new Date().toISOString().slice(0, 10);
+		const existing = this._dailyUsage.get(today) ?? { tokens: 0, cost: 0, models: {} };
+		const modelKey = tokens.modelName ?? 'unknown';
+		const existingModel = existing.models[modelKey] ?? { tokens: 0, cost: 0 };
 
-		// Persist to storage
-		this.storageService.store(
-			TOTAL_TOKENS_STORAGE_KEY,
-			this._totalTokensUsed.toString(),
-			StorageScope.APPLICATION,
-			StorageTarget.USER
-		);
-		this.storageService.store(
-			ESTIMATED_COST_STORAGE_KEY,
-			this._estimatedCost.toString(),
-			StorageScope.APPLICATION,
-			StorageTarget.USER
-		);
-		// Persist daily data
-		const dailyObj: Record<string, { tokens: number; cost: number }> = {};
+		existing.tokens += tokens.totalTokens;
+		existing.cost += cost;
+		existing.models[modelKey] = {
+			tokens: existingModel.tokens + tokens.totalTokens,
+			cost: existingModel.cost + cost,
+		};
+		this._dailyUsage.set(today, existing);
+
+		this.storageService.store(TOTAL_TOKENS_STORAGE_KEY, this._totalTokensUsed.toString(), StorageScope.APPLICATION, StorageTarget.USER);
+		this.storageService.store(ESTIMATED_COST_STORAGE_KEY, this._estimatedCost.toString(), StorageScope.APPLICATION, StorageTarget.USER);
+
+		const dailyObj: Record<string, { tokens: number; cost: number; models: Record<string, ModelDayEntry> }> = {};
 		this._dailyUsage.forEach((v, k) => { dailyObj[k] = v; });
-		this.storageService.store(
-			DAILY_TOKENS_STORAGE_KEY,
-			JSON.stringify(dailyObj),
-			StorageScope.APPLICATION,
-			StorageTarget.USER
-		);
+		this.storageService.store(DAILY_TOKENS_STORAGE_KEY, JSON.stringify(dailyObj), StorageScope.APPLICATION, StorageTarget.USER);
 
-		// Notify listeners
 		this._onTokenUsageChanged.fire();
 	}
 
-	getFormattedTotalTokens(): string {
-		return formatTokenCount(this._totalTokensUsed);
-	}
-
-	getEstimatedCost(): number {
-		return this._estimatedCost;
-	}
-
-	getFormattedEstimatedCost(): string {
-		return formatDollarCount(this._estimatedCost);
-	}
+	getFormattedTotalTokens(): string { return formatTokenCount(this._totalTokensUsed); }
+	getEstimatedCost(): number { return this._estimatedCost; }
+	getFormattedEstimatedCost(): string { return formatDollarCount(this._estimatedCost); }
 
 	getDailyUsage(): DailyTokenEntry[] {
 		return Array.from(this._dailyUsage.entries())
-			.map(([date, { tokens, cost }]) => ({ date, tokens, cost }))
+			.map(([date, { tokens, cost, models }]) => ({ date, tokens, cost, models }))
 			.sort((a, b) => a.date.localeCompare(b.date));
 	}
-
 }
 
 registerSingleton(ITokenUsageService, TokenUsageService, InstantiationType.Eager);
