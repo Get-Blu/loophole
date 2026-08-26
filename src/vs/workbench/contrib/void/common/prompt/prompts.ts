@@ -850,7 +850,13 @@ export const messageOfSelection = async (
 		folderOpts: {
 			maxChildren: number,
 			maxCharsPerFile: number,
-		}
+		},
+		// Resolvers for non-file selection types
+		getTerminalContents?: (terminalId: string) => Promise<string>,
+		getProblemsContents?: () => Promise<string>,
+		getMCPToolDescription?: (serverName: string, toolName: string) => string,
+		getRulesContents?: (folderPath: string) => Promise<string>,
+		getGitDiffContents?: (folderPath: string) => Promise<string>,
 	}
 ) => {
 	const lineNumAddition = (range: [number, number]) => ` (lines ${range[0]}:${range[1]})`
@@ -890,6 +896,36 @@ export const messageOfSelection = async (
 		const contentStr = [folderStructure, ...strOfFiles].join('\n\n')
 		return contentStr
 	}
+	else if (s.type === 'Terminal') {
+		const content = opts.getTerminalContents
+			? await opts.getTerminalContents(s.terminalId).catch(() => 'Could not read terminal.')
+			: '(terminal contents unavailable)'
+		return `Terminal contents:\n${tripleTick[0]}\n${content}\n${tripleTick[1]}`
+	}
+	else if (s.type === 'Problems') {
+		const content = opts.getProblemsContents
+			? await opts.getProblemsContents().catch(() => 'Could not read problems.')
+			: '(problems unavailable)'
+		return `Workspace problems:\n${content}`
+	}
+	else if (s.type === 'MCP') {
+		const desc = opts.getMCPToolDescription
+			? opts.getMCPToolDescription(s.mcpServerName, s.mcpToolName)
+			: `MCP tool: ${s.mcpServerName} / ${s.mcpToolName}`
+		return `MCP Tool available - ${desc}`
+	}
+	else if (s.type === 'Rules') {
+		const content = opts.getRulesContents
+			? await opts.getRulesContents(s.folderPath).catch(() => 'Could not read .loopholerules.')
+			: '(rules unavailable)'
+		return `Rules (.loopholerules):\n${content}`
+	}
+	else if (s.type === 'GitDiff') {
+		const content = opts.getGitDiffContents
+			? await opts.getGitDiffContents(s.folderPath).catch(() => 'Could not read git diff.')
+			: '(git diff unavailable)'
+		return `Git diff:\n${tripleTick[0]}diff\n${content}\n${tripleTick[1]}`
+	}
 	else
 		return ''
 
@@ -901,7 +937,12 @@ export const chat_userMessageContent = async (
 	currSelns: StagingSelectionItem[] | null,
 	opts: {
 		directoryStrService: IDirectoryStrService,
-		fileService: IFileService
+		fileService: IFileService,
+		getTerminalContents?: (terminalId: string) => Promise<string>,
+		getProblemsContents?: () => Promise<string>,
+		getMCPToolDescription?: (serverName: string, toolName: string) => string,
+		getRulesContents?: (folderPath: string) => Promise<string>,
+		getGitDiffContents?: (folderPath: string) => Promise<string>,
 	},
 ) => {
 

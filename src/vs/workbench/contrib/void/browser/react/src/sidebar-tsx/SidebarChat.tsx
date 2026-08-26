@@ -957,13 +957,23 @@ export const SelectedFiles = (
 				const thisKey = selection.type === 'CodeSelection' ? selection.type + selection.language + selection.range + selection.state.wasAddedAsCurrentFile + selection.uri.fsPath
 					: selection.type === 'File' ? selection.type + selection.language + selection.state.wasAddedAsCurrentFile + selection.uri.fsPath
 						: selection.type === 'Folder' ? selection.type + selection.language + selection.state + selection.uri.fsPath
-							: i
+							: selection.type === 'Terminal' ? selection.type + selection.terminalId
+								: selection.type === 'Problems' ? selection.type
+									: selection.type === 'MCP' ? selection.type + selection.mcpServerName + selection.mcpToolName
+										: selection.type === 'Rules' ? selection.type + selection.folderPath
+											: selection.type === 'GitDiff' ? selection.type + selection.folderPath
+												: i
 
 				const SelectionIcon = (
 					selection.type === 'File' ? File
 						: selection.type === 'Folder' ? Folder
 							: selection.type === 'CodeSelection' ? Text
-								: (undefined as never)
+								: selection.type === 'Terminal' ? Bot
+									: selection.type === 'Problems' ? AlertTriangle
+										: selection.type === 'MCP' ? Code2
+											: selection.type === 'Rules' ? FileText
+												: selection.type === 'GitDiff' ? Search
+													: (undefined as never)
 				)
 
 				return <div // container for summarybox and code
@@ -973,7 +983,14 @@ export const SelectedFiles = (
 					{/* tooltip for file path */}
 					<span className="truncate overflow-hidden text-ellipsis"
 						data-tooltip-id='loophole-tooltip'
-						data-tooltip-content={getRelative(selection.uri, accessor)}
+						data-tooltip-content={
+							selection.type === 'Terminal' ? `Terminal ${selection.terminalId}`
+							: selection.type === 'Problems' ? 'Problems in workspace'
+							: selection.type === 'MCP' ? `${selection.mcpServerName} / ${selection.mcpToolName}`
+							: selection.type === 'Rules' ? `.loopholerules — ${selection.folderPath}`
+							: selection.type === 'GitDiff' ? `Git diff — ${selection.folderPath}`
+							: getRelative((selection as any).uri, accessor)
+						}
 						data-tooltip-place='top'
 						data-tooltip-delay-show={3000}
 					>
@@ -1018,9 +1035,14 @@ export const SelectedFiles = (
 						>
 							{<SelectionIcon size={10} />}
 
-							{ // file name and range
-								getBasename(selection.uri.fsPath)
-								+ (selection.type === 'CodeSelection' ? ` (${selection.range[0]}-${selection.range[1]})` : '')
+							{ // label
+								selection.type === 'Terminal' ? `Terminal ${selection.terminalId === '__active__' ? '' : selection.terminalId}`.trim()
+								: selection.type === 'Problems' ? 'Problems'
+								: selection.type === 'MCP' ? selection.mcpToolName
+								: selection.type === 'Rules' ? '.loopholerules'
+								: selection.type === 'GitDiff' ? 'Git Diff'
+								: getBasename((selection as any).uri.fsPath)
+									+ (selection.type === 'CodeSelection' ? ` (${selection.range[0]}-${selection.range[1]})` : '')
 							}
 
 							{selection.type === 'File' && selection.state.wasAddedAsCurrentFile && messageIdx === undefined && currentURI?.fsPath === selection.uri.fsPath ?

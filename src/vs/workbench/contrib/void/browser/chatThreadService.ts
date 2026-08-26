@@ -42,6 +42,14 @@ import { IMCPService } from '../common/mcpService.js';
 import { RawMCPToolCall } from '../common/mcpServiceTypes.js';
 import { ITokenUsageService } from '../common/tokenUsageService.js';
 import { TokenUsageInfo } from '../common/sendLLMMessageTypes.js';;
+import { ITerminalToolService } from './terminalToolService.js';
+import { IMarkerService, MarkerSeverity } from '../../../../platform/markers/common/markers.js';
+import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
+import { ProxyChannel } from '../../../../base/parts/ipc/common/ipc.js';
+import { ILoopholeSCMService } from '../common/voidSCMTypes.js';
+import { ILoopholeModelService } from '../common/voidModelService.js';
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { EndOfLinePreference } from '../../../../editor/common/model.js';
 
 export const IChatThreadService = createDecorator<IChatThreadService>('voidChatThreadService');
 
@@ -356,6 +364,11 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 		@IFileService private readonly _fileService: IFileService,
 		@IMCPService private readonly _mcpService: IMCPService,
 		@ITokenUsageService private readonly _tokenUsageService: ITokenUsageService,
+		@ITerminalToolService private readonly _terminalToolService: ITerminalToolService,
+		@IMarkerService private readonly _markerService: IMarkerService,
+		@IMainProcessService private readonly _mainProcessService: IMainProcessService,
+		@ILoopholeModelService private readonly _loopholeModelService: ILoopholeModelService,
+		@IWorkspaceContextService private readonly _workspaceContextService: IWorkspaceContextService,
 	) {
 		super()
 		this.state = { allThreads: {}, currentThreadId: null as unknown as string } // default state
@@ -2016,7 +2029,59 @@ We only need to do it for files that were edited since `from`, ie files between 
 		const instructions = userMessage
 		const currSelns: StagingSelectionItem[] = _chatSelections ?? thread.state.stagingSelections
 
-		const userMessageContent = await chat_userMessageContent(instructions, currSelns, { directoryStrService: this._directoryStringService, fileService: this._fileService }) // user message + names of files (NOT content)
+		const userMessageContent = await chat_userMessageContent(instructions, currSelns, {
+			directoryStrService: this._directoryStringService,
+			fileService: this._fileService,
+			getTerminalContents: async (terminalId: string) => {
+				try {
+					const id = terminalId === '__active__'
+						? (this._terminalToolService.listPersistentTerminalIds()[0] ?? terminalId)
+						: terminalId;
+					return await this._terminalToolService.readTerminal(id);
+				} catch {
+					return 'Could not read terminal contents.';
+				}
+			},
+			getProblemsContents: async () => {
+				const markers = this._markerService.read();
+				if (markers.length === 0) return 'No problems found in workspace.';
+				return markers.map(m => {
+					const sev = m.severity === MarkerSeverity.Error ? 'Error'
+						: m.severity === MarkerSeverity.Warning ? 'Warning'
+						: 'Info';
+					return `[${sev}] ${m.resource.fsPath}:${m.startLineNumber}:${m.startColumn} — ${m.message}`;
+				}).join('\n');
+			},
+			getMCPToolDescription: (serverName: string, toolName: string) => {
+				const server = this._mcpService.state.mcpServerOfName[serverName];
+				const tool = (server as any)?.tools?.find((t: any) => t.name === toolName);
+				return tool?.description
+					? `${serverName} / ${toolName}: ${tool.description}`
+					: `${serverName} / ${toolName}`;
+			},
+			getRulesContents: async (folderPath: string) => {
+				try {
+					const uri = URI.joinPath(URI.file(folderPath), '.loopholerules');
+					const { model } = this._loopholeModelService.getModel(uri);
+					if (model) return model.getValue(EndOfLinePreference.LF);
+					// Fallback: read via fileService if model not initialized yet
+					const bytes = await this._fileService.readFile(uri);
+					return bytes.value.toString();
+				} catch {
+					return 'No .loopholerules file found.';
+				}
+			},
+			getGitDiffContents: async (folderPath: string) => {
+				try {
+					const scm = ProxyChannel.toService<ILoopholeSCMService>(
+						this._mainProcessService.getChannel('loophole-channel-scm')
+					);
+					return await scm.gitSampledDiffs(folderPath);
+				} catch {
+					return 'Could not read git diff.';
+				}
+			},
+		})
 		const userHistoryElt: ChatMessage = { role: 'user', content: userMessageContent, displayContent: instructions, selections: currSelns, state: defaultMessageState }
 		this._addMessageToThread(threadId, userHistoryElt)
 

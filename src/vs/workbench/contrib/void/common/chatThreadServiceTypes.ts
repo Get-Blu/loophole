@@ -91,6 +91,31 @@ export type StagingSelectionItem = {
 	uri: URI;
 	language?: undefined;
 	state?: undefined;
+} | {
+	type: 'Terminal';
+	terminalId: string;
+	language?: undefined;
+	state?: undefined;
+} | {
+	type: 'Problems';
+	language?: undefined;
+	state?: undefined;
+} | {
+	type: 'MCP';
+	mcpServerName: string;
+	mcpToolName: string;
+	language?: undefined;
+	state?: undefined;
+} | {
+	type: 'Rules';
+	folderPath: string; // workspace folder path the .loopholerules belongs to
+	language?: undefined;
+	state?: undefined;
+} | {
+	type: 'GitDiff';
+	folderPath: string; // workspace folder path to run git diff in
+	language?: undefined;
+	state?: undefined;
 }
 
 

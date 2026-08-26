@@ -20,7 +20,7 @@ import { inputBackground, inputForeground } from '../../../../../../../platform/
 import { useFloating, autoUpdate, offset, flip, shift, size, autoPlacement } from '@floating-ui/react';
 import { URI } from '../../../../../../../base/common/uri.js';
 import { getBasename, getFolderName } from '../sidebar-tsx/SidebarChat.js';
-import { ChevronRight, File, Folder, FolderClosed, LucideProps } from 'lucide-react';
+import { ChevronRight, File, Folder, FolderClosed, Terminal, TriangleAlert, Wrench, GitBranch, ScrollText, LucideProps } from 'lucide-react';
 import { StagingSelectionItem } from '../../../../common/chatThreadServiceTypes.js';
 import { DiffEditorWidget } from '../../../../../../../editor/browser/widget/diffEditor/diffEditorWidget.js';
 import { extractSearchReplaceBlocks, ExtractedSearchReplaceBlock } from '../../../../common/helpers/extractCodeFromResult.js';
@@ -189,6 +189,8 @@ const getAbbreviatedName = (relativePath: string) => {
 const getOptionsAtPath = async (accessor: ReturnType<typeof useAccessor>, path: string[], optionText: string): Promise<Option[]> => {
 
 	const toolsService = accessor.get('IToolsService')
+	const terminalToolService = accessor.get('ITerminalToolService')
+	const mcpService = accessor.get('IMCPService')
 
 
 
@@ -283,6 +285,96 @@ const getOptionsAtPath = async (accessor: ReturnType<typeof useAccessor>, path: 
 	};
 
 
+	// Build terminal options from active terminal instances
+	const getTerminalOptions = async (): Promise<Option[]> => {
+		const terminalIds = terminalToolService.listPersistentTerminalIds()
+		if (terminalIds.length === 0) {
+			// Always show a single "Terminal" leaf even if no named terminals
+			return [{
+				leafNodeType: 'Terminal' as any,
+				terminalId: '__active__',
+				iconInMenu: Terminal,
+				fullName: 'Terminal',
+				abbreviatedName: 'Terminal',
+			}]
+		}
+		return terminalIds.map(id => ({
+			leafNodeType: 'Terminal' as any,
+			terminalId: id,
+			iconInMenu: Terminal,
+			fullName: `Terminal ${id}`,
+			abbreviatedName: `Terminal ${id}`,
+		}))
+	}
+
+	// Build MCP tool options from connected MCP servers
+	const getMCPOptions = async (): Promise<Option[]> => {
+		const mcpState = mcpService.state
+		const results: Option[] = []
+		for (const [serverName, server] of Object.entries(mcpState.mcpServerOfName)) {
+			if (!server || server.status !== 'connected') continue
+			const tools = (server as any).tools ?? []
+			for (const tool of tools) {
+				results.push({
+					leafNodeType: 'MCP' as any,
+					mcpServerName: serverName,
+					mcpToolName: tool.name,
+					iconInMenu: Wrench,
+					fullName: `${serverName} / ${tool.name}`,
+					abbreviatedName: tool.name,
+				})
+			}
+		}
+		return results
+	}
+
+	// Build rules options — one per workspace folder that has a .loopholerules file
+	const getRulesOptions = async (): Promise<Option[]> => {
+		const workspaceService = accessor.get('IWorkspaceContextService')
+		const folders = workspaceService.getWorkspace().folders
+		if (folders.length === 0) return []
+		// If only one workspace folder, make it a direct leaf
+		if (folders.length === 1) {
+			return [{
+				leafNodeType: 'Rules' as any,
+				folderPath: folders[0].uri.fsPath,
+				iconInMenu: ScrollText,
+				fullName: '.loopholerules',
+				abbreviatedName: '.loopholerules',
+			}]
+		}
+		return folders.map(folder => ({
+			leafNodeType: 'Rules' as any,
+			folderPath: folder.uri.fsPath,
+			iconInMenu: ScrollText,
+			fullName: folder.name,
+			abbreviatedName: folder.name,
+		}))
+	}
+
+	// Build git diff options — one per workspace folder
+	const getGitDiffOptions = async (): Promise<Option[]> => {
+		const workspaceService = accessor.get('IWorkspaceContextService')
+		const folders = workspaceService.getWorkspace().folders
+		if (folders.length === 0) return []
+		if (folders.length === 1) {
+			return [{
+				leafNodeType: 'GitDiff' as any,
+				folderPath: folders[0].uri.fsPath,
+				iconInMenu: GitBranch,
+				fullName: 'Git Diff',
+				abbreviatedName: 'Git Diff',
+			}]
+		}
+		return folders.map(folder => ({
+			leafNodeType: 'GitDiff' as any,
+			folderPath: folder.uri.fsPath,
+			iconInMenu: GitBranch,
+			fullName: folder.name,
+			abbreviatedName: folder.name,
+		}))
+	}
+
 	const allOptions: Option[] = [
 		{
 			fullName: 'files',
@@ -295,6 +387,37 @@ const getOptionsAtPath = async (accessor: ReturnType<typeof useAccessor>, path: 
 			abbreviatedName: 'folders',
 			iconInMenu: Folder,
 			generateNextOptions: async (t) => (await searchForFilesOrFolders(t, 'folders')) || [],
+		},
+		{
+			fullName: 'terminal',
+			abbreviatedName: 'terminal',
+			iconInMenu: Terminal,
+			generateNextOptions: async (_t) => (await getTerminalOptions()),
+		},
+		{
+			fullName: 'problems',
+			abbreviatedName: 'problems',
+			iconInMenu: TriangleAlert,
+			leafNodeType: 'Problems' as any,
+			uri: undefined as any, // satisfies leaf shape
+		} as any,
+		{
+			fullName: 'mcp',
+			abbreviatedName: 'mcp',
+			iconInMenu: Wrench,
+			generateNextOptions: async (_t) => (await getMCPOptions()),
+		},
+		{
+			fullName: 'rules',
+			abbreviatedName: 'rules',
+			iconInMenu: ScrollText,
+			generateNextOptions: async (_t) => (await getRulesOptions()),
+		},
+		{
+			fullName: 'git diff',
+			abbreviatedName: 'git diff',
+			iconInMenu: GitBranch,
+			generateNextOptions: async (_t) => (await getGitDiffOptions()),
 		},
 	]
 
@@ -440,6 +563,26 @@ export const LoopholeInputBox2 = forwardRef<HTMLTextAreaElement, InputBox2Props>
 				uri: option.uri,
 				language: undefined,
 				state: undefined,
+			}
+			else if ((option as any).leafNodeType === 'Terminal') newSelection = {
+				type: 'Terminal',
+				terminalId: (option as any).terminalId ?? '__active__',
+			}
+			else if ((option as any).leafNodeType === 'Problems') newSelection = {
+				type: 'Problems',
+			}
+			else if ((option as any).leafNodeType === 'MCP') newSelection = {
+				type: 'MCP',
+				mcpServerName: (option as any).mcpServerName,
+				mcpToolName: (option as any).mcpToolName,
+			}
+			else if ((option as any).leafNodeType === 'Rules') newSelection = {
+				type: 'Rules',
+				folderPath: (option as any).folderPath,
+			}
+			else if ((option as any).leafNodeType === 'GitDiff') newSelection = {
+				type: 'GitDiff',
+				folderPath: (option as any).folderPath,
 			}
 			else throw new Error(`Unexpected leafNodeType ${option.leafNodeType}`)
 
