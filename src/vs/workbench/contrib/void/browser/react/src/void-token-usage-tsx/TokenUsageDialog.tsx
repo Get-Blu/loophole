@@ -167,8 +167,12 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
                 const cardW = 220;
                 const flipLeft = tooltip.barX + cardW + 16 > svgWidth;
                 const left = flipLeft ? tooltip.barX - cardW - 8 : tooltip.barX + 8;
-                const top = Math.max(PAD.top, tooltip.barY - 20);
-
+                const tooltipHeight = 160;
+			    const top = Math.min(
+					Math.max(PAD.top, tooltip.barY - 20),
+					CHART_HEIGHT - tooltipHeight
+				);
+			
                 const sorted = Object.entries(tooltip.entry.models)
                     .sort((a, b) => b[1].tokens - a[1].tokens);
 
