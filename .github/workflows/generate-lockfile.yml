@@ -18,7 +18,14 @@ jobs:
         with:
           node-version: '22'
 
-      - run: npm install
+      # Terminal issue
+      # Only update the lock file — do NOT actually install native modules here.
+      # If we do a full `npm install` without the Electron rebuild steps, node-pty
+      # gets locked to a plain Node.js prebuilt, which breaks the terminal (error 193).
+      - name: Update lock file only (no native install)
+        run: npm install --package-lock-only --ignore-scripts
+        env:
+          npm_config_arch: x64
 
       - name: Commit updated lockfile
         shell: bash
