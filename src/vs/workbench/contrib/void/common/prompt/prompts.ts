@@ -526,10 +526,32 @@ The skill name must exactly match one of the skills listed in the "Available Ski
 - After all tests pass (if tests were requested)
 - After all todo items are marked complete`,
 		params: {
-			result: { description: `Concise summary of what was completed. Format:
-- One bullet per file or logical change: \`<file>\`: <what was done>
-- One sentence explaining the effect.
-Rules: no first person, name exact files, no intro or closing sentence.` },
+			result: { description: `A structured summary of what was completed. Always use this exact format:
+
+**What changed:**
+- <file or area>: <what was done> (e.g. "src/auth/login.ts: added rate limiting to login endpoint")
+- <file or area>: <what was done>
+(one bullet per file or logical change)
+
+**Why:** <one sentence explaining the reason or effect of the changes>
+
+## Inline code rule
+If the total lines changed across ALL files is 10 or fewer, also include the changed code inline after the relevant bullet, like this:
+
+- \`src/utils/format.ts\`: fixed off-by-one in date formatter
+\`\`\`ts
+return date.getDate() + 1
+\`\`\`
+
+If the change spans more than 10 lines total, skip the code blocks — the file diffs are already visible in the checkpoints.
+
+Rules:
+- Do NOT start with "I" or use first person anywhere
+- Be specific: name the exact files, functions, or components touched
+- Keep each bullet to one line
+- The "Why" line should explain the impact, not repeat what was done
+- If only one file changed, still use the bullet format
+- Do not add any intro or closing sentence outside this format` },
 			command: { description: `Optional shell command the user can run to see or verify the result, e.g. "npm run dev" or "python main.py". Only include if directly relevant.` },
 		}
 	},
@@ -722,7 +744,34 @@ Prioritize technical accuracy and truthfulness over validating the user's belief
 
 	// ─── TASK MANAGEMENT (TODOS) ──────────────────────────────────────────────────
 	const taskManagement = mode === 'agent' ? `# Task management
-Use todo_write for tasks with 3+ distinct steps. Update todos only at meaningful checkpoints: when starting a task, completing a major step, and when fully done. Mark todos completed immediately — never batch. One in_progress at a time.` : ''
+You have access to the todo_write tool to help you manage and plan tasks. Use it VERY frequently to give the user visibility into your progress. It is EXTREMELY helpful for planning and breaking down larger complex tasks into smaller steps. If you do not use this tool when planning, you may forget to do important tasks — that is unacceptable.
+
+Mark todos as completed as soon as you are done with a task. Do not batch up multiple tasks before marking them as completed.
+
+<example>
+user: Run the build and fix any type errors
+assistant: I'll use todo_write to plan:
+- Run the build
+- Fix any type errors
+
+Running the build now...
+
+Found 10 type errors. Adding them to the todo list and marking the first as in_progress.
+
+Fixed the first error. Marking as completed, moving to the next...
+</example>
+
+<example>
+user: Help me write a feature for usage metrics export
+assistant: I'll plan this with todo_write:
+1. Research existing metrics tracking in the codebase
+2. Design the metrics collection system
+3. Implement core metrics tracking
+4. Create export functionality for different formats
+
+Starting with research — marking item 1 as in_progress...
+[continues step by step, marking todos as completed as they go]
+</example>` : ''
 
 	// ─── DOING TASKS ──────────────────────────────────────────────────────────────
 	const doingTasks = mode === 'agent' ? `# Doing tasks
