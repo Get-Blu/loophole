@@ -8,55 +8,41 @@ import { DailyTokenEntry, formatTokenCount, formatDollarCount } from '../../../.
 import { X } from 'lucide-react';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 
-
-const PAD = { top: 28, right: 20, bottom: 44, left: 68 };
-const CHART_HEIGHT = 300;
-// Fixed palette — consistent color per model name
-const PALETTE = [
-    '#3b82f6', '#f97316', '#10b981', '#a855f7', '#eab308',
-    '#ec4899', '#14b8a6', '#f43f5e', '#8b5cf6', '#06b6d4',
-    '#84cc16', '#fb923c', '#e879f9', '#34d399', '#60a5fa',
-];
-
-function modelColor(model: string, allModels: string[]): string {
-    const idx = allModels.indexOf(model);
-    return PALETTE[idx % PALETTE.length];
-}
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 function toDateLabel(dateStr: string): string {
+    // 'YYYY-MM-DD' → 'Mar 29'
     const [y, m, d] = dateStr.split('-').map(Number);
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function yAxisTicks(maxVal: number): number[] {
+/** Returns 5-6 nice Y-axis tick values covering 0..maxTokens */
+function yAxisTicks(maxTokens: number): number[] {
     const steps = [
-        100_000, 250_000, 500_000, 1_000_000, 2_000_000, 5_000_000,
-        10_000_000, 25_000_000, 50_000_000, 100_000_000,
+        100_000, 250_000, 500_000, 750_000,
+        1_000_000, 1_500_000, 2_000_000, 5_000_000, 10_000_000,
     ];
     for (const step of steps) {
         const ticks: number[] = [];
-        for (let v = 0; v <= maxVal * 1.2; v += step) ticks.push(v);
+        for (let v = 0; v <= maxTokens * 1.2; v += step) ticks.push(v);
         if (ticks.length >= 4 && ticks.length <= 7) return ticks;
     }
-    const step = Math.ceil(maxVal / 5 / 100_000) * 100_000 || 100_000;
+    const step = Math.ceil(maxTokens / 5 / 100_000) * 100_000 || 100_000;
     return Array.from({ length: 6 }, (_, i) => i * step);
 }
 
-interface TooltipState {
-    barX: number;
-    barY: number;
-    entry: DailyTokenEntry;
-}
+const PAD = { top: 28, right: 20, bottom: 44, left: 68 };
+const CHART_HEIGHT = 300; // SVG height in px
+
+// ─── inner chart (memoisation-friendly) ─────────────────────────────────────
 
 interface ChartProps {
     data: DailyTokenEntry[];
-    allModels: string[];
 }
 
-const UsageChart = ({ data, allModels }: ChartProps) => {
+const UsageChart = ({ data }: ChartProps) => {
     const [svgWidth, setSvgWidth] = useState(720);
     const svgRef = useRef<SVGSVGElement>(null);
-    const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
     useEffect(() => {
         if (!svgRef.current) return;
@@ -65,6 +51,11 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
         return () => ro.disconnect();
     }, []);
 
+    const [tooltip, setTooltip] = useState<{
+        px: number; py: number;
+        entry: DailyTokenEntry; cumulative: number;
+    } | null>(null);
+
     const plotW = svgWidth - PAD.left - PAD.right;
     const plotH = CHART_HEIGHT - PAD.top - PAD.bottom;
 
@@ -72,17 +63,40 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
     const ticks = yAxisTicks(maxTok);
     const yMax = ticks[ticks.length - 1];
 
-    const barCount = data.length;
-    const barGap = Math.max(1, plotW / barCount * 0.15);
-    const barW = barCount > 0 ? (plotW - barGap * (barCount - 1)) / barCount : 20;
+    const xOf = (i: number) =>
+        PAD.left + (data.length <= 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
+    const yOf = (tok: number) =>
+        PAD.top + plotH - (tok / yMax) * plotH;
 
-    const xOf = (i: number) => PAD.left + i * (barW + barGap);
-    const yOf = (tok: number) => PAD.top + plotH - (tok / yMax) * plotH;
-    const hOf = (tok: number) => (tok / yMax) * plotH;
+    // SVG path strings
+    const pts = data.map((d, i) => ({ x: xOf(i), y: yOf(d.tokens), d }));
 
-    const xStep = Math.max(1, Math.ceil(data.length / 9));
+    const linePath = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const areaPath = pts.length
+        ? `${linePath} L${pts.at(-1)!.x.toFixed(1)},${(PAD.top + plotH).toFixed(1)} L${pts[0].x.toFixed(1)},${(PAD.top + plotH).toFixed(1)}Z`
+        : '';
+
+    // Cumulative array
+    let cum = 0;
+    const cumByIdx = data.map(d => { cum += d.tokens; return cum; });
+
+    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        let ni = 0, nd = Infinity;
+        pts.forEach((p, i) => {
+            const dist = Math.abs(p.x - mx);
+            if (dist < nd) { nd = dist; ni = i; }
+        });
+        setTooltip({ px: pts[ni].x, py: pts[ni].y, entry: data[ni], cumulative: cumByIdx[ni] });
+    };
+
+    const accent = '#10b981';
     const mutedColor = 'var(--loophole-fg-3)';
     const gridColor = 'var(--loophole-border-4)';
+
+    // X label decimation
+    const xStep = Math.max(1, Math.ceil(data.length / 9));
 
     return (
         <div style={{ position: 'relative' }}>
@@ -90,10 +104,18 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
                 ref={svgRef}
                 width='100%'
                 height={CHART_HEIGHT}
+                onMouseMove={handleMouseMove}
                 onMouseLeave={() => setTooltip(null)}
                 style={{ display: 'block', overflow: 'visible' }}
             >
-                {/* Y grid + labels */}
+                <defs>
+                    <linearGradient id='tug' x1='0' y1='0' x2='0' y2='1'>
+                        <stop offset='0%' stopColor={accent} stopOpacity={0.4} />
+                        <stop offset='100%' stopColor={accent} stopOpacity={0.03} />
+                    </linearGradient>
+                </defs>
+
+                {/* Y axis grid + labels */}
                 {ticks.map(tick => {
                     const y = yOf(tick);
                     return (
@@ -108,70 +130,41 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
                     );
                 })}
 
-                {/* X labels */}
+                {/* X axis date labels */}
                 {data.map((d, i) => {
                     if (i % xStep !== 0 && i !== data.length - 1) return null;
                     return (
-                        <text key={d.date}
-                            x={xOf(i) + barW / 2}
-                            y={PAD.top + plotH + 18}
+                        <text key={d.date} x={xOf(i)} y={PAD.top + plotH + 18}
                             textAnchor='middle' fontSize={10} fill={mutedColor}>
                             {toDateLabel(d.date)}
                         </text>
                     );
                 })}
 
-                {/* Stacked bars */}
-                {data.map((d, i) => {
-                    let yOffset = PAD.top + plotH;
-                    const x = xOf(i);
-                    const isHovered = tooltip?.entry.date === d.date;
+                {/* Area + line */}
+                {areaPath && <path d={areaPath} fill='url(#tug)' />}
+                {linePath && (
+                    <path d={linePath} fill='none' stroke={accent}
+                        strokeWidth={2.5} strokeLinejoin='round' strokeLinecap='round' />
+                )}
 
-                    return (
-                        <g key={d.date}
-                            onMouseEnter={() => setTooltip({ barX: x + barW / 2, barY: yOf(d.tokens), entry: d })}
-                            style={{ cursor: 'default' }}
-                        >
-                            {/* Invisible wide hit area */}
-                            <rect x={x - barGap / 2} y={PAD.top} width={barW + barGap} height={plotH}
-                                fill='transparent' />
-
-                            {allModels.map(model => {
-                                const seg = d.models[model];
-                                if (!seg) return null;
-                                const h = hOf(seg.tokens);
-                                yOffset -= h;
-                                return (
-                                    <rect key={model}
-                                        x={x} y={yOffset}
-                                        width={barW} height={h}
-                                        fill={modelColor(model, allModels)}
-                                        opacity={isHovered ? 1 : 0.85}
-                                        rx={barW > 6 && yOffset === PAD.top + plotH - hOf(d.tokens) ? 2 : 0}
-                                    />
-                                );
-                            })}
-
-                            {/* Hover highlight overlay */}
-                            {isHovered && (
-                                <rect x={x} y={yOf(d.tokens)} width={barW} height={hOf(d.tokens)}
-                                    fill='white' opacity={0.06} rx={2} />
-                            )}
-                        </g>
-                    );
-                })}
+                {/* Hover indicator */}
+                {tooltip && (
+                    <>
+                        <line x1={tooltip.px} y1={PAD.top} x2={tooltip.px} y2={PAD.top + plotH}
+                            stroke={accent} strokeWidth={1} strokeDasharray='4 3' opacity={0.6} />
+                        <circle cx={tooltip.px} cy={tooltip.py} r={5}
+                            fill={accent} stroke='var(--loophole-bg-2)' strokeWidth={2} />
+                    </>
+                )}
             </svg>
 
-            {/* Tooltip */}
+            {/* Floating tooltip card */}
             {tooltip && (() => {
-                const cardW = 220;
-                const flipLeft = tooltip.barX + cardW + 16 > svgWidth;
-                const left = flipLeft ? tooltip.barX - cardW - 8 : tooltip.barX + 8;
-                const top = Math.max(PAD.top, tooltip.barY - 20);
-
-                const sorted = Object.entries(tooltip.entry.models)
-                    .sort((a, b) => b[1].tokens - a[1].tokens);
-
+                const cardW = 200;
+                const flipLeft = tooltip.px + cardW + 20 > svgWidth;
+                const left = flipLeft ? tooltip.px - cardW - 12 : tooltip.px + 12;
+                const top = Math.max(PAD.top, tooltip.py - 52);
                 return (
                     <div style={{
                         position: 'absolute', top, left,
@@ -180,65 +173,19 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
                         border: '1px solid var(--loophole-border-3)',
                         borderRadius: 8,
                         padding: '10px 14px',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
                         fontSize: 11, zIndex: 10001,
                     }}>
-                        {/* Date header */}
-                        <div style={{
-                            fontWeight: 700, color: 'var(--loophole-fg-1)',
-                            marginBottom: 8, fontSize: 12,
-                            background: 'var(--loophole-bg-1)',
-                            margin: '-10px -14px 8px',
-                            padding: '8px 14px',
-                            borderRadius: '8px 8px 0 0',
-                            borderBottom: '1px solid var(--loophole-border-4)',
-                        }}>
+                        <div style={{ fontWeight: 700, color: 'var(--loophole-fg-1)', marginBottom: 7 }}>
                             {toDateLabel(tooltip.entry.date)}
                         </div>
-
-                        {/* Per-model rows */}
-                        {sorted.map(([model, data]) => (
-                            <div key={model} style={{
-                                display: 'flex', justifyContent: 'space-between',
-                                alignItems: 'center', marginBottom: 5, gap: 8,
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                    <div style={{
-                                        width: 3, height: 14, borderRadius: 2, flexShrink: 0,
-                                        background: modelColor(model, allModels),
-                                    }} />
-                                    <span style={{
-                                        color: 'var(--loophole-fg-2)',
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                    }}>{model}</span>
-                                </div>
-                                <span style={{ color: 'var(--loophole-fg-1)', fontWeight: 600, flexShrink: 0 }}>
-                                    {formatTokenCount(data.tokens)}
-                                </span>
-                            </div>
-                        ))}
-
-                        {/* Total row */}
-                        <div style={{
-                            borderTop: '1px solid var(--loophole-border-4)',
-                            marginTop: 6, paddingTop: 6,
-                            display: 'flex', justifyContent: 'space-between',
-                        }}>
-                            <span style={{ color: 'var(--loophole-fg-3)' }}>Total</span>
-                            <span style={{ color: 'var(--loophole-fg-1)', fontWeight: 700 }}>
-                                {formatTokenCount(tooltip.entry.tokens)}
-                            </span>
-                        </div>
-
-                        {/* Cost row if non-zero */}
+                        <Row label='Tokens' value={formatTokenCount(tooltip.entry.tokens)} fg />
                         {tooltip.entry.cost > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                                <span style={{ color: 'var(--loophole-fg-3)' }}>Est. cost</span>
-                                <span style={{ color: 'var(--loophole-fg-2)', fontWeight: 600 }}>
-                                    {formatDollarCount(tooltip.entry.cost)}
-                                </span>
-                            </div>
+                            <Row label='Est. cost' value={formatDollarCount(tooltip.entry.cost)} fg />
                         )}
+                        <div style={{ borderTop: '1px solid var(--loophole-border-4)', marginTop: 7, paddingTop: 7 }}>
+                            <Row label='Cumulative' value={formatTokenCount(tooltip.cumulative)} accent />
+                        </div>
                     </div>
                 );
             })()}
@@ -246,26 +193,21 @@ const UsageChart = ({ data, allModels }: ChartProps) => {
     );
 };
 
-const Legend = ({ allModels }: { allModels: string[] }) => (
-    <div style={{
-        display: 'flex', flexWrap: 'wrap', gap: '6px 16px',
-        padding: '0 24px 16px', marginTop: -4,
-    }}>
-        {allModels.map(model => (
-            <div key={model} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{
-                    width: 10, height: 10, borderRadius: 2,
-                    background: modelColor(model, allModels), flexShrink: 0,
-                }} />
-                <span style={{ fontSize: 10, color: 'var(--loophole-fg-3)' }}>{model}</span>
-            </div>
-        ))}
+const Row = ({ label, value, fg, accent }: { label: string; value: string; fg?: boolean; accent?: boolean }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+        <span style={{ color: 'var(--loophole-fg-3)' }}>{label}</span>
+        <span style={{
+            color: accent ? '#10b981' : fg ? 'var(--loophole-fg-1)' : 'var(--loophole-fg-2)',
+            fontWeight: 600,
+        }}>{value}</span>
     </div>
 );
 
+// ─── dialog shell ────────────────────────────────────────────────────────────
+
 interface Props {
     isOpen: boolean;
-    _ts?: number;
+    _ts?: number; // changes every open so useEffect always fires
 }
 
 export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
@@ -274,8 +216,12 @@ export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
     const accessor = useAccessor();
     const tokenUsageService = accessor.get('ITokenUsageService');
 
-    useEffect(() => { if (isOpenProp) setIsOpen(true); }, [isOpenProp, _ts]);
+    // Open when parent calls rerender({ isOpen: true })
+    useEffect(() => {
+        if (isOpenProp) setIsOpen(true);
+    }, [isOpenProp, _ts]);
 
+    // Close on Escape key
     useEffect(() => {
         if (!isOpen) return;
         const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
@@ -299,17 +245,8 @@ export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
     const totalTokens = tokenUsageService.getTotalTokensUsed();
     const totalCost = tokenUsageService.getEstimatedCost();
 
-    // Collect all unique models across all days,
-    const allModels = Array.from(
-        dailyData.reduce((acc, day) => {
-            for (const [model, data] of Object.entries(day.models)) {
-                acc.set(model, (acc.get(model) ?? 0) + data.tokens);
-            }
-            return acc;
-        }, new Map<string, number>())
-    ).sort((a, b) => b[1] - a[1]).map(([model]) => model);
-
     return (
+        // @@loophole-scope + dark class — same pattern as VoidOnboarding.tsx
         <div className={`@@loophole-scope ${isDark ? 'dark' : ''}`}>
             <div
                 style={{
@@ -323,13 +260,14 @@ export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
                 }}
                 onClick={close}
             >
+                {/* Dialog card */}
                 <div
                     style={{
                         background: 'var(--loophole-bg-2)',
                         border: '1px solid var(--loophole-border-3)',
                         borderRadius: 12,
                         boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-                        width: 'min(900px, 92vw)',
+                        width: 'min(860px, 92vw)',
                         overflow: 'hidden',
                         display: 'flex', flexDirection: 'column',
                         transform: isOpen ? 'scale(1)' : 'scale(0.97)',
@@ -338,19 +276,22 @@ export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
                     onClick={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <div style={{ padding: '20px 24px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ padding: '20px 24px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--loophole-fg-1)' }}>
-                                Token Usage
+                                Your Usage
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--loophole-fg-3)', marginTop: 2 }}>
-                                Daily usage by model
+                                Daily token usage
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                            {/* Summary pills */}
                             <Pill label='Total tokens' value={formatTokenCount(totalTokens)} />
                             {totalCost > 0 && <Pill label='Est. cost' value={formatDollarCount(totalCost)} />}
+
+                            {/* Close button */}
                             <button
                                 onClick={close}
                                 style={{
@@ -366,7 +307,7 @@ export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
                     </div>
 
                     {/* Chart */}
-                    <div style={{ padding: '0 24px 8px' }}>
+                    <div style={{ padding: '12px 24px 24px' }}>
                         <ErrorBoundary>
                             {dailyData.length === 0 ? (
                                 <div style={{
@@ -377,13 +318,10 @@ export const TokenUsageDialog = ({ isOpen: isOpenProp, _ts }: Props) => {
                                     No usage recorded yet. Start a chat to see your token usage here.
                                 </div>
                             ) : (
-                                <UsageChart data={dailyData} allModels={allModels} />
+                                <UsageChart data={dailyData} />
                             )}
                         </ErrorBoundary>
                     </div>
-
-                    {/* Legend */}
-                    {allModels.length > 0 && <Legend allModels={allModels} />}
                 </div>
             </div>
         </div>
