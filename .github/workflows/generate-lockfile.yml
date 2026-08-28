@@ -6,7 +6,7 @@ on:
 jobs:
   generate-lockfile:
     name: Generate package-lock.json
-    runs-on: windows-2022
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -21,7 +21,6 @@ jobs:
       - run: npm install
 
       - name: Commit updated lockfile
-        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
