@@ -1468,7 +1468,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		}
 
 		// throws
-		const _onError = (e: { message: string; fullError: Error | null; }) => {
+		const onError = (e: { message: string; fullError: Error | null; }) => {
 			// this._notifyError(e)
 			onDone()
 			this._undoHistory(uri)
