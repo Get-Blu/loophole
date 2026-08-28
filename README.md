@@ -20,7 +20,6 @@ The open-source AI code editor that thinks while you code.
 
 <table>
 <tbody>
-<td align="center"><a href="https://www.loopholeeditor.in"><strong>Loophole</strong></a></td>
 <td align="center"><a href="https://github.com/loophole-ai/loophole-ide"><strong>GitHub</strong></a></td>
 <td align="center"><a href="./LOOPHOLE_CODEBASE_GUIDE.md"><strong>Documentation</strong></a></td>
 <td align="center"><a href="./HOW_TO_CONTRIBUTE.md"><strong>Contributing</strong></a></td>
