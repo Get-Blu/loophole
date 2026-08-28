@@ -526,32 +526,7 @@ The skill name must exactly match one of the skills listed in the "Available Ski
 - After all tests pass (if tests were requested)
 - After all todo items are marked complete`,
 		params: {
-			result: { description: `A structured summary of what was completed. Always use this exact format:
-
-**What changed:**
-- <file or area>: <what was done> (e.g. "src/auth/login.ts: added rate limiting to login endpoint")
-- <file or area>: <what was done>
-(one bullet per file or logical change)
-
-**Why:** <one sentence explaining the reason or effect of the changes>
-
-## Inline code rule
-If the total lines changed across ALL files is 10 or fewer, also include the changed code inline after the relevant bullet, like this:
-
-- \`src/utils/format.ts\`: fixed off-by-one in date formatter
-\`\`\`ts
-return date.getDate() + 1
-\`\`\`
-
-If the change spans more than 10 lines total, skip the code blocks — the file diffs are already visible in the checkpoints.
-
-Rules:
-- Do NOT start with "I" or use first person anywhere
-- Be specific: name the exact files, functions, or components touched
-- Keep each bullet to one line
-- The "Why" line should explain the impact, not repeat what was done
-- If only one file changed, still use the bullet format
-- Do not add any intro or closing sentence outside this format` },
+			result: { description: `A concise summary of what was completed. Be specific: mention files changed, features added, bugs fixed. Do NOT start with "I" or use first person. Example: "Created a React todo app with add, complete, and delete functionality in src/TodoApp.tsx."` },
 			command: { description: `Optional shell command the user can run to see or verify the result, e.g. "npm run dev" or "python main.py". Only include if directly relevant.` },
 		}
 	},
