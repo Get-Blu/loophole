@@ -1497,8 +1497,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 				shouldSendAnotherMessage = false
 
 				let resMessageDonePromise: () => void = () => { }
-				let rejMessageDonePromise: (e: Error) => void = () => { }
-				const messageDonePromise = new Promise<void>((res_, rej_) => { resMessageDonePromise = res_; rejMessageDonePromise = rej_ })
+				const messageDonePromise = new Promise<void>((res_) => { resMessageDonePromise = res_ })
 
 				// state used in onText:
 				let fullTextSoFar = '' // so far (INCLUDING ignored suffix)
@@ -1549,11 +1548,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 						resMessageDonePromise()
 					},
 					onError: (e) => {
-						// reject the promise so runWriteover can handle cleanup and propagate the error
-						const err = e.fullError || new Error(e.message)
-						onDone()
-						this._undoHistory(uri)
-						rejMessageDonePromise(err)
+						onError(e)
 					},
 					onAbort: () => {
 						if (weAreAborting) return
@@ -1562,12 +1557,8 @@ class EditCodeService extends Disposable implements IEditCodeService {
 						resMessageDonePromise()
 					},
 				})
-				// if sendLLMMessage returned null, onError was already called and rejMessageDonePromise was triggered
-				// await the promise so any rejection propagates correctly into runWriteover
-				if (streamRequestIdRef.current === null) {
-					await messageDonePromise
-					return
-				}
+				// should never happen, just for safety
+				if (streamRequestIdRef.current === null) { return }
 
 				await messageDonePromise
 				if (aborted) {
@@ -1809,8 +1800,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 				}
 
 				let resMessageDonePromise: () => void = () => { }
-				let rejMessageDonePromise: (e: Error) => void = () => { }
-				const messageDonePromise = new Promise<void>((res, rej) => { resMessageDonePromise = res; rejMessageDonePromise = rej })
+				const messageDonePromise = new Promise<void>((res, rej) => { resMessageDonePromise = res })
 
 
 				const onText = (params: { fullText: string; fullReasoning: string }) => {
@@ -1999,17 +1989,11 @@ class EditCodeService extends Disposable implements IEditCodeService {
 							resMessageDonePromise()
 						}
 						catch (e) {
-							const err = e instanceof Error ? e : new Error(`${e}`)
-							onDone()
-							this._undoHistory(uri)
-							rejMessageDonePromise(err)
+							onError(e)
 						}
 					},
 					onError: (e) => {
-						const err = e.fullError || new Error(e.message)
-						onDone()
-						this._undoHistory(uri)
-						rejMessageDonePromise(err)
+						onError(e)
 					},
 					onAbort: () => {
 						if (weAreAborting) return
@@ -2019,11 +2003,8 @@ class EditCodeService extends Disposable implements IEditCodeService {
 					},
 				})
 
-				// if sendLLMMessage returned null, onError was already called and rejMessageDonePromise was triggered
-				if (streamRequestIdRef.current === null) {
-					await messageDonePromise
-					break
-				}
+				// should never happen, just for safety
+				if (streamRequestIdRef.current === null) { break }
 
 				await messageDonePromise
 				if (aborted) {
@@ -2487,3 +2468,8 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 	}
 
 }
+
+
+
+
+
