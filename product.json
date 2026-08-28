@@ -1,7 +1,7 @@
 {
   "version": "1.121.0",
   "commit": "release",
-  "loopholeVersion": "2.2.0",
+  "loopholeVersion": "2.1.9",
   "nameShort": "Loophole",
   "nameLong": "Loophole Editor",
   "applicationName": "loophole",
