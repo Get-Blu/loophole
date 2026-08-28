@@ -20,7 +20,6 @@ import { RawToolParamsObj } from '../common/sendLLMMessageTypes.js'
 import { MAX_CHILDREN_URIs_PAGE, MAX_FILE_CHARS_PAGE, MAX_TERMINAL_BG_COMMAND_TIME, MAX_TERMINAL_INACTIVE_TIME } from '../common/prompt/prompts.js'
 import { ILoopholeSettingsService } from '../common/voidSettingsService.js'
 import { generateUuid } from '../../../../base/common/uuid.js'
-import { IWorkingCopyFileService } from '../../../services/workingCopy/common/workingCopyFileService.js'
 
 export const IToolsService = createDecorator<IToolsService>('ToolsService');
 
@@ -161,7 +160,6 @@ export class ToolsService implements IToolsService {
 
 	constructor(
 		@IFileService fileService: IFileService,
-        @IWorkingCopyFileService workingCopyFileService: IWorkingCopyFileService,
 		@IWorkspaceContextService workspaceContextService: IWorkspaceContextService,
 		@ISearchService searchService: ISearchService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
@@ -616,12 +614,9 @@ export class ToolsService implements IToolsService {
 			},
 
 			rename_file: async ({ oldUri, newUri }) => {
-                await workingCopyFileService.move(
-                    [{ file: { source: oldUri, target: newUri }, overwrite: true }],
-                    CancellationToken.None
-                )
-                return { result: {} }
-            },
+				await fileService.move(oldUri, newUri, true /* overwrite */)
+				return { result: {} }
+			},
 
 			insert_code_at_line: async ({ uri, line, content }) => {
 				await loopholeModelService.initializeModel(uri)
