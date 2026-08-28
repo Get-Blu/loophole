@@ -6,8 +6,6 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
-import { getModelCapabilities } from './modelCapabilities.js';
-import { ProviderName } from './voidSettingsTypes.js';
 
 export const ITokenUsageService = createDecorator<ITokenUsageService>('tokenUsageService');
 
@@ -35,19 +33,36 @@ export type DailyTokenEntry = {
 	models: Record<string, ModelDayEntry>;
 };
 
-const FREE_PROVIDERS = new Set<string>(['ollama', 'vLLM', 'lmStudio']);
+const PRICE_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
+	anthropic: { input: 3.0, output: 15.0 },
+	openAI: { input: 2.5, output: 10.0 },
+	deepseek: { input: 0.27, output: 1.10 },
+	openRouter: { input: 2.0, output: 8.0 },
+	gemini: { input: 1.25, output: 5.0 },
+	groq: { input: 0.59, output: 0.79 },
+	xAI: { input: 2.0, output: 8.0 },
+	mistral: { input: 0.8, output: 2.4 },
+	googleVertex: { input: 1.25, output: 5.0 },
+	microsoftAzure: { input: 2.5, output: 10.0 },
+	awsBedrock: { input: 2.0, output: 8.0 },
+	cohere: { input: 1.0, output: 2.0 },
+	inception: { input: 0.25, output: 0.75 },
+	perplexity: { input: 1.0, output: 2.0 },
+	togetherAI: { input: 0.8, output: 2.4 },
+	fireworksAI: { input: 0.8, output: 2.4 },
+	liteLLM: { input: 1.0, output: 3.0 },
+	openAICompatible: { input: 1.0, output: 3.0 },
+};
+
+const FREE_PROVIDERS = new Set(['ollama', 'vLLM', 'lmStudio']);
 
 export function estimateCost(tokens: TokenUsageInfo): number {
 	if (!tokens.providerName || FREE_PROVIDERS.has(tokens.providerName)) return 0;
-	if (!tokens.modelName) return 0;
-
-	try {
-		const caps = getModelCapabilities(tokens.providerName as ProviderName, tokens.modelName, undefined);
-		const { input, output } = caps.cost;
-		return (tokens.inputTokens / 1_000_000) * input + (tokens.outputTokens / 1_000_000) * output;
-	} catch {
+	const prices = PRICE_PER_MILLION_TOKENS[tokens.providerName];
+	if (!prices) {
 		return (tokens.inputTokens / 1_000_000) * 1.0 + (tokens.outputTokens / 1_000_000) * 3.0;
 	}
+	return (tokens.inputTokens / 1_000_000) * prices.input + (tokens.outputTokens / 1_000_000) * prices.output;
 }
 
 export function formatDollarCount(amount: number): string {
