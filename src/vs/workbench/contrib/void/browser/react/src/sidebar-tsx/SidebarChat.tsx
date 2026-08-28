@@ -986,7 +986,7 @@ export const SelectedFiles = (
 								select-none
 								text-xs text-nowrap
 								rounded
-								${isThisSelectionProspective ? 'bg-[var(--vscode-badge-background)] text-[var(--vscode-badge-foreground)] opacity-80' : 'bg-[var(--vscode-badge-background)] hover:brightness-110 text-[var(--vscode-badge-foreground)]'}
+								${isThisSelectionProspective ? 'bg-[#181818] text-loophole-fg-3 opacity-80' : 'bg-[#181818] hover:brightness-110 text-loophole-fg-1'}
 								transition-all duration-150
 							`}
 							onClick={() => {
