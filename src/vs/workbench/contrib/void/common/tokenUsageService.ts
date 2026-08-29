@@ -24,11 +24,19 @@ export type TokenUsageInfo = {
 	modelName?: string;
 };
 
+// Per-model token breakdown within a day
+export type ModelTokenEntry = {
+	modelName: string;
+	tokens: number;
+	cost: number;
+};
+
 // Per-day token usage entry (used for the usage graph)
 export type DailyTokenEntry = {
 	date: string;    // 'YYYY-MM-DD'
 	tokens: number;
 	cost: number;
+	models: ModelTokenEntry[]; // breakdown by model
 };
 
 // Estimated pricing per 1M tokens (USD) - conservative averages per provider
@@ -142,6 +150,9 @@ export interface ITokenUsageService {
 	// Get all daily token usage entries, sorted oldest → newest
 	getDailyUsage(): DailyTokenEntry[];
 
+	// Get all model names seen across all days (for legend)
+	getAllModelNames(): string[];
+
 }
 
 export class TokenUsageService implements ITokenUsageService {
@@ -152,7 +163,7 @@ export class TokenUsageService implements ITokenUsageService {
 
 	private _totalTokensUsed: number = 0;
 	private _estimatedCost: number = 0;
-	private _dailyUsage: Map<string, { tokens: number; cost: number }> = new Map();
+	private _dailyUsage: Map<string, { tokens: number; cost: number; models: Map<string, { tokens: number; cost: number }> }> = new Map();
 
 	constructor(
 		@IStorageService private readonly storageService: IStorageService,
@@ -170,9 +181,15 @@ export class TokenUsageService implements ITokenUsageService {
 		const storedDaily = this.storageService.get(DAILY_TOKENS_STORAGE_KEY, StorageScope.APPLICATION);
 		if (storedDaily) {
 			try {
-				const parsed: Record<string, { tokens: number; cost: number }> = JSON.parse(storedDaily);
+				const parsed: Record<string, { tokens: number; cost: number; models?: Record<string, { tokens: number; cost: number }> }> = JSON.parse(storedDaily);
 				for (const [date, entry] of Object.entries(parsed)) {
-					this._dailyUsage.set(date, entry);
+					const modelsMap = new Map<string, { tokens: number; cost: number }>();
+					if (entry.models) {
+						for (const [model, mEntry] of Object.entries(entry.models)) {
+							modelsMap.set(model, mEntry);
+						}
+					}
+					this._dailyUsage.set(date, { tokens: entry.tokens, cost: entry.cost, models: modelsMap });
 				}
 			} catch { /* ignore corrupt data */ }
 		}
@@ -188,11 +205,21 @@ export class TokenUsageService implements ITokenUsageService {
 
 		// Per-day tracking
 		const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
-		const existing = this._dailyUsage.get(today) ?? { tokens: 0, cost: 0 };
+		const existing = this._dailyUsage.get(today) ?? { tokens: 0, cost: 0, models: new Map() };
 		const dayCost = estimateCost(tokens);
+
+		// Track per-model within this day
+		const modelKey = tokens.modelName || 'Unknown';
+		const existingModel = existing.models.get(modelKey) ?? { tokens: 0, cost: 0 };
+		existing.models.set(modelKey, {
+			tokens: existingModel.tokens + tokens.totalTokens,
+			cost: existingModel.cost + dayCost,
+		});
+
 		this._dailyUsage.set(today, {
 			tokens: existing.tokens + tokens.totalTokens,
 			cost: existing.cost + dayCost,
+			models: existing.models,
 		});
 
 		// Persist to storage
@@ -208,9 +235,13 @@ export class TokenUsageService implements ITokenUsageService {
 			StorageScope.APPLICATION,
 			StorageTarget.USER
 		);
-		// Persist daily data
-		const dailyObj: Record<string, { tokens: number; cost: number }> = {};
-		this._dailyUsage.forEach((v, k) => { dailyObj[k] = v; });
+		// Persist daily data (convert inner Maps to plain objects)
+		const dailyObj: Record<string, { tokens: number; cost: number; models: Record<string, { tokens: number; cost: number }> }> = {};
+		this._dailyUsage.forEach((v, k) => {
+			const modelsObj: Record<string, { tokens: number; cost: number }> = {};
+			v.models.forEach((mv, mk) => { modelsObj[mk] = mv; });
+			dailyObj[k] = { tokens: v.tokens, cost: v.cost, models: modelsObj };
+		});
 		this.storageService.store(
 			DAILY_TOKENS_STORAGE_KEY,
 			JSON.stringify(dailyObj),
@@ -236,8 +267,23 @@ export class TokenUsageService implements ITokenUsageService {
 
 	getDailyUsage(): DailyTokenEntry[] {
 		return Array.from(this._dailyUsage.entries())
-			.map(([date, { tokens, cost }]) => ({ date, tokens, cost }))
+			.map(([date, { tokens, cost, models }]) => ({
+				date,
+				tokens,
+				cost,
+				models: Array.from(models.entries())
+					.map(([modelName, { tokens: t, cost: c }]) => ({ modelName, tokens: t, cost: c }))
+					.sort((a, b) => b.tokens - a.tokens),
+			}))
 			.sort((a, b) => a.date.localeCompare(b.date));
+	}
+
+	getAllModelNames(): string[] {
+		const seen = new Set<string>();
+		this._dailyUsage.forEach(day => {
+			day.models.forEach((_, modelName) => seen.add(modelName));
+		});
+		return Array.from(seen);
 	}
 
 }
