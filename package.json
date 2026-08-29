@@ -139,6 +139,7 @@
     "node-pty": "^1.2.0-beta.13",
     "ollama": "^0.5.13",
     "open": "^10.1.2",
+    "gpt-tokenizer": "^3.4.0",
     "openai": "^4.103.0",
     "playwright-core": "1.59.1",
     "posthog-node": "^4.3.3",
