@@ -16,7 +16,7 @@ function toDateLabel(dateStr: string): string {
 }
 
 function yAxisTicks(_maxTokens: number): number[] {
-    return [0, 500_000, 1_000_000, 3_000_000, 5_000_000, 10_000_000];
+    return [0, 250_000, 500_000, 1_000_000, 3_000_000, 5_000_000, 10_000_000];
 }
 
 // ─── model colour palette (matches the OpenRouter style) ────────────────────
