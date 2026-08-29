@@ -3733,7 +3733,7 @@ export const SidebarChat = () => {
 	>
 		<LoopholeInputBox2
 			enableAtToMention
-			className={`min-h-[40px] px-0.5 pt-0.5 pb-0.5 align-top leading-tight`}
+			className={`min-h-[81px] px-0.5 py-0.5`}
 			placeholder={`Ask anything — @ to mention`}
 			onChangeText={onChangeText}
 			onKeyDown={onKeyDown}
@@ -3757,11 +3757,9 @@ export const SidebarChat = () => {
 
 	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-2 w-full text-nowrap text-loophole-fg-3 select-none'>
 		{[
-			'Summarize project',
-			'Explain this code',
-			'Find bugs',
-			'Refactor file',
-			'Create .loopholerules'
+			'Summarize my codebase',
+			'How do types work in Rust?',
+			'Create a .loopholerules file for me'
 		].map((text, index) => (
 			<div
 				key={index}
@@ -3825,43 +3823,31 @@ export const SidebarChat = () => {
 		</div>
 	</div>
 
-	const landingPageInput = <div className='w-full px-2 pb-2'>
-		{inputChatArea}
+	const landingPageInput = <div>
+		<div className='pt-8'>
+			{inputChatArea}
+		</div>
 	</div>
 
 	const landingPageContent = <div
 		ref={sidebarRef}
-		className='w-full h-full max-h-full flex flex-col overflow-hidden'
+		className='w-full h-full max-h-full flex flex-col overflow-auto px-4'
 	>
-		{/* Welcome Screen - Centered at top */}
-		<ErrorBoundary>
-			<WelcomeScreen />
-		</ErrorBoundary>
-
-		{/* Past Interactions */}
-		<div className='flex-1 overflow-y-auto'>
-			{Object.keys(chatThreadsState.allThreads).length > 1 &&
-				<ErrorBoundary>
-					{/* Header row */}
-					<div className='flex items-center justify-between px-4 py-2 select-none'>
-						<span className='text-xs text-loophole-fg-3 font-medium'>Past Interactions</span>
-						<span className='text-xs text-loophole-fg-3 flex items-center gap-1 cursor-pointer hover:text-loophole-fg-1 transition-colors'>
-							View All
-							<kbd className='text-[10px] opacity-60'>⌘⇧H</kbd>
-						</span>
-					</div>
-					{/* Thread rows */}
-					<div className='px-2'>
-						<PastThreadsList />
-					</div>
-				</ErrorBoundary>
-			}
-		</div>
-
-		{/* Input at bottom */}
 		<ErrorBoundary>
 			{landingPageInput}
 		</ErrorBoundary>
+
+		{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
+			<ErrorBoundary>
+				<div className='pt-8 mb-2 text-loophole-fg-3 text-root select-none pointer-events-none'>Previous Threads</div>
+				<PastThreadsList />
+			</ErrorBoundary>
+			:
+			<ErrorBoundary>
+				<div className='pt-8 mb-2 text-loophole-fg-3 text-root select-none pointer-events-none'>Suggestions</div>
+				{initiallySuggestedPromptsHTML}
+			</ErrorBoundary>
+		}
 	</div>
 
 
