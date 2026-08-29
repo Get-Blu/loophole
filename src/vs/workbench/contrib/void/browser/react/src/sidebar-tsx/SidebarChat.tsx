@@ -37,6 +37,7 @@ import { Severity } from '../../../../../../../platform/notification/common/noti
 
 import { persistentTerminalNameOfId } from '../../../terminalToolService.js';
 import { removeMCPToolNamePrefix } from '../../../../common/mcpServiceTypes.js';
+import { estimateTokens } from '../../../../common/tokenizer.js';
 
 
 
@@ -230,28 +231,26 @@ const ContextWindowIndicator = ({ featureName }: { featureName: FeatureName }) =
 			return cumulativeCount;
 		}
 
-		// Fallback: estimate from character count for threads without token counts
+		// Fallback: estimate from BPE tokenizer for threads without token counts
 		// This happens for older threads or when token usage wasn't tracked
-		let totalChars = 0;
+		let totalText = '';
 		for (const message of currentThread.messages) {
 			if (message.role === 'user' && 'content' in message) {
-				totalChars += message.content.length;
+				totalText += message.content;
 			} else if (message.role === 'assistant') {
 				if ('displayContent' in message) {
-					totalChars += message.displayContent.length;
+					totalText += message.displayContent;
 				}
 				if ('reasoning' in message && message.reasoning) {
-					totalChars += message.reasoning.length;
+					totalText += message.reasoning;
 				}
 			} else if (message.role === 'tool' && 'content' in message) {
-				totalChars += message.content.length;
+				totalText += message.content;
 			}
 		}
 
 		// Add overhead for system prompts, tool definitions, etc.
-		totalChars += 2000;
-
-		return Math.ceil(totalChars / 4); // Convert chars to estimated tokens
+		return estimateTokens(totalText) + 500;
 	}, [currentThread, modelCapabilities]);
 
 	const contextWindow = modelCapabilities?.contextWindow || 128000;
@@ -3604,13 +3603,13 @@ export const SidebarChat = () => {
 		if (!caps) return null
 		const contextWindow = caps.contextWindow || 128000
 		const cumulativeCount = currentThread.state.cumulativeTokenCount || 0
-		let totalChars = 0
+		let totalText = ''
 		for (const m of currentThread.messages) {
-			if (m.role === 'user' && 'content' in m) totalChars += m.content.length
-			else if (m.role === 'assistant' && 'displayContent' in m) totalChars += m.displayContent.length
-			else if (m.role === 'tool' && 'content' in m) totalChars += m.content.length
+			if (m.role === 'user' && 'content' in m) totalText += m.content
+			else if (m.role === 'assistant' && 'displayContent' in m) totalText += m.displayContent
+			else if (m.role === 'tool' && 'content' in m) totalText += m.content
 		}
-		const estimated = cumulativeCount > 0 ? cumulativeCount : Math.ceil(totalChars / 4)
+		const estimated = cumulativeCount > 0 ? cumulativeCount : estimateTokens(totalText) + 500
 		const pct = (estimated / contextWindow) * 100
 		if (pct < 70) return null
 		return { pct, estimated, contextWindow, isFull: pct >= 95 }
