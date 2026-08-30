@@ -358,8 +358,10 @@ const ApplyButtonsForEdit = ({
 		applyDonePromise?.catch(e => {
 			const uri = getUriBeingApplied(applyBoxId)
 			if (uri) editCodeService.interruptURIStreaming({ uri: uri })
+			// Don't show an error if the stream was simply interrupted (e.g. user stopped it)
+			const msg: string = e?.message ?? `${e}`
+			if (msg.includes('interrupted')) return
 			notificationService.info(`Loophole Error: There was a problem running Apply: ${e}.`)
-
 		})
 		metricsService.capture('Apply Code', { length: codeStr.length }) // capture the length only
 
