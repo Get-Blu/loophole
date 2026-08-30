@@ -1467,14 +1467,6 @@ class EditCodeService extends Disposable implements IEditCodeService {
 			}
 		}
 
-		// throws
-		const onError = (e: { message: string; fullError: Error | null; }) => {
-			// this._notifyError(e)
-			onDone()
-			this._undoHistory(uri)
-			throw e.fullError || new Error(e.message)
-		}
-
 		const extractText = (fullText: string, recentlyAddedTextLen: number) => {
 			if (from === 'QuickEdit') {
 				return extractCodeFromFIM({ text: fullText, recentlyAddedTextLen, midTag: quickEditFIMTags.midTag })
@@ -2305,9 +2297,6 @@ class EditCodeService extends Disposable implements IEditCodeService {
 
 registerSingleton(IEditCodeService, EditCodeService, InstantiationType.Eager);
 
-
-
-
 class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 
 	public getId(): string {
@@ -2475,10 +2464,8 @@ class AcceptRejectInlineWidget extends Widget implements IOverlayWidget {
 			}
 		}));
 
-		// mount this widget
 
 		editor.addOverlayWidget(this);
-		// console.log('created elt', this._domNode)
 	}
 
 	public override dispose(): void {
