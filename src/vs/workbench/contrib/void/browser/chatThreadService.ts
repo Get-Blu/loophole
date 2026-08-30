@@ -1303,7 +1303,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 						this._addMessageToThread(threadId, {
 							role: 'user',
 							content: noToolsMsg,
-							displayContent: noToolsMsg,
+							displayContent: '',
 							selections: null,
 							state: defaultMessageState,
 						})
@@ -1332,7 +1332,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 						// Show a clean summary message to the user
 						this._addMessageToThread(threadId, {
 							role: 'assistant',
-							displayContent: `✅ **Done**\n\n${resultText}${commandText}`,
+							displayContent: `${resultText}${commandText}`,
 							reasoning: '',
 							anthropicReasoning: null,
 						})
