@@ -28,6 +28,22 @@ export function observeDevicePixelDimensions(element: HTMLElement, parentWindow:
 	// devicePixelContentBoxSize API is supported. This allows correcting rounding errors when
 	// converting between CSS pixels and device pixels which causes blurry rendering when device
 	// pixel ratio is not a round number.
+
+	// Track last known good dimensions so we can re-fire them when the window is restored
+	// from a minimized state. When minimized, the OS fires a 0x0 resize which we ignore,
+	// but on restore Electron/Chromium may not fire a new ResizeObserver event (since the
+	// CSS size hasn't changed), leaving the WebGPU canvas blank (white in light theme,
+	// black in dark theme) until the user manually resizes the window.
+	let lastKnownWidth = 0;
+	let lastKnownHeight = 0;
+
+	const onVisibilityChange = () => {
+		if (!parentWindow.document.hidden && lastKnownWidth > 0 && lastKnownHeight > 0) {
+			callback(lastKnownWidth, lastKnownHeight);
+		}
+	};
+	parentWindow.document.addEventListener('visibilitychange', onVisibilityChange);
+
 	let observer: ResizeObserver | undefined = new parentWindow.ResizeObserver((entries) => {
 		const entry = entries.find((entry) => entry.target === element);
 		if (!entry) {
@@ -45,6 +61,8 @@ export function observeDevicePixelDimensions(element: HTMLElement, parentWindow:
 		const width = entry.devicePixelContentBoxSize[0].inlineSize;
 		const height = entry.devicePixelContentBoxSize[0].blockSize;
 		if (width > 0 && height > 0) {
+			lastKnownWidth = width;
+			lastKnownHeight = height;
 			callback(width, height);
 		}
 	});
@@ -56,5 +74,8 @@ export function observeDevicePixelDimensions(element: HTMLElement, parentWindow:
 		observer = undefined;
 		throw new BugIndicatingError('Could not observe device pixel dimensions');
 	}
-	return toDisposable(() => observer?.disconnect());
+	return toDisposable(() => {
+		observer?.disconnect();
+		parentWindow.document.removeEventListener('visibilitychange', onVisibilityChange);
+	});
 }
