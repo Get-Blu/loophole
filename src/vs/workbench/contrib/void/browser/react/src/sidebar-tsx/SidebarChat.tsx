@@ -985,7 +985,7 @@ export const SelectedFiles = (
 								select-none
 								text-xs text-nowrap
 								rounded
-								${isThisSelectionProspective ? 'bg-[#181818] text-loophole-fg-3 opacity-80' : 'bg-[#181818] hover:brightness-110 text-loophole-fg-1'}
+								${isThisSelectionProspective ? 'bg-loophole-bg-3 text-loophole-fg-3 opacity-80' : 'bg-loophole-bg-3 hover:brightness-110 text-loophole-fg-1'}
 								transition-all duration-150
 							`}
 							onClick={() => {
