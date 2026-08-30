@@ -3451,7 +3451,7 @@ export const SidebarChat = () => {
 	const onSubmit = useCallback(async (_forceSubmit?: string) => {
 
 		if (isDisabled && !_forceSubmit) return
-		if (isRunning) return
+		if (isRunning && isRunning !== 'awaiting_user') return
 
 		const threadId = chatThreadsService.state.currentThreadId
 
@@ -3695,7 +3695,7 @@ export const SidebarChat = () => {
 		featureName='Chat'
 		onSubmit={() => onSubmit()}
 		onAbort={onAbort}
-		isStreaming={!!isRunning}
+		isStreaming={!!isRunning && isRunning !== 'awaiting_user'}
 		isDisabled={isDisabled}
 		showSelections={true}
 		// showProspectiveSelections={previousMessagesHTML.length === 0}
