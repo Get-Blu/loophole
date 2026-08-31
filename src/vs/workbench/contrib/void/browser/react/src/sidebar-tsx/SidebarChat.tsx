@@ -1668,10 +1668,6 @@ const AssistantMessageComponent = ({ chatMessage, isCheckpointGhost, isCommitted
 						isLinkDetectionEnabled={true}
 					/>
 				</ProseWrapper>
-				{/* token usage display */}
-				{chatMessage.tokenUsage && (
-					<TokenDisplay tokenUsage={chatMessage.tokenUsage} />
-				)}
 			</div>
 		}
 	</>
@@ -3513,6 +3509,11 @@ export const SidebarChat = () => {
 		})
 	}, [previousMessages, threadId, currCheckpointIdx, isRunning])
 
+	const lastTokenUsage = useMemo(() => {
+		const lastAssistant = [...previousMessages].reverse().find(m => m.role === 'assistant' && (m as any).tokenUsage)
+		return (lastAssistant as any)?.tokenUsage
+	}, [previousMessages])
+
 	const streamingChatIdx = previousMessagesHTML.length
 	const currStreamingMessageHTML = reasoningSoFar || displayContentSoFar || isRunning ?
 		<ChatBubble
@@ -3557,6 +3558,7 @@ export const SidebarChat = () => {
 		{/* previous messages */}
 		{previousMessagesHTML}
 		{currStreamingMessageHTML}
+		{!isRunning && lastTokenUsage && <TokenDisplay tokenUsage={lastTokenUsage} />}
 
 		{/* Generating tool */}
 		{generatingTool}
