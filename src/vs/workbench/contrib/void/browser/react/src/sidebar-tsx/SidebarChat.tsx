@@ -2885,6 +2885,7 @@ const _ChatBubble = ({ threadId, chatMessage, currCheckpointIdx, isCommitted, me
 	}
 
 	else if (role === 'checkpoint') {
+		if (chatIsRunning) return null
 		return <Checkpoint
 			threadId={threadId}
 			message={chatMessage}
