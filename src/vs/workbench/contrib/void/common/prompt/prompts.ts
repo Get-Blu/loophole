@@ -518,7 +518,6 @@ The skill name must exactly match one of the skills listed in the "Available Ski
 - You MUST call this tool when a task is finished. Do NOT just respond with text saying you are done.
 - Call this ONLY when you are certain all required work is complete and verified.
 - Do NOT call this if there are pending steps, unresolved errors, or outstanding tool calls.
-- The result field should be a concise, plain-English summary of what was accomplished.
 - Optionally provide a command the user can run to verify or use the result (e.g. "npm run dev").
 
 ## When to call
@@ -526,7 +525,6 @@ The skill name must exactly match one of the skills listed in the "Available Ski
 - After all tests pass (if tests were requested)
 - After all todo items are marked complete`,
 		params: {
-			result: { description: `A concise summary of what was completed. Be specific: mention files changed, features added, bugs fixed. Do NOT start with "I" or use first person. Example: "Created a React todo app with add, complete, and delete functionality in src/TodoApp.tsx."` },
 			command: { description: `Optional shell command the user can run to see or verify the result, e.g. "npm run dev" or "python main.py". Only include if directly relevant.` },
 		}
 	},
