@@ -907,6 +907,24 @@ export const messageOfSelection = async (
 		const contentStr = [folderStructure, ...strOfFiles].join('\n\n')
 		return contentStr
 	}
+	else if (s.type === 'CurrentFile') {
+		const { val } = await readFile(opts.fileService, s.uri, DEFAULT_FILE_SIZE_LIMIT)
+		const content = val === null ? ''
+			: `${tripleTick[0]}${s.language}\n${val}\n${tripleTick[1]}`
+		return `Current file — ${s.uri.fsPath}:\n${content}`
+	}
+	else if (s.type === 'Terminal') {
+		const content = `${tripleTick[0]}\n${s.content}\n${tripleTick[1]}`
+		return `Terminal output:\n${content}`
+	}
+	else if (s.type === 'GitDiff') {
+		const content = `${tripleTick[0]}diff\n${s.content}\n${tripleTick[1]}`
+		return `Git diff:\n${content}`
+	}
+	else if (s.type === 'Problems') {
+		const content = `${tripleTick[0]}\n${s.content}\n${tripleTick[1]}`
+		return `Problems / lint errors:\n${content}`
+	}
 	else
 		return ''
 
