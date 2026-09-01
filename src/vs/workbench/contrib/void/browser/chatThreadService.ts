@@ -57,7 +57,10 @@ const findStagingSelectionIndex = (currentSelections: StagingSelectionItem[] | u
 	for (let i = 0; i < currentSelections.length; i += 1) {
 		const s = currentSelections[i]
 
-		if (s.uri.fsPath !== newSelection.uri.fsPath) continue
+		// for URI-based types, skip if URIs don't match
+		if ('uri' in s && 'uri' in newSelection && s.uri && newSelection.uri) {
+			if (s.uri.fsPath !== newSelection.uri.fsPath) continue
+		}
 
 		if (s.type === 'File' && newSelection.type === 'File') {
 			return i
@@ -71,6 +74,18 @@ const findStagingSelectionIndex = (currentSelections: StagingSelectionItem[] | u
 			return i
 		}
 		if (s.type === 'Folder' && newSelection.type === 'Folder') {
+			return i
+		}
+		if (s.type === 'CurrentFile' && newSelection.type === 'CurrentFile') {
+			return i
+		}
+		if (s.type === 'Terminal' && newSelection.type === 'Terminal') {
+			return i
+		}
+		if (s.type === 'GitDiff' && newSelection.type === 'GitDiff') {
+			return i
+		}
+		if (s.type === 'Problems' && newSelection.type === 'Problems') {
 			return i
 		}
 	}
