@@ -22,7 +22,7 @@ import { ChatMode, displayInfoOfProviderName, FeatureName, isFeatureNameDisabled
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
 import { WarningBox } from '../void-settings-tsx/WarningBox.js';
 import { getModelCapabilities, getIsReasoningEnabledState } from '../../../../common/modelCapabilities.js';
-import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2 } from 'lucide-react';
+import { AlertTriangle, File, Ban, Check, ChevronRight, Dot, FileIcon, Pencil, Undo, Undo2, X, Flag, Copy as CopyIcon, Info, CirclePlus, Ellipsis, CircleEllipsis, Folder, ALargeSmall, TypeOutline, Text, Paperclip, Mic, MessageSquare, Search, Bot, FileText, Code2, Terminal, GitBranch, AlertCircle, FileCode } from 'lucide-react';
 import { ChatMessage, CheckpointEntry, StagingSelectionItem, ToolMessage } from '../../../../common/chatThreadServiceTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, ToolName, LintErrorItem, ToolApprovalType, toolApprovalTypes, TodoItem } from '../../../../common/toolsServiceTypes.js';
 import { CopyButton, EditToolAcceptRejectButtonsHTML, IconShell1, JumpToFileButton, JumpToTerminalButton, StatusIndicator, StatusIndicatorForApplyButton, useApplyStreamState, useEditToolStreamState } from '../markdown/ApplyBlockHoverButtons.js';
@@ -956,13 +956,21 @@ export const SelectedFiles = (
 				const thisKey = selection.type === 'CodeSelection' ? selection.type + selection.language + selection.range + selection.state.wasAddedAsCurrentFile + selection.uri.fsPath
 					: selection.type === 'File' ? selection.type + selection.language + selection.state.wasAddedAsCurrentFile + selection.uri.fsPath
 						: selection.type === 'Folder' ? selection.type + selection.language + selection.state + selection.uri.fsPath
-							: i
+							: selection.type === 'CurrentFile' ? selection.type + selection.uri.fsPath
+								: selection.type === 'Terminal' ? selection.type + selection.terminalId + i
+									: selection.type === 'GitDiff' ? selection.type + i
+										: selection.type === 'Problems' ? selection.type + i
+											: i
 
 				const SelectionIcon = (
 					selection.type === 'File' ? File
 						: selection.type === 'Folder' ? Folder
 							: selection.type === 'CodeSelection' ? Text
-								: (undefined as never)
+								: selection.type === 'CurrentFile' ? FileCode
+									: selection.type === 'Terminal' ? Terminal
+										: selection.type === 'GitDiff' ? GitBranch
+											: selection.type === 'Problems' ? AlertCircle
+												: File
 				)
 
 				return <div // container for summarybox and code
@@ -972,7 +980,7 @@ export const SelectedFiles = (
 					{/* tooltip for file path */}
 					<span className="truncate overflow-hidden text-ellipsis"
 						data-tooltip-id='loophole-tooltip'
-						data-tooltip-content={getRelative(selection.uri, accessor)}
+						data-tooltip-content={'uri' in selection && selection.uri ? getRelative(selection.uri, accessor) : selection.type}
 						data-tooltip-place='top'
 						data-tooltip-delay-show={3000}
 					>
@@ -1017,8 +1025,12 @@ export const SelectedFiles = (
 						>
 							{<SelectionIcon size={10} />}
 
-							{ // file name and range
-								getBasename(selection.uri.fsPath)
+							{ // file/context name and range
+								(selection.type === 'Terminal' ? 'Terminal'
+									: selection.type === 'GitDiff' ? 'Git Diff'
+										: selection.type === 'Problems' ? 'Problems'
+											: 'uri' in selection && selection.uri ? getBasename(selection.uri.fsPath) : selection.type
+								)
 								+ (selection.type === 'CodeSelection' ? ` (${selection.range[0]}-${selection.range[1]})` : '')
 							}
 
