@@ -91,6 +91,27 @@ export type StagingSelectionItem = {
 	uri: URI;
 	language?: undefined;
 	state?: undefined;
+} | {
+	type: 'CurrentFile';
+	uri: URI;
+	language: string;
+	state: { wasAddedAsCurrentFile: true };
+} | {
+	type: 'Terminal';
+	content: string;
+	terminalId: string;
+	language?: undefined;
+	state?: undefined;
+} | {
+	type: 'GitDiff';
+	content: string;
+	language?: undefined;
+	state?: undefined;
+} | {
+	type: 'Problems';
+	content: string;
+	language?: undefined;
+	state?: undefined;
 }
 
 
