@@ -20,7 +20,7 @@ import { inputBackground, inputForeground } from '../../../../../../../platform/
 import { useFloating, autoUpdate, offset, flip, shift, size, autoPlacement } from '@floating-ui/react';
 import { URI } from '../../../../../../../base/common/uri.js';
 import { getBasename, getFolderName } from '../sidebar-tsx/SidebarChat.js';
-import { ChevronRight, File, Folder, FolderClosed, LucideProps } from 'lucide-react';
+import { ChevronRight, File, Folder, FolderClosed, LucideProps, Terminal, GitBranch, AlertCircle, FileCode } from 'lucide-react';
 import { StagingSelectionItem } from '../../../../common/chatThreadServiceTypes.js';
 import { DiffEditorWidget } from '../../../../../../../editor/browser/widget/diffEditor/diffEditorWidget.js';
 import { extractSearchReplaceBlocks, ExtractedSearchReplaceBlock } from '../../../../common/helpers/extractCodeFromResult.js';
@@ -67,6 +67,7 @@ type Option = {
 		| { leafNodeType?: undefined, nextOptions: Option[], generateNextOptions?: undefined, }
 		| { leafNodeType?: undefined, nextOptions?: undefined, generateNextOptions: GenerateNextOptions, }
 		| { leafNodeType: 'File' | 'Folder', uri: URI, nextOptions?: undefined, generateNextOptions?: undefined, }
+		| { leafNodeType: 'CurrentFile' | 'Terminal' | 'GitDiff' | 'Problems', uri?: undefined, nextOptions?: undefined, generateNextOptions?: undefined, }
 	)
 
 
@@ -296,6 +297,30 @@ const getOptionsAtPath = async (accessor: ReturnType<typeof useAccessor>, path: 
 			iconInMenu: Folder,
 			generateNextOptions: async (t) => (await searchForFilesOrFolders(t, 'folders')) || [],
 		},
+		{
+			fullName: 'currentFile',
+			abbreviatedName: 'currentFile',
+			iconInMenu: FileCode,
+			leafNodeType: 'CurrentFile',
+		},
+		{
+			fullName: 'terminal',
+			abbreviatedName: 'terminal',
+			iconInMenu: Terminal,
+			leafNodeType: 'Terminal',
+		},
+		{
+			fullName: 'gitDiff',
+			abbreviatedName: 'gitDiff',
+			iconInMenu: GitBranch,
+			leafNodeType: 'GitDiff',
+		},
+		{
+			fullName: 'problems',
+			abbreviatedName: 'problems',
+			iconInMenu: AlertCircle,
+			leafNodeType: 'Problems',
+		},
 	]
 
 	// follow the path in the optionsTree (until the last path element)
@@ -441,7 +466,86 @@ export const LoopholeInputBox2 = forwardRef<HTMLTextAreaElement, InputBox2Props>
 				language: undefined,
 				state: undefined,
 			}
-			else throw new Error(`Unexpected leafNodeType ${option.leafNodeType}`)
+			else if (option.leafNodeType === 'CurrentFile') {
+				const codeEditorService = accessor.get('ICodeEditorService')
+				const activeEditor = codeEditorService.getFocusedCodeEditor() || codeEditorService.getActiveCodeEditor()
+				const activeUri = activeEditor?.getModel()?.uri
+				if (!activeUri) {
+					console.warn('No active file found for @currentFile')
+					return
+				}
+				newSelection = {
+					type: 'CurrentFile',
+					uri: activeUri,
+					language: languageService.guessLanguageIdByFilepathOrFirstLine(activeUri) || '',
+					state: { wasAddedAsCurrentFile: true },
+				}
+			}
+			else if (option.leafNodeType === 'Terminal') {
+				const terminalToolService = accessor.get('ITerminalToolService')
+				const terminalIds = terminalToolService.listPersistentTerminalIds()
+				const terminalId = terminalIds[0] || '1'
+				let content = ''
+				try {
+					content = await terminalToolService.readTerminal(terminalId)
+				} catch {
+					content = '(no terminal output available)'
+				}
+				newSelection = {
+					type: 'Terminal',
+					content,
+					terminalId,
+				}
+			}
+			else if (option.leafNodeType === 'GitDiff') {
+				const toolsService = accessor.get('IToolsService')
+				const workspaceService = accessor.get('IWorkspaceContextService')
+				const folders = workspaceService.getWorkspace().folders
+				const cwd = folders[0]?.uri.fsPath || null
+				let content = ''
+				try {
+					// run_command returns { result: Promise<{ result: string }> } — needs 3 awaits total
+					const outer = await toolsService.callTool.run_command({
+						command: 'git diff HEAD',
+						cwd,
+						terminalId: `__gitdiff_${Date.now()}`,
+					})
+					const inner = await outer.result as { result: string }
+					content = inner.result?.trim() || '(no changes in git diff)'
+				} catch {
+					content = '(git diff not available)'
+				}
+				newSelection = {
+					type: 'GitDiff',
+					content,
+				}
+			}
+			else if (option.leafNodeType === 'Problems') {
+				const toolsService = accessor.get('IToolsService')
+				const modelService = accessor.get('IModelService')
+				const models = modelService.getModels()
+				const problemLines: string[] = []
+				for (const model of models) {
+					try {
+						// read_lint_errors returns { result: { lintErrors } }
+						const outer = await toolsService.callTool.read_lint_errors({ uri: model.uri })
+						const { lintErrors } = await Promise.resolve(outer.result)
+						if (lintErrors && lintErrors.length > 0) {
+							for (const err of lintErrors) {
+								problemLines.push(`${model.uri.fsPath}:${err.startLineNumber} — ${err.message}`)
+							}
+						}
+					} catch { /* skip models without lint */ }
+				}
+				const content = problemLines.length > 0
+					? problemLines.join('\n')
+					: '(no problems found)'
+				newSelection = {
+					type: 'Problems',
+					content,
+				}
+			}
+			else throw new Error(`Unexpected leafNodeType ${(option as any).leafNodeType}`)
 
 			chatThreadService.addNewStagingSelection(newSelection)
 		}
