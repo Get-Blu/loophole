@@ -2122,13 +2122,13 @@ We only need to do it for files that were edited since `from`, ie files between 
 			// URIs of user selections
 			if (m.role === 'user') {
 				for (const sel of m.selections ?? []) {
-					addURI(sel.uri)
+					if ('uri' in sel && sel.uri) addURI(sel.uri)
 				}
 			}
 			// URIs of files that have been read
 			else if (m.role === 'tool' && m.type === 'success' && m.name === 'read_file') {
 				const params = m.params as BuiltinToolCallParams['read_file']
-				if ('uri' in sel && sel.uri) addURI(sel.uri)
+				addURI(params.uri)
 			}
 		}
 		return uris
