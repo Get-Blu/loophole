@@ -140,6 +140,7 @@
     "ollama": "^0.5.13",
     "open": "^10.1.2",
     "gpt-tokenizer": "^3.4.0",
+    "esbuild": "0.27.2",
     "openai": "^4.103.0",
     "playwright-core": "1.59.1",
     "posthog-node": "^4.3.3",
