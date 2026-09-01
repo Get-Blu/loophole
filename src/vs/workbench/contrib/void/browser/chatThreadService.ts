@@ -2128,7 +2128,7 @@ We only need to do it for files that were edited since `from`, ie files between 
 			// URIs of files that have been read
 			else if (m.role === 'tool' && m.type === 'success' && m.name === 'read_file') {
 				const params = m.params as BuiltinToolCallParams['read_file']
-				addURI(params.uri)
+				if ('uri' in sel && sel.uri) addURI(sel.uri)
 			}
 		}
 		return uris
