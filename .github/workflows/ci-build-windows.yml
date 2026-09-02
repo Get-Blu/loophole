@@ -167,24 +167,9 @@ jobs:
         run: npm install
         working-directory: build
 
-      - name: Install extension dependencies
-        shell: pwsh
-        run: |
-          $exts = @(
-            'configuration-editing', 'emmet', 'github-authentication', 'ipynb',
-            'markdown-language-features', 'markdown-math', 'media-preview',
-            'merge-conflict', 'mermaid-markdown-features', 'microsoft-authentication',
-            'npm', 'simple-browser', 'typescript-language-features'
-          )
-          foreach ($ext in $exts) {
-            $path = "extensions/$ext"
-            if (Test-Path "$path/package.json") {
-              Write-Host "Installing deps for $ext"
-              Push-Location $path
-              npm install
-              Pop-Location
-            }
-          }
+      - name: Install mermaid extension dependencies
+        run: npm install
+        working-directory: extensions/mermaid-markdown-features
 
       - name: Build React components
         run: node build.js
@@ -460,24 +445,9 @@ jobs:
         run: npm install
         working-directory: build
 
-      - name: Install extension dependencies
-        shell: pwsh
-        run: |
-          $exts = @(
-            'configuration-editing', 'emmet', 'github-authentication', 'ipynb',
-            'markdown-language-features', 'markdown-math', 'media-preview',
-            'merge-conflict', 'mermaid-markdown-features', 'microsoft-authentication',
-            'npm', 'simple-browser', 'typescript-language-features'
-          )
-          foreach ($ext in $exts) {
-            $path = "extensions/$ext"
-            if (Test-Path "$path/package.json") {
-              Write-Host "Installing deps for $ext"
-              Push-Location $path
-              npm install
-              Pop-Location
-            }
-          }
+      - name: Install mermaid extension dependencies
+        run: npm install
+        working-directory: extensions/mermaid-markdown-features
 
       - name: Build React components
         run: node build.js
