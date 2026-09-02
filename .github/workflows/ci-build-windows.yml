@@ -110,6 +110,11 @@ jobs:
         env:
           npm_config_arch: x64
 
+      - name: Install extension and subdir dependencies
+        run: npm run postinstall
+        env:
+          npm_config_arch: x64
+
       - name: Backup node-pty conpty binaries
         shell: pwsh
         run: |
@@ -166,6 +171,17 @@ jobs:
       - name: Install build dependencies
         run: npm install
         working-directory: build
+
+      - name: Install extension dependencies
+        shell: pwsh
+        run: |
+          foreach ($pkg in Get-ChildItem extensions/*/package.json) {
+            $path = $pkg.DirectoryName
+            Write-Host "Installing deps for $(Split-Path $path -Leaf)"
+            Push-Location $path
+            npm install
+            Pop-Location
+          }
 
       - name: Build React components
         run: node build.js
@@ -392,6 +408,11 @@ jobs:
         env:
           npm_config_arch: arm64
 
+      - name: Install extension and subdir dependencies
+        run: npm run postinstall
+        env:
+          npm_config_arch: arm64
+
       - name: Backup node-pty conpty binaries
         shell: pwsh
         run: |
@@ -440,6 +461,17 @@ jobs:
       - name: Install build dependencies
         run: npm install
         working-directory: build
+
+      - name: Install extension dependencies
+        shell: pwsh
+        run: |
+          foreach ($pkg in Get-ChildItem extensions/*/package.json) {
+            $path = $pkg.DirectoryName
+            Write-Host "Installing deps for $(Split-Path $path -Leaf)"
+            Push-Location $path
+            npm install
+            Pop-Location
+          }
 
       - name: Build React components
         run: node build.js
