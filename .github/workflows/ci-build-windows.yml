@@ -170,20 +170,12 @@ jobs:
       - name: Install extension dependencies
         shell: pwsh
         run: |
-          $exts = @(
-            'configuration-editing', 'emmet', 'github-authentication', 'ipynb',
-            'markdown-language-features', 'markdown-math', 'media-preview',
-            'merge-conflict', 'mermaid-markdown-features', 'microsoft-authentication',
-            'npm', 'simple-browser', 'typescript-language-features'
-          )
-          foreach ($ext in $exts) {
-            $path = "extensions/$ext"
-            if (Test-Path "$path/package.json") {
-              Write-Host "Installing deps for $ext"
-              Push-Location $path
-              npm install
-              Pop-Location
-            }
+          foreach ($pkg in Get-ChildItem extensions/*/package.json) {
+            $path = $pkg.DirectoryName
+            Write-Host "Installing deps for $(Split-Path $path -Leaf)"
+            Push-Location $path
+            npm install
+            Pop-Location
           }
 
       - name: Build React components
@@ -463,20 +455,12 @@ jobs:
       - name: Install extension dependencies
         shell: pwsh
         run: |
-          $exts = @(
-            'configuration-editing', 'emmet', 'github-authentication', 'ipynb',
-            'markdown-language-features', 'markdown-math', 'media-preview',
-            'merge-conflict', 'mermaid-markdown-features', 'microsoft-authentication',
-            'npm', 'simple-browser', 'typescript-language-features'
-          )
-          foreach ($ext in $exts) {
-            $path = "extensions/$ext"
-            if (Test-Path "$path/package.json") {
-              Write-Host "Installing deps for $ext"
-              Push-Location $path
-              npm install
-              Pop-Location
-            }
+          foreach ($pkg in Get-ChildItem extensions/*/package.json) {
+            $path = $pkg.DirectoryName
+            Write-Host "Installing deps for $(Split-Path $path -Leaf)"
+            Push-Location $path
+            npm install
+            Pop-Location
           }
 
       - name: Build React components
