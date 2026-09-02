@@ -167,10 +167,6 @@ jobs:
         run: npm install
         working-directory: build
 
-      - name: Install mermaid extension dependencies
-        run: npm install
-        working-directory: extensions/mermaid-markdown-features
-
       - name: Build React components
         run: node build.js
         working-directory: src/vs/workbench/contrib/void/browser/react
@@ -444,10 +440,6 @@ jobs:
       - name: Install build dependencies
         run: npm install
         working-directory: build
-
-      - name: Install mermaid extension dependencies
-        run: npm install
-        working-directory: extensions/mermaid-markdown-features
 
       - name: Build React components
         run: node build.js
