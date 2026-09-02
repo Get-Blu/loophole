@@ -18,8 +18,12 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install system dependencies for native modules
+      - name: Install system dependencies
         run: sudo apt-get install -y libkrb5-dev libgssapi-krb5-2
+
+      - name: Install gyp dependencies (required by preinstall)
+        run: npm ci
+        working-directory: build/npm/gyp
 
       - name: Delete old lock file
         run: rm -f package-lock.json
