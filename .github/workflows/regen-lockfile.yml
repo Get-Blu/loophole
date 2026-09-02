@@ -1,7 +1,7 @@
 name: Regenerate package-lock.json
 
 on:
-  workflow_dispatch: # run manually from GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   regen-lockfile:
@@ -18,11 +18,14 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install system dependencies for native modules
+        run: sudo apt-get install -y libkrb5-dev libgssapi-krb5-2
+
       - name: Delete old lock file
         run: rm -f package-lock.json
 
-      - name: Run npm install (triggers postinstall for all extensions)
-        run: npm install
+      - name: Regenerate package-lock.json
+        run: npm install --package-lock-only
         env:
           npm_config_arch: x64
 
