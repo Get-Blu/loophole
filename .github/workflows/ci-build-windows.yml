@@ -114,6 +114,8 @@ jobs:
         run: npm run postinstall
         env:
           npm_config_arch: x64
+          npm_config_audit: "false"
+          npm_config_fund: "false"
 
       - name: Backup node-pty conpty binaries
         shell: pwsh
@@ -412,6 +414,8 @@ jobs:
         run: npm run postinstall
         env:
           npm_config_arch: arm64
+          npm_config_audit: "false"
+          npm_config_fund: "false"
 
       - name: Backup node-pty conpty binaries
         shell: pwsh
