@@ -135,9 +135,12 @@ jobs:
           $src = "node_modules/node-pty/third_party/conpty"
           $dest = "node_modules/node-pty/build/Release/conpty"
           if (Test-Path $src) {
+            # third_party/conpty may have a versioned subfolder — find the actual dlls
+            $versionDir = Get-ChildItem $src -Directory | Select-Object -First 1
+            $binSrc = if ($versionDir) { $versionDir.FullName } else { $src }
             New-Item -ItemType Directory -Force -Path $dest | Out-Null
-            Copy-Item "$src/*" -Destination $dest -Recurse -Force
-            Write-Host "Restored conpty binaries from third_party"
+            Copy-Item "$binSrc/*" -Destination $dest -Recurse -Force
+            Write-Host "Restored conpty binaries from $binSrc"
             Get-ChildItem $dest
           } else {
             Write-Error "third_party/conpty not found — cannot restore conpty binaries"
@@ -488,9 +491,12 @@ jobs:
           $src = "node_modules/node-pty/third_party/conpty"
           $dest = "node_modules/node-pty/build/Release/conpty"
           if (Test-Path $src) {
+            # third_party/conpty may have a versioned subfolder — find the actual dlls
+            $versionDir = Get-ChildItem $src -Directory | Select-Object -First 1
+            $binSrc = if ($versionDir) { $versionDir.FullName } else { $src }
             New-Item -ItemType Directory -Force -Path $dest | Out-Null
-            Copy-Item "$src/*" -Destination $dest -Recurse -Force
-            Write-Host "Restored conpty binaries from third_party"
+            Copy-Item "$binSrc/*" -Destination $dest -Recurse -Force
+            Write-Host "Restored conpty binaries from $binSrc"
             Get-ChildItem $dest
           } else {
             Write-Error "third_party/conpty not found — cannot restore conpty binaries"
