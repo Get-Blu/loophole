@@ -124,21 +124,19 @@ jobs:
         env:
           npm_config_arch: x64
 
-      - name: Restore node-pty conpty binaries from third_party
+      - name: Restore conpty binaries from prebuilds (x64)
         shell: pwsh
         run: |
-          $src = "node_modules/node-pty/third_party/conpty"
+          $src = "node_modules/node-pty/prebuilds/win32-x64/conpty"
           $dest = "node_modules/node-pty/build/Release/conpty"
           if (Test-Path $src) {
-            # third_party/conpty may have a versioned subfolder — find the actual dlls
-            $versionDir = Get-ChildItem $src -Directory | Select-Object -First 1
-            $binSrc = if ($versionDir) { $versionDir.FullName } else { $src }
             New-Item -ItemType Directory -Force -Path $dest | Out-Null
-            Copy-Item "$binSrc/*" -Destination $dest -Recurse -Force
-            Write-Host "Restored conpty binaries from $binSrc"
+            Copy-Item "$src/conpty.dll" -Destination $dest -Force
+            Copy-Item "$src/OpenConsole.exe" -Destination $dest -Force
+            Write-Host "Restored conpty binaries:"
             Get-ChildItem $dest
           } else {
-            Write-Error "third_party/conpty not found — cannot restore conpty binaries"
+            Write-Error "prebuilds/win32-x64/conpty not found"
             exit 1
           }
 
@@ -400,21 +398,19 @@ jobs:
         env:
           npm_config_arch: arm64
 
-      - name: Restore node-pty conpty binaries from third_party
+      - name: Restore conpty binaries from prebuilds (arm64)
         shell: pwsh
         run: |
-          $src = "node_modules/node-pty/third_party/conpty"
+          $src = "node_modules/node-pty/prebuilds/win32-arm64/conpty"
           $dest = "node_modules/node-pty/build/Release/conpty"
           if (Test-Path $src) {
-            # third_party/conpty may have a versioned subfolder — find the actual dlls
-            $versionDir = Get-ChildItem $src -Directory | Select-Object -First 1
-            $binSrc = if ($versionDir) { $versionDir.FullName } else { $src }
             New-Item -ItemType Directory -Force -Path $dest | Out-Null
-            Copy-Item "$binSrc/*" -Destination $dest -Recurse -Force
-            Write-Host "Restored conpty binaries from $binSrc"
+            Copy-Item "$src/conpty.dll" -Destination $dest -Force
+            Copy-Item "$src/OpenConsole.exe" -Destination $dest -Force
+            Write-Host "Restored conpty binaries:"
             Get-ChildItem $dest
           } else {
-            Write-Error "third_party/conpty not found — cannot restore conpty binaries"
+            Write-Error "prebuilds/win32-arm64/conpty not found"
             exit 1
           }
 
