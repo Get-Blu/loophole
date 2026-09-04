@@ -4,8 +4,13 @@
  *--------------------------------------------------------------------------------------*/
 
 import OpenAI from 'openai';
-import { pipeline, AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers';
+import { pipeline, AutomaticSpeechRecognitionPipeline, env } from '@huggingface/transformers';
 import { MainTranscribeAudioParams } from '../../common/sendLLMMessageTypes.js';
+import * as os from 'os';
+import * as path from 'path';
+
+// Set cache dir to user home dir instead of node_modules (avoids EPERM on read-only installs)
+env.cacheDir = path.join(os.homedir(), '.loophole', 'transformers-cache');
 
 // ---------- local whisper (free, offline) ----------
 const modelIdOfSize = {
