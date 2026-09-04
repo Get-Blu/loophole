@@ -1335,13 +1335,16 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 					if (completionCall) {
 						// Extract the result summary from params
 						const rawParams = completionCall.rawParams ?? {}
-						const resultText = typeof rawParams.result === 'string'
-							? rawParams.result
-							: typeof rawParams === 'object' && rawParams !== null
-								? JSON.stringify(rawParams)
-								: 'Task completed.'
-						const commandText = typeof rawParams.command === 'string' && rawParams.command
-							? `\n\n**Run to verify:** \`${rawParams.command}\``
+						const resultText = typeof rawParams.result === 'string' && rawParams.result.trim()
+							? rawParams.result.trim()
+							: 'Task completed.'
+						const commandRaw = typeof rawParams.command === 'string' ? rawParams.command.trim() : ''
+						const isUselessCommand = !commandRaw
+							|| commandRaw.toLowerCase().includes('no command')
+							|| commandRaw.toLowerCase().includes('not needed')
+							|| commandRaw.toLowerCase().includes('n/a')
+						const commandText = !isUselessCommand
+							? `\n\n**Run to verify:** \`${commandRaw}\``
 							: ''
 
 						// Show a clean summary message to the user
