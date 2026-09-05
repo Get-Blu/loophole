@@ -1356,7 +1356,9 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const { from, } = opts
 		const featureName: FeatureName = opts.from === 'ClickApply' ? 'Apply' : 'Ctrl+K'
 		const overridesOfModel = this._settingsService.state.overridesOfModel
+		// Fall back to Chat model if Apply/CtrlK model is not configured
 		const modelSelection = this._settingsService.state.modelSelectionOfFeature[featureName]
+			?? this._settingsService.state.modelSelectionOfFeature['Chat']
 		const modelSelectionOptions = modelSelection ? this._settingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName] : undefined
 
 
@@ -1679,7 +1681,9 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		const { from, applyStr, } = opts
 		const featureName: FeatureName = 'Apply'
 		const overridesOfModel = this._settingsService.state.overridesOfModel
+		// Fall back to Chat model if Apply model is not configured
 		const modelSelection = this._settingsService.state.modelSelectionOfFeature[featureName]
+			?? this._settingsService.state.modelSelectionOfFeature['Chat']
 		const modelSelectionOptions = modelSelection ? this._settingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName] : undefined
 
 		const uri = this._getURIBeforeStartApplying(opts)
