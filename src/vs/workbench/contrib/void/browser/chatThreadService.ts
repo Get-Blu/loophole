@@ -656,7 +656,7 @@ class ChatThreadService extends Disposable implements IChatThreadService {
 	private _convertThreadDataFromStorage(threadsStr: string): ChatThreads {
 		return JSON.parse(threadsStr, (key, value) => {
 			if (value && typeof value === 'object' && value.$mid === 1) { // $mid is the MarshalledId. $mid === 1 means it is a URI
-				return URI.from(value); // TODO URI.revive instead of this?
+				return URI.revive(value);
 			}
 			return value;
 		});
