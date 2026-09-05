@@ -31,6 +31,24 @@ The open-source AI code editor that thinks while you code.
 
 </div>
 
+<div align="center">
+
+<br>
+
+**🌐 Translations** &nbsp;|&nbsp;
+<a href="docs/translations/README.hi.md">हिन्दी</a> &nbsp;|&nbsp;
+<a href="README.md">English</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.zh.md">中文</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.ja.md">日本語</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.ko.md">한국어</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.de.md">Deutsch</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.fr.md">Français</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.es.md">Español</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.pt.md">Português</a> &nbsp;|&nbsp;
+<a href="docs/translations/README.ru.md">Русский</a>
+
+</div>
+
 <br>
 
 <p align="center">
