@@ -608,7 +608,7 @@ export const VoidChatArea: React.FC<VoidChatAreaProps> = ({
 				}
 			});
 
-			const filtered = newSelections.filter(ns => !selections.some(s => s.type === 'File' && s.uri.fsPath === ns.uri.fsPath));
+			const filtered = newSelections.filter(ns => !('uri' in ns && ns.uri) || !selections.some(s => s.type === 'File' && s.uri.fsPath === (ns as any).uri.fsPath));
 			setSelections([...selections, ...filtered]);
 		}
 	};
@@ -1020,6 +1020,9 @@ export const SelectedFiles = (
 								}
 								else if (selection.type === 'Folder') {
 									// TODO!!! reveal in tree
+								}
+								else if (selection.type === 'CurrentFile') {
+									voidOpenFileFn(selection.uri, accessor);
 								}
 							}}
 						>
