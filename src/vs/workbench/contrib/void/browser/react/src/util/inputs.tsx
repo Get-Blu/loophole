@@ -22,6 +22,7 @@ import { URI } from '../../../../../../../base/common/uri.js';
 import { getBasename, getFolderName } from '../sidebar-tsx/SidebarChat.js';
 import { ChevronRight, File, Folder, FolderClosed, LucideProps, Terminal, GitBranch, AlertCircle, FileCode } from 'lucide-react';
 import { StagingSelectionItem } from '../../../../common/chatThreadServiceTypes.js';
+import { removeAnsiEscapeCodes } from '../../../../../../../base/common/strings.js';
 import { DiffEditorWidget } from '../../../../../../../editor/browser/widget/diffEditor/diffEditorWidget.js';
 import { extractSearchReplaceBlocks, ExtractedSearchReplaceBlock } from '../../../../common/helpers/extractCodeFromResult.js';
 import { IAccessibilitySignalService } from '../../../../../../../platform/accessibilitySignal/browser/accessibilitySignalService.js';
@@ -467,11 +468,13 @@ export const LoopholeInputBox2 = forwardRef<HTMLTextAreaElement, InputBox2Props>
 				state: undefined,
 			}
 			else if (option.leafNodeType === 'CurrentFile') {
-				const codeEditorService = accessor.get('ICodeEditorService')
-				const activeEditor = codeEditorService.getFocusedCodeEditor() || codeEditorService.getActiveCodeEditor()
-				const activeUri = activeEditor?.getModel()?.uri
+				// ILoopholeCommandBarService.activeURI tracks the last focused editor
+				// regardless of where focus currently is — safer than getFocusedCodeEditor()
+				const commandBarService = accessor.get('ILoopholeCommandBarService')
+				const activeUri = commandBarService.activeURI
+				console.log('[loophole] @currentFile activeUri:', activeUri?.fsPath)
 				if (!activeUri) {
-					console.warn('No active file found for @currentFile')
+					console.warn('[loophole] @currentFile — no active file open')
 					return
 				}
 				newSelection = {
@@ -482,64 +485,105 @@ export const LoopholeInputBox2 = forwardRef<HTMLTextAreaElement, InputBox2Props>
 				}
 			}
 			else if (option.leafNodeType === 'Terminal') {
-				const terminalToolService = accessor.get('ITerminalToolService')
-				const terminalIds = terminalToolService.listPersistentTerminalIds()
-				const terminalId = terminalIds[0] || '1'
-				let content = ''
-				try {
-					content = await terminalToolService.readTerminal(terminalId)
-				} catch {
-					content = '(no terminal output available)'
+				// ITerminalService.activeInstance is the currently visible terminal panel instance.
+				// Its .xterm property (XtermTerminal) exposes getBufferReverseIterator() — same
+				// path that terminalToolService.readTerminal() uses internally.
+				const terminalService = accessor.get('ITerminalService')
+				const activeInstance = terminalService.activeInstance
+				console.log('[loophole] @terminal activeInstance id:', activeInstance?.instanceId)
+
+				const MAX_CHARS = 8000
+				let content = '(no terminal output — open a terminal and run a command first)'
+
+				if (activeInstance?.xterm) {
+					try {
+						const lines: string[] = []
+						for (const line of activeInstance.xterm.getBufferReverseIterator()) {
+							lines.unshift(line)
+						}
+						let raw = removeAnsiEscapeCodes(lines.join('\n')).trim()
+						if (raw.length > MAX_CHARS) {
+							const half = MAX_CHARS / 2
+							raw = raw.slice(0, half) + '\n...\n' + raw.slice(raw.length - half)
+						}
+						if (raw) content = raw
+						console.log('[loophole] @terminal chars:', raw.length, 'preview:', raw.slice(-200))
+					} catch (e) {
+						console.warn('[loophole] @terminal read failed:', e)
+					}
+				} else {
+					console.warn('[loophole] @terminal — no activeInstance or xterm not yet rendered')
 				}
+
 				newSelection = {
 					type: 'Terminal',
 					content,
-					terminalId,
+					terminalId: String(activeInstance?.instanceId ?? 'none'),
 				}
 			}
 			else if (option.leafNodeType === 'GitDiff') {
+				// callTool returns Promise<{ result: T | Promise<T>, interruptTool? }>
+				// For run_command, result is Promise<{ result: string, resolveReason }> — needs two awaits.
 				const toolsService = accessor.get('IToolsService')
 				const workspaceService = accessor.get('IWorkspaceContextService')
-				const folders = workspaceService.getWorkspace().folders
-				const cwd = folders[0]?.uri.fsPath || null
-				let content = ''
+				const cwd = workspaceService.getWorkspace().folders[0]?.uri.fsPath ?? null
+				console.log('[loophole] @gitDiff cwd:', cwd)
+
+				let content = '(git diff not available)'
 				try {
-					// run_command returns { result: Promise<{ result: string }> } — needs 3 awaits total
 					const outer = await toolsService.callTool.run_command({
 						command: 'git diff HEAD',
 						cwd,
 						terminalId: `__gitdiff_${Date.now()}`,
 					})
-					const inner = await outer.result as { result: string }
-					content = inner.result?.trim() || '(no changes in git diff)'
-				} catch {
-					content = '(git diff not available)'
+					// outer.result is Promise<{ result: string, resolveReason }>
+					const inner = await (outer.result as Promise<{ result: string }>)
+					const diffText = inner.result?.trim()
+					content = diffText || '(no changes — working tree is clean)'
+					console.log('[loophole] @gitDiff length:', content.length, 'preview:', content.slice(0, 300))
+				} catch (e) {
+					console.warn('[loophole] @gitDiff failed:', e)
 				}
+
 				newSelection = {
 					type: 'GitDiff',
 					content,
 				}
 			}
 			else if (option.leafNodeType === 'Problems') {
+				// read_lint_errors result type: { lintErrors: LintErrorItem[] | null }
+				// CallBuiltinTool wraps it as Promise<{ result: T | Promise<T> }>
+				// For read_lint_errors the result is NOT a nested Promise — just resolve it safely.
 				const toolsService = accessor.get('IToolsService')
 				const modelService = accessor.get('IModelService')
-				const models = modelService.getModels()
-				const problemLines: string[] = []
-				for (const model of models) {
-					try {
-						// read_lint_errors returns { result: { lintErrors } }
-						const outer = await toolsService.callTool.read_lint_errors({ uri: model.uri })
-						const { lintErrors } = await Promise.resolve(outer.result)
-						if (lintErrors && lintErrors.length > 0) {
-							for (const err of lintErrors) {
-								problemLines.push(`${model.uri.fsPath}:${err.startLineNumber} — ${err.message}`)
+
+				// Only scan file-scheme models — skip git/output/search internal ones
+				const models = modelService.getModels().filter(m => m.uri.scheme === 'file')
+				console.log('[loophole] @problems scanning', models.length, 'file models')
+
+				// Run in parallel — read_lint_errors has a 1s internal delay per model
+				const results = await Promise.all(
+					models.map(async (model) => {
+						try {
+							const outer = await toolsService.callTool.read_lint_errors({ uri: model.uri })
+							const { lintErrors } = (await Promise.resolve(outer.result)) as { lintErrors: Array<{ startLineNumber: number; message: string }> | null }
+							console.log('[loophole] @problems', model.uri.fsPath, lintErrors?.length ?? 0, 'issues')
+							if (lintErrors && lintErrors.length > 0) {
+								return lintErrors.map(e => `${model.uri.fsPath}:${e.startLineNumber} — ${e.message}`)
 							}
+						} catch (e) {
+							console.warn('[loophole] @problems read_lint_errors failed for', model.uri.fsPath, e)
 						}
-					} catch { /* skip models without lint */ }
-				}
+						return []
+					})
+				)
+
+				const problemLines = results.flat()
 				const content = problemLines.length > 0
 					? problemLines.join('\n')
-					: '(no problems found)'
+					: '(no problems found in workspace)'
+				console.log('[loophole] @problems total:', problemLines.length)
+
 				newSelection = {
 					type: 'Problems',
 					content,
