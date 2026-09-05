@@ -464,7 +464,9 @@ export const isProviderNameDisabled = (providerName: ProviderName, settingsState
 
 export const isFeatureNameDisabled = (featureName: FeatureName, settingsState: LoopholeSettingsState) => {
 	// if has a selected provider, check if it's enabled
+	// Fall back to Chat model if this feature has no model selected
 	const selectedProvider = settingsState.modelSelectionOfFeature[featureName]
+		?? settingsState.modelSelectionOfFeature['Chat']
 
 	if (selectedProvider) {
 		const { providerName } = selectedProvider
