@@ -6,7 +6,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAccessor, useIsDark, useSettingsState } from '../util/services.js';
 import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, X } from 'lucide-react';
-import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js';
+import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, ollamaProviderNames, mlxProviderNames, appleProviderNames, otherLocalProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js';
+import { os } from '../../../../common/helpers/systemInfo.js';
 import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
 import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump } from '../void-settings-tsx/Settings.js';
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
@@ -106,6 +107,23 @@ const providerNamesOfTab: Record<TabName, ProviderName[]> = {
 	'Cloud/Other': cloudProviders,
 };
 
+// Local provider sub-tabs (Kodia: MLX + Apple on Mac)
+type LocalSubTab = 'ollama' | 'mlx' | 'apple' | 'other';
+
+const localSubTabLabels: Record<LocalSubTab, string> = {
+	ollama: 'Ollama',
+	mlx: 'MLX',
+	apple: 'Apple',
+	other: 'Other',
+};
+
+const providerNamesOfLocalSubTab: Record<LocalSubTab, ProviderName[]> = {
+	ollama: [...ollamaProviderNames],
+	mlx: [...mlxProviderNames],
+	apple: [...appleProviderNames],
+	other: [...otherLocalProviderNames],
+};
+
 const descriptionOfTab: Record<TabName, string> = {
 	Free: `Providers with a 100% free tier. Add as many as you'd like!`,
 	Paid: `Connect directly with any provider (bring your own key).`,
@@ -123,6 +141,7 @@ const featureNameMap: { display: string, featureName: FeatureName }[] = [
 
 const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setPageIndex: (index: number) => void }) => {
 	const [currentTab, setCurrentTab] = useState<TabName>('Free');
+	const [localSubTab, setLocalSubTab] = useState<LocalSubTab>('ollama');
 	const settingsState = useSettingsState();
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -191,7 +210,24 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 				<div className="text-sm opacity-80 text-loophole-fg-3 my-4 w-full">{descriptionOfTab[currentTab]}</div>
 			</div>
 
-			{providerNamesOfTab[currentTab].map((providerName) => (
+			{currentTab === 'Local' && (
+				<div className="flex gap-2 mb-6 w-full max-w-xl flex-wrap">
+					{(os === 'mac' ? (['ollama', 'mlx', 'apple', 'other'] as const) : (['ollama', 'other'] as const)).map(sub => (
+						<button
+							key={sub}
+							className={`py-1.5 px-3 rounded-md text-sm ${localSubTab === sub
+								? 'bg-[#0e70c0]/80 text-white'
+								: 'bg-loophole-bg-2 hover:bg-loophole-bg-2/80 text-loophole-fg-1'
+								}`}
+							onClick={() => setLocalSubTab(sub)}
+						>
+							{localSubTabLabels[sub]}
+						</button>
+					))}
+				</div>
+			)}
+
+			{(currentTab === 'Local' ? providerNamesOfLocalSubTab[localSubTab] : providerNamesOfTab[currentTab]).map((providerName) => (
 				<div key={providerName} className="w-full max-w-xl mb-10">
 					<div className="text-xl mb-2">
 						Add {displayInfoOfProviderName(providerName).title}
@@ -227,7 +263,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					{currentTab === 'Local' && (
 						<div className="text-sm opacity-80 text-loophole-fg-3 my-4 w-full">Local models should be detected automatically. You can add custom models below.</div>
 					)}
-					{currentTab === 'Local' && <ModelDump filteredProviders={localProviderNames} />}
+					{currentTab === 'Local' && <ModelDump filteredProviders={[...providerNamesOfLocalSubTab[localSubTab]]} />}
 					{currentTab === 'Cloud/Other' && <ModelDump filteredProviders={cloudProviders} />}
 				</div>
 			)}
@@ -562,8 +598,8 @@ const LoopholeOnboardingContent = () => {
 
 	const providerNamesOfWantToUseOption: { [wantToUseOption in WantToUseOption]: ProviderName[] } = {
 		smart: ['anthropic', 'openAI', 'gemini', 'openRouter'],
-		private: ['ollama', 'vLLM', 'openAICompatible', 'lmStudio'],
-		cheap: ['gemini', 'deepseek', 'openRouter', 'ollama', 'vLLM'],
+		private: ['ollama', 'vLLM', 'openAICompatible', 'lmStudio', 'mlx', 'appleFoundationModels'],
+		cheap: ['gemini', 'deepseek', 'openRouter', 'ollama', 'vLLM', 'mlx'],
 		all: providerNames,
 	}
 
