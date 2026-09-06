@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '24.18.0'
   ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
   ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
 
@@ -102,6 +102,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+      
+      - name: Downgrade npm
+        run: npm install -g npm@11.1.0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -616,6 +619,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+      
+      - name: Downgrade npm
+        run: npm install -g npm@11.1.0
 
       - name: Setup Python
         uses: actions/setup-python@v5
