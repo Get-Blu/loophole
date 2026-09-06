@@ -1,0 +1,902 @@
+import { Disposable } from '../../../../base/common/lifecycle.js';
+import { deepClone } from '../../../../base/common/objects.js';
+import { IModelService } from '../../../../editor/common/services/model.js';
+import { registerSingleton, InstantiationType } from '../../../../platform/instantiation/common/extensions.js';
+import { createDecorator, IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { IEditorService } from '../../../services/editor/common/editorService.js';
+import { ChatMessage } from '../common/chatThreadServiceTypes.js';
+import { getIsReasoningEnabledState, getReservedOutputTokenSpace, getModelCapabilities } from '../common/modelCapabilities.js';
+import { reParsedToolXMLString, chat_systemMessage } from '../common/prompt/prompts.js';
+import { AnthropicLLMChatMessage, AnthropicReasoning, GeminiLLMChatMessage, LLMChatMessage, LLMFIMMessage, OpenAILLMChatMessage, RawToolParamsObj } from '../common/sendLLMMessageTypes.js';
+import { ILoopholeSettingsService } from '../common/voidSettingsService.js';
+import { ChatMode, FeatureName, ModelSelection, ProviderName } from '../common/voidSettingsTypes.js';
+import { IDirectoryStrService } from '../common/directoryStrService.js';
+import { ITerminalToolService } from './terminalToolService.js';
+import { ILoopholeModelService } from '../common/voidModelService.js';
+import { URI } from '../../../../base/common/uri.js';
+import * as glob from '../../../../base/common/glob.js';
+import { EndOfLinePreference } from '../../../../editor/common/model.js';
+import { ToolName } from '../common/toolsServiceTypes.js';
+import { IMCPService } from '../common/mcpService.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
+// IChatThreadService loaded lazily to avoid circular dependency:
+// convertToLLMMessageService -> chatThreadService -> convertToLLMMessageService
+
+export const EMPTY_MESSAGE = '(empty message)'
+
+export const IConvertToLLMMessageService = createDecorator<IConvertToLLMMessageService>('ConvertToLLMMessageService');
+
+
+type SimpleLLMMessage = {
+	role: 'tool';
+	content: string;
+	id: string;
+	name: ToolName;
+	rawParams: RawToolParamsObj;
+} | {
+	role: 'user';
+	content: string;
+} | {
+	role: 'assistant';
+	content: string;
+	anthropicReasoning: AnthropicReasoning[] | null;
+}
+
+
+
+const CHARS_PER_TOKEN = 3.5 // more realistic for code
+const TRIM_TO_LEN = 10_000 // much larger to preserve context
+
+
+
+
+// convert messages as if about to send to openai
+/*
+reference - https://platform.openai.com/docs/guides/function-calling#function-calling-steps
+openai MESSAGE (role=assistant):
+"tool_calls":[{
+	"type": "function",
+	"id": "call_12345xyz",
+	"function": {
+	"name": "get_weather",
+	"arguments": "{\"latitude\":48.8566,\"longitude\":2.3522}"
+}]
+
+openai RESPONSE (role=user):
+{   "role": "tool",
+	"tool_call_id": tool_call.id,
+	"content": str(result)    }
+
+also see
+openai on prompting - https://platform.openai.com/docs/guides/reasoning#advice-on-prompting
+openai on developer system message - https://cdn.openai.com/spec/model-spec-2024-05-08.html#follow-the-chain-of-command
+*/
+
+
+const prepareMessages_openai_tools = (messages: SimpleLLMMessage[]): AnthropicOrOpenAILLMMessage[] => {
+
+	const newMessages: OpenAILLMChatMessage[] = [];
+
+	for (let i = 0; i < messages.length; i += 1) {
+		const currMsg = messages[i]
+
+		if (currMsg.role !== 'tool') {
+			newMessages.push(currMsg)
+			continue
+		}
+
+		// edit previous assistant message to have called the tool
+		const prevMsg = 0 <= i - 1 && i - 1 <= newMessages.length ? newMessages[i - 1] : undefined
+		if (prevMsg?.role === 'assistant') {
+			prevMsg.tool_calls = [{
+				type: 'function',
+				id: currMsg.id,
+				function: {
+					name: currMsg.name,
+					arguments: JSON.stringify(currMsg.rawParams)
+				}
+			}]
+		}
+
+		// add the tool
+		newMessages.push({
+			role: 'tool',
+			tool_call_id: currMsg.id,
+			content: currMsg.content,
+		})
+	}
+	return newMessages
+
+}
+
+
+
+// convert messages as if about to send to anthropic
+/*
+https://docs.anthropic.com/en/docs/build-with-claude/tool-use#tool-use-examples
+anthropic MESSAGE (role=assistant):
+"content": [{
+	"type": "text",
+	"text": "<thinking>I need to call the get_weather function, and the user wants SF, which is likely San Francisco, CA.</thinking>"
+}, {
+	"type": "tool_use",
+	"id": "toolu_01A09q90qw90lq917835lq9",
+	"name": "get_weather",
+	"input": { "location": "San Francisco, CA", "unit": "celsius" }
+}]
+anthropic RESPONSE (role=user):
+"content": [{
+	"type": "tool_result",
+	"tool_use_id": "toolu_01A09q90qw90lq917835lq9",
+	"content": "15 degrees"
+}]
+
+
+Converts:
+assistant: ...content
+tool: (id, name, params)
+->
+assistant: ...content, call(name, id, params)
+user: ...content, result(id, content)
+*/
+
+type AnthropicOrOpenAILLMMessage = AnthropicLLMChatMessage | OpenAILLMChatMessage
+
+const prepareMessages_anthropic_tools = (messages: SimpleLLMMessage[], supportsAnthropicReasoning: boolean): AnthropicOrOpenAILLMMessage[] => {
+	const newMessages: (AnthropicLLMChatMessage | (SimpleLLMMessage & { role: 'tool' }))[] = messages;
+
+	for (let i = 0; i < messages.length; i += 1) {
+		const currMsg = messages[i]
+
+		// add anthropic reasoning
+		if (currMsg.role === 'assistant') {
+			if (currMsg.anthropicReasoning && supportsAnthropicReasoning) {
+				const content = currMsg.content
+				newMessages[i] = {
+					role: 'assistant',
+					content: content ? [...currMsg.anthropicReasoning, { type: 'text' as const, text: content }] : currMsg.anthropicReasoning
+				}
+			}
+			else {
+				newMessages[i] = {
+					role: 'assistant',
+					content: currMsg.content,
+					// strip away anthropicReasoning
+				}
+			}
+			continue
+		}
+
+		if (currMsg.role === 'user') {
+			newMessages[i] = {
+				role: 'user',
+				content: currMsg.content,
+			}
+			continue
+		}
+
+		if (currMsg.role === 'tool') {
+			// add anthropic tools
+			const prevMsg = 0 <= i - 1 && i - 1 <= newMessages.length ? newMessages[i - 1] : undefined
+
+			// make it so the assistant called the tool
+			if (prevMsg?.role === 'assistant') {
+				if (typeof prevMsg.content === 'string') prevMsg.content = [{ type: 'text', text: prevMsg.content }]
+				prevMsg.content.push({ type: 'tool_use', id: currMsg.id, name: currMsg.name, input: currMsg.rawParams })
+			}
+
+			// turn each tool into a user message with tool results at the end
+			newMessages[i] = {
+				role: 'user',
+				content: [{ type: 'tool_result', tool_use_id: currMsg.id, content: currMsg.content }]
+			}
+			continue
+		}
+
+	}
+
+	// we just removed the tools
+	return newMessages as AnthropicLLMChatMessage[]
+}
+
+
+const prepareMessages_XML_tools = (messages: SimpleLLMMessage[], supportsAnthropicReasoning: boolean): AnthropicOrOpenAILLMMessage[] => {
+
+	const llmChatMessages: AnthropicOrOpenAILLMMessage[] = [];
+	for (let i = 0; i < messages.length; i += 1) {
+
+		const c = messages[i]
+		const next = 0 <= i + 1 && i + 1 <= messages.length - 1 ? messages[i + 1] : null
+
+		if (c.role === 'assistant') {
+			// if called a tool (message after it), re-add its XML to the message
+			// alternatively, could just hold onto the original output, but this way requires less piping raw strings everywhere
+			let content: AnthropicOrOpenAILLMMessage['content'] = c.content
+			if (next?.role === 'tool') {
+				content = `${content}\n\n${reParsedToolXMLString(next.name, next.rawParams)}`
+			}
+
+			// anthropic reasoning
+			if (c.anthropicReasoning && supportsAnthropicReasoning) {
+				content = content ? [...c.anthropicReasoning, { type: 'text' as const, text: content }] : c.anthropicReasoning
+			}
+			llmChatMessages.push({
+				role: 'assistant',
+				content
+			})
+		}
+		// add user or tool to the previous user message
+		else if (c.role === 'user' || c.role === 'tool') {
+			if (c.role === 'tool')
+				c.content = `<${c.name}_result>\n${c.content}\n</${c.name}_result>`
+
+			if (llmChatMessages.length === 0 || llmChatMessages[llmChatMessages.length - 1].role !== 'user')
+				llmChatMessages.push({
+					role: 'user',
+					content: c.content
+				})
+			else
+				llmChatMessages[llmChatMessages.length - 1].content += '\n\n' + c.content
+		}
+	}
+	return llmChatMessages
+}
+
+
+// --- CHAT ---
+
+const prepareOpenAIOrAnthropicMessages = ({
+	messages: messages_,
+	systemMessage,
+	aiInstructions,
+	supportsSystemMessage,
+	specialToolFormat,
+	supportsAnthropicReasoning,
+	contextWindow,
+	reservedOutputTokenSpace,
+}: {
+	messages: SimpleLLMMessage[],
+	systemMessage: string,
+	aiInstructions: string,
+	supportsSystemMessage: false | 'system-role' | 'developer-role' | 'separated',
+	specialToolFormat: 'openai-style' | 'anthropic-style' | undefined,
+	supportsAnthropicReasoning: boolean,
+	contextWindow: number,
+	reservedOutputTokenSpace: number | null | undefined,
+}): { messages: AnthropicOrOpenAILLMMessage[], separateSystemMessage: string | undefined } => {
+
+	reservedOutputTokenSpace = Math.max(
+		Math.min(contextWindow * 1 / 4, 16_384), // reserve at most 1/4 of the window or 16k tokens
+		reservedOutputTokenSpace ?? 4_096
+	)
+	let messages: (SimpleLLMMessage | { role: 'system', content: string })[] = deepClone(messages_)
+
+	// ================ system message ================
+	// A COMPLETE HACK: last message is system message for context purposes
+
+	const sysMsgParts: string[] = []
+	if (aiInstructions) sysMsgParts.push(`GUIDELINES (from the user's .loopholerules file):\n${aiInstructions}`)
+	if (systemMessage) sysMsgParts.push(systemMessage)
+	const combinedSystemMessage = sysMsgParts.join('\n\n')
+
+	messages.unshift({ role: 'system', content: combinedSystemMessage })
+
+	// ================ trim ================
+	messages = messages.map(m => ({ ...m, content: m.role !== 'tool' ? m.content.trim() : m.content }))
+
+	// ================ fit into context (Continue-style oldest-first trimming) ================
+	//
+	// Strategy (mirrors Continue's compileChatMessages):
+	//   1. Always protect: system message (idx 0) + last PROTECT_TAIL messages (recent context)
+	//   2. Trim oldest-to-newest — never penalise assistant/tool messages over user ones
+	//   3. Messages already at TRIM_TO_LEN are skipped
+	//
+	// The old weight-based approach gave assistant messages 10x trim-weight, so the model's
+	// own reasoning and tool outputs were the first to disappear — exactly wrong for long
+	// agentic sessions where those outputs are critical to continued coherence.
+
+	let totalLen = 0
+	for (const m of messages) { totalLen += m.content.length }
+
+	const budgetChars = Math.max(
+		(contextWindow - reservedOutputTokenSpace) * CHARS_PER_TOKEN,
+		5_000
+	)
+	let remainingCharsToTrim = totalLen - budgetChars
+
+	if (remainingCharsToTrim > 0) {
+		// Build trimming order: oldest non-protected messages first.
+		// Protected = system (idx 0) + last PROTECT_TAIL messages.
+		const PROTECT_TAIL = 4
+		for (let i = 1; i < messages.length - PROTECT_TAIL; i++) {
+			if (remainingCharsToTrim <= 0) break
+			const m = messages[i]
+			const available = m.content.length - TRIM_TO_LEN
+			if (available <= 0) continue // already short
+
+			if (available >= remainingCharsToTrim) {
+				m.content = m.content.slice(0, m.content.length - remainingCharsToTrim - 3).trim() + '...'
+				remainingCharsToTrim = 0
+			} else {
+				m.content = m.content.substring(0, TRIM_TO_LEN - 3) + '...'
+				remainingCharsToTrim -= available
+			}
+		}
+	}
+
+	// ================ system message hack ================
+	const newSysMsg = messages.shift()!.content
+
+
+	// ================ tools and anthropicReasoning ================
+	// SYSTEM MESSAGE HACK: we shifted (removed) the system message role, so now SimpleLLMMessage[] is valid
+
+	let llmChatMessages: AnthropicOrOpenAILLMMessage[] = []
+	if (!specialToolFormat) { // XML tool behavior
+		llmChatMessages = prepareMessages_XML_tools(messages as SimpleLLMMessage[], supportsAnthropicReasoning)
+	}
+	else if (specialToolFormat === 'anthropic-style') {
+		llmChatMessages = prepareMessages_anthropic_tools(messages as SimpleLLMMessage[], supportsAnthropicReasoning)
+	}
+	else if (specialToolFormat === 'openai-style') {
+		llmChatMessages = prepareMessages_openai_tools(messages as SimpleLLMMessage[])
+	}
+	const llmMessages = llmChatMessages
+
+
+	// ================ system message add as first llmMessage ================
+
+	let separateSystemMessageStr: string | undefined = undefined
+
+	// if supports system message
+	if (supportsSystemMessage) {
+		if (supportsSystemMessage === 'separated')
+			separateSystemMessageStr = newSysMsg
+		else if (supportsSystemMessage === 'system-role')
+			llmMessages.unshift({ role: 'system', content: newSysMsg }) // add new first message
+		else if (supportsSystemMessage === 'developer-role')
+			llmMessages.unshift({ role: 'developer', content: newSysMsg }) // add new first message
+	}
+	// if does not support system message
+	else {
+		const newFirstMessage = {
+			role: 'user',
+			content: `<SYSTEM_MESSAGE>\n${newSysMsg}\n</SYSTEM_MESSAGE>\n${llmMessages[0].content}`
+		} as const
+		llmMessages.splice(0, 1) // delete first message
+		llmMessages.unshift(newFirstMessage) // add new first message
+	}
+
+
+	// ================ no empty message ================
+	for (let i = 0; i < llmMessages.length; i += 1) {
+		const currMsg: AnthropicOrOpenAILLMMessage = llmMessages[i]
+		const nextMsg: AnthropicOrOpenAILLMMessage | undefined = llmMessages[i + 1]
+
+		if (currMsg.role === 'tool') continue
+
+		// if content is a string, replace string with empty msg
+		if (typeof currMsg.content === 'string') {
+			currMsg.content = currMsg.content || EMPTY_MESSAGE
+		}
+		else {
+			// allowed to be empty if has a tool in it or following it
+			if (currMsg.content.find(c => c.type === 'tool_result' || c.type === 'tool_use')) {
+				currMsg.content = currMsg.content.filter(c => !(c.type === 'text' && !c.text)) as any
+				continue
+			}
+			if (nextMsg?.role === 'tool') continue
+
+			// replace any empty text entries with empty msg, and make sure there's at least 1 entry
+			for (const c of currMsg.content) {
+				if (c.type === 'text') c.text = c.text || EMPTY_MESSAGE
+			}
+			if (currMsg.content.length === 0) currMsg.content = [{ type: 'text', text: EMPTY_MESSAGE }]
+		}
+	}
+
+	return {
+		messages: llmMessages,
+		separateSystemMessage: separateSystemMessageStr,
+	} as const
+}
+
+
+
+
+type GeminiUserPart = (GeminiLLMChatMessage & { role: 'user' })['parts'][0]
+type GeminiModelPart = (GeminiLLMChatMessage & { role: 'model' })['parts'][0]
+const prepareGeminiMessages = (messages: AnthropicLLMChatMessage[]) => {
+	let latestToolName: ToolName | undefined = undefined
+	const messages2: GeminiLLMChatMessage[] = messages.map((m): GeminiLLMChatMessage | null => {
+		if (m.role === 'assistant') {
+			if (typeof m.content === 'string') {
+				return { role: 'model', parts: [{ text: m.content }] }
+			}
+			else {
+				const parts: GeminiModelPart[] = m.content.map((c): GeminiModelPart | null => {
+					if (c.type === 'text') {
+						return { text: c.text }
+					}
+					else if (c.type === 'tool_use') {
+						latestToolName = c.name
+						return { functionCall: { id: c.id, name: c.name, args: c.input } }
+					}
+					else return null
+				}).filter(m => !!m)
+				return { role: 'model', parts, }
+			}
+		}
+		else if (m.role === 'user') {
+			if (typeof m.content === 'string') {
+				return { role: 'user', parts: [{ text: m.content }] } satisfies GeminiLLMChatMessage
+			}
+			else {
+				const parts: GeminiUserPart[] = m.content.map((c): GeminiUserPart | null => {
+					if (c.type === 'text') {
+						return { text: c.text }
+					}
+					else if (c.type === 'tool_result') {
+						if (!latestToolName) return null
+						return { functionResponse: { id: c.tool_use_id, name: latestToolName, response: { output: c.content } } }
+					}
+					else return null
+				}).filter(m => !!m)
+				return { role: 'user', parts, }
+			}
+
+		}
+		else return null
+	}).filter(m => !!m)
+
+	return messages2
+}
+
+
+const prepareMessages = (params: {
+	messages: SimpleLLMMessage[],
+	systemMessage: string,
+	aiInstructions: string,
+	supportsSystemMessage: false | 'system-role' | 'developer-role' | 'separated',
+	specialToolFormat: 'openai-style' | 'anthropic-style' | 'gemini-style' | undefined,
+	supportsAnthropicReasoning: boolean,
+	contextWindow: number,
+	reservedOutputTokenSpace: number | null | undefined,
+	providerName: ProviderName
+}): { messages: LLMChatMessage[], separateSystemMessage: string | undefined } => {
+
+	const specialFormat = params.specialToolFormat // this is just for ts stupidness
+
+	// if need to convert to gemini style of messaes, do that (treat as anthropic style, then convert to gemini style)
+	if (params.providerName === 'gemini' || specialFormat === 'gemini-style') {
+		const res = prepareOpenAIOrAnthropicMessages({ ...params, specialToolFormat: specialFormat === 'gemini-style' ? 'anthropic-style' : undefined })
+		const messages = res.messages as AnthropicLLMChatMessage[]
+		const messages2 = prepareGeminiMessages(messages)
+		return { messages: messages2, separateSystemMessage: res.separateSystemMessage }
+	}
+
+	return prepareOpenAIOrAnthropicMessages({ ...params, specialToolFormat: specialFormat })
+}
+
+
+
+
+export interface IConvertToLLMMessageService {
+	readonly _serviceBrand: undefined;
+	prepareLLMSimpleMessages: (opts: { simpleMessages: SimpleLLMMessage[], systemMessage: string, modelSelection: ModelSelection | null, featureName: FeatureName }) => { messages: LLMChatMessage[], separateSystemMessage: string | undefined }
+	prepareLLMChatMessages: (opts: { chatMessages: ChatMessage[], chatMode: ChatMode, modelSelection: ModelSelection | null }) => Promise<{ messages: LLMChatMessage[], separateSystemMessage: string | undefined }>
+	prepareFIMMessage(opts: { messages: LLMFIMMessage, modelSelection?: ModelSelection | null }): { prefix: string, suffix: string, stopTokens: string[], rawFimPrompt?: string }
+}
+
+
+class ConvertToLLMMessageService extends Disposable implements IConvertToLLMMessageService {
+	_serviceBrand: undefined;
+
+	constructor(
+		@IModelService private readonly modelService: IModelService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+		@IEditorService private readonly editorService: IEditorService,
+		@IDirectoryStrService private readonly directoryStrService: IDirectoryStrService,
+		@ITerminalToolService private readonly terminalToolService: ITerminalToolService,
+		@ILoopholeSettingsService private readonly voidSettingsService: ILoopholeSettingsService,
+		@ILoopholeModelService private readonly voidModelService: ILoopholeModelService,
+		@IMCPService private readonly mcpService: IMCPService,
+		@IFileService private readonly fileService: IFileService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
+	) {
+		super()
+	}
+
+	// Lazy getter to avoid circular dependency with chatThreadService
+	private get chatThreadService() {
+		const { IChatThreadService } = require('./chatThreadService.js') as typeof import('./chatThreadService.js')
+		return this.instantiationService.invokeFunction(accessor => accessor.get(IChatThreadService))
+	}
+
+	// Read .loopholerules files from workspace folders
+	// Scan .loophole/skills/ for SKILL.md files and extract name + description from frontmatter
+	private async _discoverSkills(): Promise<{ name: string, description: string }[]> {
+		try {
+			const workspaceFolders = this.workspaceContextService.getWorkspace().folders
+			if (!workspaceFolders.length) return []
+			const root = workspaceFolders[0].uri
+			const skillsDir = URI.joinPath(root, '.loophole', 'skills')
+
+			const dir = await this.fileService.resolve(skillsDir).catch(() => null)
+			if (!dir?.children) return []
+
+			const skills: { name: string, description: string }[] = []
+
+			for (const entry of dir.children) {
+				// Support both .loophole/skills/my-skill/SKILL.md and .loophole/skills/my-skill.md
+				let skillFile: URI | null = null
+				let skillName = ''
+
+				if (entry.isDirectory) {
+					skillFile = URI.joinPath(entry.resource, 'SKILL.md')
+					skillName = entry.name
+				} else if (entry.name.endsWith('.md')) {
+					skillFile = entry.resource
+					skillName = entry.name.replace(/\.md$/, '')
+				}
+
+				if (!skillFile || !skillName) continue
+
+				try {
+					const content = (await this.fileService.readFile(skillFile)).value.toString()
+					// Extract description from YAML frontmatter: description: "..."
+					const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/)
+					let description = `Custom skill: ${skillName}`
+					if (frontmatterMatch) {
+						const descMatch = frontmatterMatch[1].match(/description:\s*["']?(.+?)["']?\s*$/m)
+						if (descMatch) description = descMatch[1].trim()
+					} else {
+						// Fall back to first non-empty line after the title
+						const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#'))
+						if (lines[0]) description = lines[0].trim().slice(0, 120)
+					}
+					skills.push({ name: skillName, description })
+				} catch {
+					// Skip unreadable skill files
+				}
+			}
+
+			return skills
+		} catch {
+			return []
+		}
+	}
+
+	// Parse .loopholerules into rule blocks, each optionally scoped to a glob pattern.
+	// Format (mirrors Continue's .continue/rules/*.md):
+	//
+	//   # Rule title (optional)
+	//   globs: src/**/*.ts, **/*.tsx   <- optional comma-separated globs
+	//   alwaysApply: true              <- optional; if false only applies when globs match
+	//   ---
+	//   Rule body text...
+	//
+	// Blocks are separated by a line containing only "---" at the top level.
+	// A block with no `globs:` line is always included (alwaysApply: true implicitly).
+	private _parseRuleBlocks(raw: string): Array<{ globs: string[]; alwaysApply: boolean; body: string }> {
+		// Split on top-level "---" separators (ignoring the one inside YAML frontmatter)
+		const blocks = raw.split(/\n---\n/)
+		return blocks.map(block => {
+			const lines = block.trim().split('\n')
+			const globLine = lines.find(l => l.trimStart().startsWith('globs:'))
+			const alwaysLine = lines.find(l => l.trimStart().startsWith('alwaysApply:'))
+
+			const globs = globLine
+				? globLine.replace(/^.*globs:\s*/i, '').split(',').map(g => g.trim()).filter(Boolean)
+				: []
+			const alwaysApply = alwaysLine
+				? alwaysLine.replace(/^.*alwaysApply:\s*/i, '').trim().toLowerCase() !== 'false'
+				: true // default: always apply if no glob scoping
+
+			// Strip metadata lines from body
+			const bodyLines = lines.filter(l =>
+				!l.trimStart().startsWith('globs:') &&
+				!l.trimStart().startsWith('alwaysApply:')
+			)
+			const body = bodyLines.join('\n').trim()
+
+			return { globs, alwaysApply, body }
+		}).filter(b => b.body.length > 0)
+	}
+
+	// Returns only the rule bodies that apply to the currently active file.
+	// - Rules with no globs (alwaysApply: true) are always included.
+	// - Rules with globs are included if the activeFilePath matches any glob.
+	private _getLoopholeRulesFileContents(activeFilePath?: string): string {
+		try {
+			const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+			const allBodies: string[] = []
+
+			for (const folder of workspaceFolders) {
+				const uri = URI.joinPath(folder.uri, '.loopholerules')
+				const { model } = this.voidModelService.getModel(uri)
+				if (!model) continue
+
+				const raw = model.getValue(EndOfLinePreference.LF)
+				const blocks = this._parseRuleBlocks(raw)
+
+				for (const block of blocks) {
+					if (block.globs.length === 0 || block.alwaysApply) {
+						// No glob scoping — always include
+						allBodies.push(block.body)
+					} else if (activeFilePath) {
+						// Only include if the active file matches at least one glob
+						const matches = block.globs.some(pattern => {
+							try { return glob.match(pattern, activeFilePath) }
+							catch { return false }
+						})
+						if (matches) allBodies.push(block.body)
+					}
+				}
+			}
+
+			return allBodies.join('\n\n').trim()
+		}
+		catch (e) {
+			return ''
+		}
+	}
+
+	// Get combined AI instructions from settings and .loopholerules files.
+	// activeFilePath is used to filter glob-scoped rule blocks (Continue-style).
+	private _getCombinedAIInstructions(activeFilePath?: string): string {
+		const globalAIInstructions = this.voidSettingsService.state.globalSettings.aiInstructions;
+		const loopholeRulesFileContent = this._getLoopholeRulesFileContents(activeFilePath);
+
+		const ans: string[] = []
+		if (globalAIInstructions) ans.push(globalAIInstructions)
+		if (loopholeRulesFileContent) ans.push(loopholeRulesFileContent)
+		return ans.join('\n\n')
+	}
+
+
+	// system message
+	private _generateChatMessagesSystemMessage = async (chatMode: ChatMode, specialToolFormat: 'openai-style' | 'anthropic-style' | 'gemini-style' | undefined) => {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders.map(f => f.uri.fsPath)
+
+		const openedURIs = this.modelService.getModels().filter(m => m.isAttachedToEditor()).map(m => m.uri.fsPath) || [];
+		const activeURI = this.editorService.activeEditor?.resource?.fsPath;
+
+		const directoryStr = await this.directoryStrService.getAllDirectoriesStr({
+			cutOffMessage: chatMode === 'agent' || chatMode === 'gather' || chatMode === 'plan' ?
+				`...Directories string cut off, use tools to read more...`
+				: `...Directories string cut off, ask user for more if necessary...`
+		})
+
+		const includeXMLToolDefinitions = !specialToolFormat
+
+		const mcpTools = this.mcpService.getMCPTools()
+
+		const persistentTerminalIDs = this.terminalToolService.listPersistentTerminalIds()
+
+		// session memory (async — load last 3 digests)
+		const memoryBlock = chatMode === 'agent' ? await this.chatThreadService?.readSessionMemoryBlock?.() : null
+
+		// context compaction (if conversation is very long)
+		const currentThreadId = this.chatThreadService?.state?.currentThreadId
+		const compactionSummary = currentThreadId ? this.chatThreadService.getCompactionSummary(currentThreadId) : null
+
+		// skills discovery — scan .loophole/skills/ for SKILL.md files
+		const availableSkills = chatMode === 'agent' ? await this._discoverSkills() : null
+
+		// get provider for per-model prompt selection
+		const modelSelection = this.voidSettingsService.state.modelSelectionOfFeature['Chat']
+		const providerName = modelSelection?.providerName ?? null
+
+		const systemMessage = chat_systemMessage({ workspaceFolders, openedURIs, directoryStr, activeURI, persistentTerminalIDs, chatMode, mcpTools, includeXMLToolDefinitions, memoryBlock, compactionSummary, availableSkills, providerName })
+		return systemMessage
+	}
+
+
+
+
+	// --- LLM Chat messages ---
+
+	private _chatMessagesToSimpleMessages(chatMessages: ChatMessage[]): SimpleLLMMessage[] {
+		const simpleLLMMessages: SimpleLLMMessage[] = []
+
+		for (const m of chatMessages) {
+			if (m.role === 'checkpoint') continue
+			if (m.role === 'interrupted_streaming_tool') continue
+			if (m.role === 'assistant') {
+				simpleLLMMessages.push({
+					role: m.role,
+					content: m.displayContent,
+					anthropicReasoning: m.anthropicReasoning,
+				})
+			}
+			else if (m.role === 'tool') {
+				simpleLLMMessages.push({
+					role: m.role,
+					content: m.content,
+					name: m.name,
+					id: m.id,
+					rawParams: m.rawParams,
+				})
+			}
+			else if (m.role === 'user') {
+				simpleLLMMessages.push({
+					role: m.role,
+					content: m.content,
+				})
+			}
+		}
+		return simpleLLMMessages
+	}
+
+	prepareLLMSimpleMessages: IConvertToLLMMessageService['prepareLLMSimpleMessages'] = ({ simpleMessages, systemMessage, modelSelection, featureName }) => {
+		if (modelSelection === null) return { messages: [], separateSystemMessage: undefined }
+
+		const { overridesOfModel } = this.voidSettingsService.state
+
+		const { providerName, modelName } = modelSelection
+		const {
+			specialToolFormat,
+			contextWindow,
+			supportsSystemMessage,
+		} = getModelCapabilities(providerName, modelName, overridesOfModel)
+
+		const modelSelectionOptions = this.voidSettingsService.state.optionsOfModelSelection[featureName][modelSelection.providerName]?.[modelSelection.modelName]
+
+		// Get combined AI instructions (glob-filtered by active file, like Continue)
+		const activeFilePath = this.editorService.activeEditor?.resource?.fsPath;
+		const aiInstructions = this._getCombinedAIInstructions(activeFilePath);
+
+		const isReasoningEnabled = getIsReasoningEnabledState(featureName, providerName, modelName, modelSelectionOptions, overridesOfModel)
+		const reservedOutputTokenSpace = getReservedOutputTokenSpace(providerName, modelName, { isReasoningEnabled, overridesOfModel })
+
+		const { messages, separateSystemMessage } = prepareMessages({
+			messages: simpleMessages,
+			systemMessage,
+			aiInstructions,
+			supportsSystemMessage,
+			specialToolFormat,
+			supportsAnthropicReasoning: providerName === 'anthropic',
+			contextWindow,
+			reservedOutputTokenSpace,
+			providerName,
+		})
+		return { messages, separateSystemMessage };
+	}
+	prepareLLMChatMessages: IConvertToLLMMessageService['prepareLLMChatMessages'] = async ({ chatMessages, chatMode, modelSelection }) => {
+		if (modelSelection === null) return { messages: [], separateSystemMessage: undefined }
+
+		const { overridesOfModel } = this.voidSettingsService.state
+
+		const { providerName, modelName } = modelSelection
+		const {
+			specialToolFormat,
+			contextWindow,
+			supportsSystemMessage,
+		} = getModelCapabilities(providerName, modelName, overridesOfModel)
+
+		const { disableSystemMessage } = this.voidSettingsService.state.globalSettings;
+		const fullSystemMessage = await this._generateChatMessagesSystemMessage(chatMode, specialToolFormat)
+		const systemMessage = disableSystemMessage ? '' : fullSystemMessage;
+
+		const modelSelectionOptions = this.voidSettingsService.state.optionsOfModelSelection['Chat'][modelSelection.providerName]?.[modelSelection.modelName]
+
+		// Get combined AI instructions (glob-filtered by active file, like Continue)
+		const activeFilePath2 = this.editorService.activeEditor?.resource?.fsPath;
+		const aiInstructions = this._getCombinedAIInstructions(activeFilePath2);
+		const isReasoningEnabled = getIsReasoningEnabledState('Chat', providerName, modelName, modelSelectionOptions, overridesOfModel)
+		const reservedOutputTokenSpace = getReservedOutputTokenSpace(providerName, modelName, { isReasoningEnabled, overridesOfModel })
+		const llmMessages = this._chatMessagesToSimpleMessages(chatMessages)
+
+		const { messages, separateSystemMessage } = prepareMessages({
+			messages: llmMessages,
+			systemMessage,
+			aiInstructions,
+			supportsSystemMessage,
+			specialToolFormat,
+			supportsAnthropicReasoning: providerName === 'anthropic',
+			contextWindow,
+			reservedOutputTokenSpace,
+			providerName,
+		})
+		return { messages, separateSystemMessage };
+	}
+
+
+	// --- FIM ---
+
+	prepareFIMMessage: IConvertToLLMMessageService['prepareFIMMessage'] = ({ messages, modelSelection }) => {
+		// Get combined AI instructions filtered to the file being completed
+		const fimFilePath = this.editorService.activeEditor?.resource?.fsPath;
+		const combinedInstructions = this._getCombinedAIInstructions(fimFilePath);
+
+		const instructionsPrefix = !combinedInstructions ? '' : `\
+// Instructions:
+// Do not output an explanation. Try to avoid outputting comments. Only output the middle code.
+${combinedInstructions.split('\n').map(line => `//${line}`).join('\n')}
+
+`
+
+		const prefix = instructionsPrefix + messages.prefix
+		const suffix = messages.suffix
+		const stopTokens = messages.stopTokens
+
+		// Build a rawFimPrompt for open-source models served via chat endpoints (openRouter,
+		// openAICompatible, vLLM, lmStudio, liteLLM). These models natively support FIM tokens
+		// in their tokenizer but are accessed via /v1/chat/completions, so we embed the FIM
+		// template directly in the prompt and pass it through as a raw user message.
+		//
+		// Qwen3-Coder (30b & 480b) and Qwen2.5-Coder use the same template as qwen2.5-coder:
+		//   <|fim_prefix|>{prefix}<|fim_suffix|>{suffix}<|fim_middle|>
+		let rawFimPrompt: string | undefined = undefined
+		if (modelSelection) {
+			const { overridesOfModel } = this.voidSettingsService.state
+			const { modelName } = getModelCapabilities(modelSelection.providerName, modelSelection.modelName, overridesOfModel)
+			const lower = modelName.toLowerCase()
+
+			// Qwen2.5-Coder / Qwen3-Coder: <|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>
+			if (
+				(lower.includes('qwen') && lower.includes('coder')) ||
+				lower.includes('codegemma') ||
+				lower.includes('qwen2.5coder') ||
+				lower.includes('qwen3coder')
+			) {
+				rawFimPrompt = `<|fim_prefix|>${prefix}<|fim_suffix|>${suffix}<|fim_middle|>`
+			}
+			// Starcoder2: <fim_prefix>...<fim_suffix>...<fim_middle>
+			else if (lower.includes('starcoder')) {
+				rawFimPrompt = `<fim_prefix>${prefix}<fim_suffix>${suffix}<fim_middle>`
+			}
+			// Codestral / Mistral FIM models: [SUFFIX]...[PREFIX]...
+			// (Mistral has its own dedicated FIM endpoint so this is only a fallback)
+			else if (lower.includes('codestral')) {
+				rawFimPrompt = `[SUFFIX]${suffix}[PREFIX] ${prefix}`
+			}
+			// DeepSeek-Coder-V2: <｜fim▁begin｜>...<｜fim▁hole｜>...<｜fim▁end｜>
+			else if (lower.includes('deepseek') && lower.includes('coder')) {
+				rawFimPrompt = `<｜fim▁begin｜>${prefix}<｜fim▁hole｜>${suffix}<｜fim▁end｜>`
+			}
+		}
+
+		return { prefix, suffix, stopTokens, rawFimPrompt }
+	}
+
+
+}
+
+
+registerSingleton(IConvertToLLMMessageService, ConvertToLLMMessageService, InstantiationType.Eager);
+
+
+
+
+
+
+
+
+/*
+Gemini has this, but they're openai-compat so we don't need to implement this
+gemini request:
+{   "role": "assistant",
+	"content": null,
+	"function_call": {
+		"name": "get_weather",
+		"arguments": {
+			"latitude": 48.8566,
+			"longitude": 2.3522
+		}
+	}
+}
+
+gemini response:
+{   "role": "assistant",
+	"function_response": {
+		"name": "get_weather",
+			"response": {
+			"temperature": "15°C",
+				"condition": "Cloudy"
+		}
+	}
+}
+*/

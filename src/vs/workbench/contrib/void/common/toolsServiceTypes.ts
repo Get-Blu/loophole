@@ -1,0 +1,140 @@
+import { URI } from '../../../../base/common/uri.js'
+import { RawMCPToolCall } from './mcpServiceTypes.js';
+import { builtinTools } from './prompt/prompts.js';
+import { RawToolParamsObj } from './sendLLMMessageTypes.js';
+
+
+
+export type TerminalResolveReason = { type: 'timeout' } | { type: 'done', exitCode: number }
+
+export type LintErrorItem = { code: string, message: string, startLineNumber: number, endLineNumber: number }
+
+// Partial of IFileStat
+export type ShallowDirectoryItem = {
+	uri: URI;
+	name: string;
+	isDirectory: boolean;
+	isSymbolicLink: boolean;
+}
+
+
+export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: 'edits' | 'terminal' | 'MCP tools' }> = {
+	'create_file_or_folder': 'edits',
+	'delete_file_or_folder': 'edits',
+	'rewrite_file': 'edits',
+	'edit_file': 'edits',
+	'rename_file': 'edits',
+	'insert_code_at_line': 'edits',
+	'run_command': 'terminal',
+	'run_persistent_command': 'terminal',
+	'open_persistent_terminal': 'terminal',
+	'kill_persistent_terminal': 'terminal',
+	// todo_write has no approval - it's instant state management
+	// attempt_completion has no approval - it's the task completion signal
+}
+
+
+export type ToolApprovalType = NonNullable<(typeof approvalTypeOfBuiltinToolName)[keyof typeof approvalTypeOfBuiltinToolName]>;
+
+
+export const toolApprovalTypes = new Set<ToolApprovalType>([
+	...Object.values(approvalTypeOfBuiltinToolName),
+	'MCP tools',
+])
+
+
+
+
+// Todo item type used by the todo_write tool
+export type TodoItem = {
+	content: string;
+	status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+	priority: 'high' | 'medium' | 'low';
+}
+
+// PARAMS OF TOOL CALL
+export type BuiltinToolCallParams = {
+	'read_file': { uri: URI, startLine: number | null, endLine: number | null, pageNumber: number },
+	'ls_dir': { uri: URI, pageNumber: number },
+	'get_dir_tree': { uri: URI },
+	'search_pathnames_only': { query: string, includePattern: string | null, pageNumber: number },
+	'search_for_files': { query: string, isRegex: boolean, searchInFolder: URI | null, pageNumber: number },
+	'search_in_file': { uri: URI, query: string, isRegex: boolean },
+	'read_lint_errors': { uri: URI },
+	// ---
+	'rewrite_file': { uri: URI, newContent: string },
+	'edit_file': { uri: URI, searchReplaceBlocks: string },
+	'create_file_or_folder': { uri: URI, isFolder: boolean },
+	'delete_file_or_folder': { uri: URI, isRecursive: boolean, isFolder: boolean },
+	// ---
+	'run_command': { command: string; cwd: string | null, terminalId: string },
+	'open_persistent_terminal': { cwd: string | null },
+	'run_persistent_command': { command: string; persistentTerminalId: string },
+	'kill_persistent_terminal': { persistentTerminalId: string },
+	// --- todos ---
+	'todo_write': { todos: TodoItem[] },
+	// --- skills ---
+	'load_skill': { skillName: string },
+	// --- power search (ripgrep-style with context lines) ---
+	'search_files_with_context': { query: string, includePattern: string | null, contextLines: number, searchInFolder: URI | null },
+	// --- file operations ---
+	'rename_file': { oldUri: URI, newUri: URI },
+	'insert_code_at_line': { uri: URI, line: number, content: string },
+	// --- user interaction ---
+	'ask_followup_question': { question: string, suggestions: string[] },
+	// --- sub-agents ---
+	'task': { description: string, prompt: string, subagentType: string, taskId: string | null, background: boolean },
+	// --- completion signal ---
+	// The AI MUST call this to signal that a task is fully done.
+	// Without this the agent loop keeps running. This is the only valid way to end a task.
+	'attempt_completion': { result: string, command?: string },
+}
+
+// RESULT OF TOOL CALL
+export type BuiltinToolResultType = {
+	'read_file': { fileContents: string, totalFileLen: number, totalNumLines: number, hasNextPage: boolean },
+	'ls_dir': { children: ShallowDirectoryItem[] | null, hasNextPage: boolean, hasPrevPage: boolean, itemsRemaining: number },
+	'get_dir_tree': { str: string, },
+	'search_pathnames_only': { uris: URI[], hasNextPage: boolean },
+	'search_for_files': { uris: URI[], hasNextPage: boolean },
+	'search_in_file': { lines: number[]; },
+	'read_lint_errors': { lintErrors: LintErrorItem[] | null },
+	// ---
+	'rewrite_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
+	'edit_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
+	'create_file_or_folder': {},
+	'delete_file_or_folder': {},
+	// ---
+	'run_command': { result: string; resolveReason: TerminalResolveReason; },
+	'run_persistent_command': { result: string; resolveReason: TerminalResolveReason; },
+	'open_persistent_terminal': { persistentTerminalId: string },
+	'kill_persistent_terminal': {},
+	// --- todos ---
+	'todo_write': { todos: TodoItem[] },
+	// --- skills ---
+	'load_skill': { content: string },
+	// --- power search ---
+	'search_files_with_context': { matches: Array<{ uri: URI, line: number, lineContent: string, contextBefore: string[], contextAfter: string[] }>, hasNextPage: boolean },
+	// --- file operations ---
+	'rename_file': {},
+	'insert_code_at_line': { lintErrors: LintErrorItem[] | null },
+	// --- user interaction ---
+	'ask_followup_question': { userResponse: string },
+	// --- sub-agents ---
+	'task': { output: string, taskId: string },
+	// --- completion signal ---
+	'attempt_completion': { result: string },
+}
+
+
+export type ToolCallParams<T extends BuiltinToolName | (string & {})> = T extends BuiltinToolName ? BuiltinToolCallParams[T] : RawToolParamsObj
+export type ToolResult<T extends BuiltinToolName | (string & {})> = T extends BuiltinToolName ? BuiltinToolResultType[T] : RawMCPToolCall
+
+export type BuiltinToolName = keyof BuiltinToolResultType
+
+type BuiltinToolParamNameOfTool<T extends BuiltinToolName> = keyof (typeof builtinTools)[T]['params']
+export type BuiltinToolParamName = { [T in BuiltinToolName]: BuiltinToolParamNameOfTool<T> }[BuiltinToolName]
+
+
+export type ToolName = BuiltinToolName | (string & {})
+export type ToolParamName<T extends ToolName> = T extends BuiltinToolName ? BuiltinToolParamNameOfTool<T> : string
